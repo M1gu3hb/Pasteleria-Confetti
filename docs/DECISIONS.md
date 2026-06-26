@@ -23,3 +23,16 @@
 11. **Stubs no-op** para componentes apagados que importan archivos de dinero (PropinaDialog, CantidadVariableDialog, 3 editores de Mesa). *Por qué:* sacar sus call-sites de Caja/POS/Configuración = cirugía en archivos de dinero = riesgo candado. El stub que renderiza `null` cambia menos. Confirmado inalcanzables (propinas_activas=false; no hay productos `tipo_venta` variable). Decisión de Miguel: dejarlos así.
 
 12. **Repo privado** (no público) — POS de dinero + historial git permanente. Confirmado por Miguel.
+
+13. **Modo empleado = Opción A (cuenta terminal por sucursal).** Decisión de Miguel. 3 cuentas `auth.users` + `usuarios_pos` rol `caja`, `pin_hash` null, 1 por sucursal (email `terminal-<sucursalid>@pos.confetti.local`). La terminal hace auto-login a la suya (`signInWithPassword`). *Por qué:* preserva la UX de Abel (cajero sin PIN) y le da identidad de sucursal a la sesión para que la RLS la confine.
+
+14. **Mapeo sesión→RLS (el diseño nuevo, candado-sensible).** *Por qué cada parte:*
+    - **Administrador = desbloqueo de UI sobre la sesión TERMINAL** (NO abre sesión propia con `signInWithPassword`). Se valida su PIN con `login_pos` (sin cambiar sesión) y se exige `admin.sucursal_id == terminal`. Así un administrador hereda el alcance scoped de la terminal y **nunca** ve otra sucursal, aunque su rol `administrador` daría `pos_is_admin=true` si firmara sesión. Elegante: la RLS lo confina por construcción.
+    - **Dueño = sesión global real** (`loginConPin` → `signInWithPassword`, `pos_is_admin=true`). Al salir de dueño en una terminal, se **restaura** la sesión terminal (`loginTerminal`) para volver al alcance scoped.
+    - **`ensureSession()` bootstrapea la sesión TERMINAL** desde localStorage (reemplaza el bootstrap de la cuenta staging). El adaptador la espera antes de cada query, así el arranque diario queda autenticado y scoped sin carreras.
+
+15. **`ConfigContext` cae a la vista `config_publica` cuando no hay sesión.** *Por qué:* al quitar la sesión staging, las pantallas pre-login (ConfigurarTerminal, AccesoDuenoGate) quedan anon y la tabla `configuracion_negocio` está bloqueada para anon. El fallback a `config_publica` (anon-legible) preserva el branding EXACTO de Confetti pre-login. No cambia el comportamiento autenticado (sigue leyendo la tabla completa).
+
+16. **Password fijo embebido de las cuentas terminal (`POS-TERMINAL-CONFETTI`, `VITE_TERMINAL_PASSWORD`).** *Por qué:* Miguel pidió "password fijo embebido". Va en el bundle (vía `VITE_*`) — mismo modelo de confianza que la cuenta staging anterior; la RLS scoped (caja → solo su sucursal) acota el blast radius. *Pendiente de decisión para producción:* provisión por dispositivo en vez de password compartido.
+
+17. **`POSLogin` (`/login-pos`) es secundario/legacy.** Se wireó (vista `usuarios_login` + `loginConPin`) para no dejarlo roto, pero no es el flujo principal (TerminalGate/ModalPinAdmin/AccesoDuenoGate lo cubren). *Aviso:* un operador que entre por ahí abre SU sesión (un administrador quedaría global por su rol). Miguel decide si se conserva o se retira la ruta.

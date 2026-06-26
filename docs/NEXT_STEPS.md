@@ -1,26 +1,34 @@
 # NEXT_STEPS
 
-Última actualización: 2026-06-26.
+Última actualización: 2026-06-26 (fin de sesión: wiring de Fase 4 HECHO).
 
-## 🔴 DECISIÓN PENDIENTE DE MIGUEL (bloquea el wiring de Fase 4)
-**Modo empleado bajo RLS real.** Hoy Abel opera la terminal SIN PIN (auto-login de "Empleado" virtual, rol caja, sucursal del terminal). Bajo RLS estricta esa sesión necesita identidad de sucursal en Supabase. Opciones:
-- **(A, RECOMENDADA — preserva la UX de Abel):** crear una **cuenta "terminal" por sucursal** (rol caja, `pin_hash` null). Al configurar la terminal, auto-login a esa cuenta (`signInWithPassword`, password fijo embebido tipo `POS-TERMINAL`, scoped por RLS a su sucursal). El cajero sigue sin teclear PIN. Excluir esas cuentas de la vista `usuarios_login`.
-- **(B, más estricta):** quitar el modo empleado; todos entran con PIN. Cambia la operación diaria.
+> Repo/working tree estable: `C:\Pasteleria Confetti\pos` (clon de
+> `M1gu3hb/Pasteleria-Confetti@migracion/supabase`). El scratchpad de la sesión anterior era temporal.
 
-## PRÓXIMO PASO EXACTO (tras la decisión)
-**Cerrar Fase 4 = wiring de la UI de auth a las sesiones reales** (6 archivos). El backend ya está listo (auth.users por operador, `login_pos` RPC, RLS scoped, adversarial 17/17).
+## ✅ DECISIÓN DE MIGUEL TOMADA: Opción A (cuenta terminal por sucursal)
+Modelo exacto (fuente de verdad = el código actual, replicado): terminal=localStorage; empleado sin
+PIN sobre la sesión terminal (scoped por RLS); administrador=PIN que **desbloquea UI sobre la sesión
+terminal** (mismo alcance de sucursal, exige `sucursal==terminal`); dueño=PIN que abre **sesión global**
+(`pos_is_admin`). Ver `DECISIONS.md` y la sección de esta sesión en `CHANGELOG.md`.
 
-1. `src/api/supabaseClient.js`: agregar `loginConPin(pin, userId?)` → `supabase.rpc('login_pos',{p_pin,p_user_id})` → `signInWithPassword(email, 'POS-'+pin)` → devuelve operador; `loginTerminal(sucursalId)` (si opción A); `logoutOperador()` (signOut). Quitar el auto-signin de la cuenta `staging-pos` (Fase 2/3) de `ensureSession` (dejar que solo retorne la sesión existente).
-2. `src/pages/POSLogin.jsx`: listar usuarios con la vista **`usuarios_login`** (anon-legible) en vez de `UsuarioPOS` (ya bloqueada para anon). Reemplazar `u.pin === pin` por `loginConPin(pin, selectedUser?.id)`; on success `login(operador)`.
-3. `src/components/common/TerminalGate.jsx`: el auto-login de empleado debe `await loginTerminal(terminal.sucursal_id)` (opción A) antes de `login({...empleado virtual...})`.
-4. `src/components/common/ModalPinAdmin.jsx` y `AccesoDuenoGate.jsx`: validar PIN vía `loginConPin` (establecen la sesión Supabase del admin/dueño). LEERLOS antes de tocar (no se leyeron en la sesión anterior).
-5. `src/lib/AuthContext.jsx`: ya simplificado; confirmar que no reintroduce la sesión staging.
-6. Crear (opción A) las 3 cuentas terminal (usuarios_pos rol caja + auth.users, email `terminal-<sucursalid>@pos.confetti.local`, pin_hash null) y actualizar la vista `usuarios_login` para excluir `pin_hash is null`.
-7. **Build** (`npm run build`) + **smoke** (preview local, ver patrón en sesión previa): login por PIN como caja A → ve solo A; admin/dueño → ve todo; vender/abrir-cerrar corte/abono. Confirmar que la RLS no rompe ningún flujo.
-8. Re-correr el harness adversarial (en `docs/` no quedó guardado; reconstruir el patrón de `_fase4_rls.mjs` descrito en CHANGELOG) y confirmar 17/17 sigue.
-9. Limpiar datos de prueba (staging solo maestros). DETENERSE y reportar para que Miguel firme Fase 4.
+## ✅ WIRING DE FASE 4 — HECHO (pendiente de firma de Miguel)
+Wireados 6 archivos + `ConfigContext` (#7) + `entitiesAdapter` (mapeo de vista) + migración 0015
+(3 cuentas terminal; `usuarios_login` excluye `pin_hash null`). Build verde, **smoke UI 4/4**,
+**adversarial RLS 25/25** (`scripts/fase4_rls_adversarial.mjs`). Datos de prueba limpiados.
 
-## DESPUÉS (no ahora)
+## 🔴 PRÓXIMO PASO: AUDITORÍA + FIRMA DE MIGUEL (no encadenar solo)
+Miguel/su arquitecto revisan `migracion/supabase` (dinero + aislamiento RLS) antes de dar Fase 4 por
+cerrada. Puntos a auditar (marcados en código + CHANGELOG):
+- Mapeo sesión→RLS: admin sobre la sesión terminal (no `signInWithPassword`); dueño global con
+  restauración de la terminal al salir.
+- `ConfigContext` cae a `config_publica` sin sesión (preserva branding pre-login).
+- Cuentas terminal: password fijo embebido `POS-TERMINAL-CONFETTI` (en el bundle vía `VITE_*`; mismo
+  modelo de confianza que la cuenta staging; acotado por RLS scoped). ¿OK para staging? ¿Provisión por
+  dispositivo en producción?
+- `POSLogin` (`/login-pos`) es secundario/legacy: un operador que entre ahí abre SU sesión (un
+  administrador quedaría global por su rol). Decidir si se conserva o se retira esa ruta.
+
+## DESPUÉS (con luz verde de Fase 4)
 - **Fase 5** (bot de paridad vs Base44, ya existe en otro proyecto de Miguel): dejar el sistema listo para conectarlo; documentar cómo apuntarlo a esta Supabase/Vercel; correr a volumen y comparar cortes idénticos. Lo firma Miguel.
 - **Web** (sub-proyecto aparte): apuntar a la misma Supabase (vista `catalogo_publico` + RLS anon ya listas).
 

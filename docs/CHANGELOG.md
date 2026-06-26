@@ -30,6 +30,62 @@
 - **Adversarial 17/17 PASS:** anon bloqueado; caja A no ve B; caja B solo B; dueño ve todo; 7 casos de dinero IDÉNTICOS bajo RLS estricta.
 - **PENDIENTE:** wiring de la UI de auth (6 archivos) → la app no loguea por UI. Decisión de modo empleado pendiente de Miguel.
 
+## Sesión 2026-06-26 (cont.) — Fase 4: WIRING UI de auth (HECHO; pendiente de firma de Miguel)
+
+Decisión de Miguel: **Opción A** (cuenta terminal por sucursal) con el modelo exacto:
+terminal=localStorage; empleado sin PIN sobre la sesión terminal (scoped); administrador=PIN
+que **desbloquea UI sobre la sesión terminal** (mismo alcance de sucursal); dueño=PIN que abre
+**sesión global**. Trabajo en clon fresco estable `C:\Pasteleria Confetti\pos` (el scratchpad viejo
+era temporal). GitHub = fuente de verdad.
+
+### Mapeo sesión→RLS (el diseño nuevo; Base44 no tenía RLS)
+- **Sesión terminal** (3 cuentas `caja`, 1 por sucursal, `pin_hash` null) → `pos_is_admin=false`,
+  scoped a su sucursal. Empleado y administrador-de-esa-sucursal operan sobre ella.
+- **Administrador** = `validarPin` (RPC `login_pos`, **sin** `signInWithPassword`) → desbloqueo de UI.
+  Se exige que su `sucursal_id == terminal` (admin de otra sucursal NO eleva).
+- **Dueño** = `loginConPin` (`login_pos` + `signInWithPassword`) → sesión global (`pos_is_admin=true`).
+  Al salir, se restaura la sesión terminal (`loginTerminal`).
+
+### Archivos wireados (solo capa auth/sesión; CANDADOS 1/2/3 y matemática intactos)
+- `src/api/supabaseClient.js`: `ensureSession()` reescrito (bootstrap de sesión TERMINAL desde
+  localStorage; ya NO usa la cuenta staging) + `loginTerminal()` / `validarPin()` / `loginConPin()` /
+  `logoutOperador()`.
+- `src/components/common/TerminalGate.jsx`: `await loginTerminal(sucursal)` antes del auto-login del
+  empleado; estado de error si la sesión falla.
+- `src/components/common/ModalPinAdmin.jsx`: valida por `validarPin` (login_pos) en vez de `u.pin===`.
+- `src/components/common/AccesoDuenoGate.jsx` y `src/pages/ConfigurarTerminal.jsx`: dueño abre sesión
+  global (`loginConPin`); corregido bug pre-existente `activarAdmin('dueno')` (string→usuario).
+- `src/components/common/Sidebar.jsx`: admin = UI sobre terminal + chequeo de sucursal; dueño = sesión
+  global; al salir restaura la terminal. (Quitado import muerto `ROLE_LABELS`.)
+- `src/lib/AuthContext.jsx`: comentario; sigue llamando `ensureSession()` (ahora bootstrap terminal).
+- `src/pages/POSLogin.jsx` (login standalone, secundario): lista desde vista `usuarios_login` +
+  `loginConPin`.
+- `src/lib/ConfigContext.jsx` (#7, necesario): fallback a vista `config_publica` (anon) para preservar
+  el branding EXACTO en pantallas pre-login sin la sesión staging.
+- `src/api/entitiesAdapter.js`: +mapeo `UsuarioLogin→usuarios_login` (lectura; aditivo).
+
+### Backend (migración 0015)
+- 3 cuentas TERMINAL: `auth.users` (email `terminal-<sucursalid>@pos.confetti.local`, password fijo
+  `POS-TERMINAL-CONFETTI`) + identity + `usuarios_pos` rol caja, `pin_hash` null. Vista `usuarios_login`
+  ahora excluye `pin_hash is null` (las terminales no son seleccionables).
+- ⚠️ Gotcha resuelto: al insertar `auth.users` a mano, `confirmation_token/recovery_token/email_change/
+  email_change_token_new` deben ir `''` (no NULL) o `signInWithPassword` da **500**. La 0015 ya los
+  pone en `''`.
+
+### Verificación
+- `npm run build` verde. ESLint del set wireado limpio.
+- **Smoke UI real (4/4)**, con cuentas de prueba temporales (ya borradas): (1) terminal Xochimilco →
+  empleado, ve SOLO Xochimilco, Caja; (2) PIN admin Xochimilco → eleva, sesión sigue terminal, scoped a
+  Xochimilco; (3) PIN admin Topilejo en terminal Xochimilco → NO eleva; (4) PIN dueño → sesión global,
+  vista general, ve todas; al salir restaura la sesión terminal. Branding pre-login (anon) = Confetti
+  vía `config_publica`. 0 errores de consola.
+- **Adversarial RLS 25/25** (`scripts/fase4_rls_adversarial.mjs`, guardado en el repo): anon bloqueado
+  en dinero; terminal A↔B aislados; WITH CHECK bloquea inserción cruzada (42501); dueño global.
+- Datos de prueba limpiados → staging = solo maestros + 3 cuentas terminal (usuarios_pos=36, login=33,
+  transaccional=0).
+
+**Fase 4 NO se da por cerrada:** la firma (dinero + aislamiento RLS) la hace Miguel/su arquitecto.
+
 ### Migraciones aplicadas en staging (repo `supabase/migrations/`)
-0001 esquema_unificado · 0002 hardening_anon_grants · 0003 harden_siguiente_folio_execute · 0004 harden_rls_auto_enable_execute · 0005 ajustes_schema_datos_vivos · 0006 seed_datos_maestros · 0007 config_campos_json_string · 0008 storage_bucket_uploads · 0009 actor_ids_a_text · 0010 config_propinas_activas · 0011 config_sonidos_activos · 0012 fase4_rls_por_rol_sucursal · 0013 fase4_drop_pin_plano · 0014 fase4_login_pos_rpc.
+0001 esquema_unificado · 0002 hardening_anon_grants · 0003 harden_siguiente_folio_execute · 0004 harden_rls_auto_enable_execute · 0005 ajustes_schema_datos_vivos · 0006 seed_datos_maestros · 0007 config_campos_json_string · 0008 storage_bucket_uploads · 0009 actor_ids_a_text · 0010 config_propinas_activas · 0011 config_sonidos_activos · 0012 fase4_rls_por_rol_sucursal · 0013 fase4_drop_pin_plano · 0014 fase4_login_pos_rpc · **0015 fase4_cuentas_terminal**.
 (Nota: el seeding de `auth.users` por operador se hizo vía SQL directo, no como migración versionada — password derivado `POS-<pin>`; ver `supabase/STAGING_NOTES.md`.)
