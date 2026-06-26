@@ -1,0 +1,292 @@
+{
+  "name": "Venta",
+  "type": "object",
+  "properties": {
+    "folio": {
+      "type": "string"
+    },
+    "fecha_apertura": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "fecha_cierre": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "tipo_venta": {
+      "type": "string",
+      "enum": [
+        "mesa",
+        "mostrador",
+        "para_llevar",
+        "delivery"
+      ],
+      "default": "mostrador"
+    },
+    "mesa_id": {
+      "type": "string"
+    },
+    "mesa_numero": {
+      "type": "number"
+    },
+    "personas": {
+      "type": "number",
+      "default": 0
+    },
+    "cliente_nombre": {
+      "type": "string"
+    },
+    "cliente_id": {
+      "type": "string"
+    },
+    "sucursal_id": {
+      "type": "string",
+      "description": "ID de la sucursal donde se hizo la venta. OBLIGATORIO."
+    },
+    "sucursal_nombre": {
+      "type": "string",
+      "description": "Snapshot del nombre de la sucursal."
+    },
+    "notas_alergias": {
+      "type": "string"
+    },
+    "celebracion_especial": {
+      "type": "boolean",
+      "default": false
+    },
+    "tipo_celebracion": {
+      "type": "string"
+    },
+    "codigo_caja": {
+      "type": "string"
+    },
+    "usuario_mesero_id": {
+      "type": "string"
+    },
+    "usuario_mesero_nombre": {
+      "type": "string"
+    },
+    "usuario_cajero_id": {
+      "type": "string"
+    },
+    "usuario_cajero_nombre": {
+      "type": "string"
+    },
+    "estado": {
+      "type": "string",
+      "enum": [
+        "abierta",
+        "enviada",
+        "en_preparacion",
+        "lista",
+        "cuenta_solicitada",
+        "pagada",
+        "cancelada"
+      ],
+      "default": "abierta"
+    },
+    "subtotal": {
+      "type": "number",
+      "default": 0
+    },
+    "descuentos": {
+      "type": "number",
+      "default": 0
+    },
+    "impuestos": {
+      "type": "number",
+      "default": 0
+    },
+    "total": {
+      "type": "number",
+      "default": 0,
+      "description": "Venta real SIN propina."
+    },
+    "propina_monto": {
+      "type": "number",
+      "default": 0
+    },
+    "propina_efectivo": {
+      "type": "number",
+      "default": 0
+    },
+    "propina_tarjeta": {
+      "type": "number",
+      "default": 0
+    },
+    "propina_transferencia": {
+      "type": "number",
+      "default": 0
+    },
+    "total_cobrado_con_propina": {
+      "type": "number",
+      "default": 0
+    },
+    "propina_porcentaje": {
+      "type": "number",
+      "default": 0
+    },
+    "propina_tipo": {
+      "type": "string",
+      "enum": [
+        "sin_propina",
+        "porcentaje",
+        "monto_manual",
+        "pendiente",
+        "pendiente_cliente",
+        "decidir_en_caja"
+      ],
+      "default": "sin_propina"
+    },
+    "propina_origen": {
+      "type": "string",
+      "enum": [
+        "mesero",
+        "caja",
+        "tradicional",
+        "portal_qr",
+        "pendiente_portal_qr"
+      ]
+    },
+    "propina_liquidada": {
+      "type": "boolean",
+      "default": false
+    },
+    "propina_liquidacion_id": {
+      "type": "string"
+    },
+    "propina_liquidada_fecha": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "costo_total_snapshot": {
+      "type": "number",
+      "default": 0
+    },
+    "utilidad_bruta_snapshot": {
+      "type": "number",
+      "default": 0
+    },
+    "margen_snapshot": {
+      "type": "number",
+      "default": 0
+    },
+    "metodo_pago": {
+      "type": "string",
+      "enum": [
+        "efectivo",
+        "tarjeta",
+        "transferencia",
+        "mixto"
+      ]
+    },
+    "monto_efectivo": {
+      "type": "number",
+      "default": 0
+    },
+    "monto_tarjeta": {
+      "type": "number",
+      "default": 0
+    },
+    "monto_transferencia": {
+      "type": "number",
+      "default": 0
+    },
+    "cambio": {
+      "type": "number",
+      "default": 0
+    },
+    "notas": {
+      "type": "string"
+    },
+    "motivo_cancelacion": {
+      "type": "string"
+    },
+    "corte_caja_id": {
+      "type": "string"
+    },
+    "satisfaccion_score": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "satisfaccion_emoji": {
+      "type": "string"
+    },
+    "satisfaccion_label": {
+      "type": "string"
+    },
+    "satisfaccion_comentario": {
+      "type": "string"
+    },
+    "satisfaccion_fecha": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "satisfaccion_origen": {
+      "type": "string",
+      "default": "portal_qr"
+    },
+    "cuenta_ajustada": {
+      "type": "boolean",
+      "default": false
+    },
+    "ajuste_fecha": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ajuste_usuario_id": {
+      "type": "string"
+    },
+    "ajuste_usuario_nombre": {
+      "type": "string"
+    },
+    "ajuste_motivo": {
+      "type": "string"
+    },
+    "ajuste_monto": {
+      "type": "number",
+      "default": 0
+    },
+    "total_antes_ajuste": {
+      "type": "number"
+    },
+    "total_despues_ajuste": {
+      "type": "number"
+    },
+    "ajustes_cuenta": {
+      "type": "string"
+    },
+    "tipo_cancelacion": {
+      "type": "string",
+      "enum": [
+        "cancelacion",
+        "devolucion"
+      ],
+      "description": "Distingue cancelar (error humano, sin dinero) de devolver (reembolso). Solo se setea al cancelar."
+    },
+    "monto_devuelto": {
+      "type": "number",
+      "default": 0,
+      "description": "Monto reembolsado al cliente. Solo aplica cuando tipo_cancelacion='devolucion'."
+    },
+    "fecha_cancelacion": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fecha-hora en que se cancelo/devolvio la venta."
+    },
+    "cancelado_por_id": {
+      "type": "string",
+      "description": "ID del usuario POS que cancelo/devolvio la venta."
+    },
+    "cancelado_por_nombre": {
+      "type": "string",
+      "description": "Snapshot del nombre del usuario que cancelo/devolvio la venta."
+    }
+  },
+  "required": [
+    "folio",
+    "tipo_venta",
+    "sucursal_id"
+  ]
+}

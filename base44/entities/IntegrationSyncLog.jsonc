@@ -1,0 +1,61 @@
+{
+  "name": "IntegrationSyncLog",
+  "type": "object",
+  "properties": {
+    "record_type": {
+      "type": "string",
+      "description": "Tipo de registro: cash_cut, cash_cut_pdf, sale, inventory, etc."
+    },
+    "record_id": {
+      "type": "string",
+      "description": "ID del registro de origen"
+    },
+    "destination": {
+      "type": "string",
+      "enum": [
+        "google_sheets",
+        "google_drive",
+        "local_export"
+      ],
+      "description": "Destino de sincronizaci\u00f3n"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "pending_external_sync",
+        "synced",
+        "failed"
+      ],
+      "default": "pending_external_sync",
+      "description": "Estado de la sincronizaci\u00f3n"
+    },
+    "attempts": {
+      "type": "number",
+      "default": 0
+    },
+    "last_attempt_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "error_message": {
+      "type": "string"
+    },
+    "file_url": {
+      "type": "string"
+    },
+    "sheet_tab": {
+      "type": "string"
+    },
+    "payload_snapshot": {
+      "type": "string",
+      "description": "JSON serializado del payload en el momento del intento"
+    }
+  },
+  "required": [
+    "record_type",
+    "record_id",
+    "destination",
+    "status"
+  ]
+}

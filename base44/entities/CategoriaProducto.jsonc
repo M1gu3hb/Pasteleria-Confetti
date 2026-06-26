@@ -1,0 +1,42 @@
+{
+  "name": "CategoriaProducto",
+  "type": "object",
+  "properties": {
+    "nombre": {
+      "type": "string"
+    },
+    "descripcion": {
+      "type": "string"
+    },
+    "color": {
+      "type": "string",
+      "default": "#4A5568"
+    },
+    "icono": {
+      "type": "string"
+    },
+    "orden": {
+      "type": "number",
+      "default": 0
+    },
+    "activo": {
+      "type": "boolean",
+      "default": true
+    },
+    "estacion_preparacion_id": {
+      "type": "string",
+      "description": "F1: ID de EstacionPreparacion asignada. Si est\u00e1 vac\u00edo, la categor\u00eda se considera en 'Cocina general'. No afecta pedidos en F1 \u2014 solo datos."
+    },
+    "estacion_preparacion_nombre": {
+      "type": "string",
+      "description": "F1: Snapshot del nombre de la estaci\u00f3n. Solo visual."
+    },
+    "estacion_preparacion_color": {
+      "type": "string",
+      "description": "F1: Snapshot del color de la estaci\u00f3n. Solo visual."
+    }
+  },
+  "required": [
+    "nombre"
+  ]
+}

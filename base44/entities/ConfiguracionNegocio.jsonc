@@ -1,0 +1,351 @@
+{
+  "name": "ConfiguracionNegocio",
+  "type": "object",
+  "properties": {
+    "nombre_negocio": {
+      "type": "string"
+    },
+    "nombre_sistema": {
+      "type": "string"
+    },
+    "platform_brand": {
+      "type": "string",
+      "default": "MH Astral Systems"
+    },
+    "logo_url": {
+      "type": "string"
+    },
+    "logo_ticket_url": {
+      "type": "string"
+    },
+    "logo_pdf_url": {
+      "type": "string"
+    },
+    "background_logo_url": {
+      "type": "string"
+    },
+    "background_image_url": {
+      "type": "string",
+      "description": "Imagen de fondo a pantalla completa."
+    },
+    "background_fit": {
+      "type": "string",
+      "enum": [
+        "cover",
+        "contain"
+      ],
+      "default": "cover"
+    },
+    "color_primario": {
+      "type": "string",
+      "default": "#1e40af",
+      "description": "Color principal de marca. Afecta glow, degradados, fondos premium del login."
+    },
+    "color_secundario": {
+      "type": "string",
+      "default": "#0f172a",
+      "description": "Legacy: tono oscuro de degradados. No se expone en UI nueva. Compatibilidad."
+    },
+    "color_acento": {
+      "type": "string",
+      "default": "#38bdf8",
+      "description": "Color de acento de UI. Afecta sidebar activo, botones, badges, highlights."
+    },
+    "color_exito": {
+      "type": "string",
+      "default": "#16a34a"
+    },
+    "color_alerta": {
+      "type": "string",
+      "default": "#f59e0b"
+    },
+    "background_opacity": {
+      "type": "number",
+      "default": 0.12
+    },
+    "colorear_importes_monetarios": {
+      "type": "boolean",
+      "default": true
+    },
+    "direccion": {
+      "type": "string"
+    },
+    "telefono": {
+      "type": "string"
+    },
+    "whatsapp": {
+      "type": "string"
+    },
+    "correo": {
+      "type": "string"
+    },
+    "horario": {
+      "type": "string"
+    },
+    "moneda": {
+      "type": "string",
+      "default": "MXN"
+    },
+    "simbolo_moneda": {
+      "type": "string",
+      "default": "$"
+    },
+    "iva_porcentaje": {
+      "type": "number",
+      "default": 0
+    },
+    "usa_mesas": {
+      "type": "boolean",
+      "default": true
+    },
+    "usa_cocina": {
+      "type": "boolean",
+      "default": true
+    },
+    "usa_barra": {
+      "type": "boolean",
+      "default": false
+    },
+    "hora_inicio_dia_operativo": {
+      "type": "string",
+      "default": "06:00"
+    },
+    "mensaje_ticket": {
+      "type": "string",
+      "default": "\u00a1Gracias por tu visita!"
+    },
+    "ticket_footer": {
+      "type": "string"
+    },
+    "pdf_footer": {
+      "type": "string"
+    },
+    "footer_text": {
+      "type": "string"
+    },
+    "mostrar_logo_ticket": {
+      "type": "boolean",
+      "default": true
+    },
+    "mostrar_costos_a_caja": {
+      "type": "boolean",
+      "default": false
+    },
+    "permitir_venta_sin_stock": {
+      "type": "boolean",
+      "default": false
+    },
+    "sonidos_activos": {
+      "type": "boolean",
+      "default": true
+    },
+    "volumen_sonido": {
+      "type": "number",
+      "default": 0.7
+    },
+    "redes_sociales": {
+      "type": "string"
+    },
+    "descargar_pdf_corte_auto": {
+      "type": "boolean",
+      "default": true
+    },
+    "formato_export_default": {
+      "type": "string",
+      "enum": [
+        "csv",
+        "xlsx",
+        "pdf"
+      ],
+      "default": "csv"
+    },
+    "google_sheets_enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "google_drive_enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "google_sheets_status": {
+      "type": "string",
+      "default": "pending_connection"
+    },
+    "google_drive_status": {
+      "type": "string",
+      "default": "pending_connection"
+    },
+    "google_sheets_spreadsheet_id": {
+      "type": "string"
+    },
+    "google_drive_folder_id": {
+      "type": "string"
+    },
+    "auto_sync_on_cash_cut": {
+      "type": "boolean",
+      "default": false
+    },
+    "auto_save_pdf_to_drive": {
+      "type": "boolean",
+      "default": false
+    },
+    "auto_update_daily_summary": {
+      "type": "boolean",
+      "default": false
+    },
+    "last_sync_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_sync_status": {
+      "type": "string"
+    },
+    "last_sync_error": {
+      "type": "string"
+    },
+    "paquete_modo": {
+      "type": "string",
+      "enum": [
+        "esencial",
+        "operativo",
+        "restaurante_pro"
+      ],
+      "default": "restaurante_pro"
+    },
+    "modo_presentacion_activo": {
+      "type": "boolean",
+      "default": false
+    },
+    "presentacion_password": {
+      "type": "string",
+      "default": "2797"
+    },
+    "presentacion_ultimo_acceso": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "presentacion_notas": {
+      "type": "string"
+    },
+    "propinas_activas": {
+      "type": "boolean",
+      "default": true
+    },
+    "propina_porcentajes_sugeridos": {
+      "type": "string",
+      "default": "5,10,15,20"
+    },
+    "portal_qr_activo": {
+      "type": "boolean",
+      "default": false
+    },
+    "portal_qr_modo_menu": {
+      "type": "string",
+      "enum": [
+        "productos_pos",
+        "menu_subido",
+        "mixto"
+      ],
+      "default": "productos_pos"
+    },
+    "portal_qr_mostrar_precios": {
+      "type": "boolean",
+      "default": true
+    },
+    "portal_qr_mostrar_sin_imagen": {
+      "type": "boolean",
+      "default": true
+    },
+    "portal_qr_permitir_ordenar": {
+      "type": "boolean",
+      "default": true
+    },
+    "portal_qr_permitir_cuenta": {
+      "type": "boolean",
+      "default": true
+    },
+    "portal_qr_permitir_ayuda": {
+      "type": "boolean",
+      "default": true
+    },
+    "portal_qr_mensaje_bienvenida": {
+      "type": "string",
+      "default": "\u00a1Bienvenido! Explora nuestro men\u00fa y p\u00eddenos atenci\u00f3n cuando quieras."
+    },
+    "portal_qr_mostrar_precuenta": {
+      "type": "boolean",
+      "default": true,
+      "description": "Si el comensal puede ver su precuenta digital (productos y subtotal) desde el QR antes de pedir cuenta."
+    },
+    "portal_qr_permitir_propina_cliente": {
+      "type": "boolean",
+      "default": true,
+      "description": "Si el comensal puede elegir propina desde el QR al pedir cuenta. Solo se usa cuando propinas_activas tambi\u00e9n est\u00e1 activo."
+    },
+    "portal_qr_cuenta_modo": {
+      "type": "string",
+      "enum": [
+        "mesero_dispara",
+        "cliente_solicita",
+        "ambos"
+      ],
+      "default": "mesero_dispara",
+      "description": "Qui\u00e9n dispara la pantalla de propina/precuenta en el QR."
+    },
+    "portal_qr_permitir_pedidos_cliente": {
+      "type": "boolean",
+      "default": false,
+      "description": "Si est\u00e1 activo, el comensal puede agregar productos al carrito y enviar el pedido a cocina desde el QR. Solo en Restaurante Pro y con asignaci\u00f3n de mesas activa."
+    },
+    "asignacion_mesas_activa": {
+      "type": "boolean",
+      "default": false,
+      "description": "Si true, cada mesa pertenece a un mesero fijo. Si false, todos los meseros ven todas las mesas."
+    },
+    "silenciar_notificaciones_admin": {
+      "type": "boolean",
+      "default": true,
+      "description": "Si true, el administrador no escucha sonidos ni voz (solo ve indicadores visuales)."
+    },
+    "unidades_medida_lista": {
+      "type": "string",
+      "description": "Lista de unidades de medida disponibles separadas por coma. Si vac\u00eda, se usa el default (kg, g, litro, ml, pieza, caja, paquete, bolsa, unidad)."
+    },
+    "estaciones_preparacion_activas": {
+      "type": "boolean",
+      "default": false,
+      "description": "F1: Si est\u00e1 activo, el restaurante administra estaciones de preparaci\u00f3n (barra, postres, barbacoa, etc.) y cada categor\u00eda se asigna a una estaci\u00f3n. En F1 solo es base de datos \u2014 la cocina filtrada se implementa en F2/F3."
+    },
+    "precio_kilo_global": {
+      "type": "number",
+      "default": 350,
+      "description": "Pasteles F3: precio por kilo cuando el modo es global."
+    },
+    "precio_kilo_es_global": {
+      "type": "boolean",
+      "default": true,
+      "description": "Pasteles F3: true = un precio para todas las sucursales; false = precio por sucursal."
+    },
+    "precio_kilo_por_sucursal": {
+      "type": "string",
+      "description": "Pasteles F3: JSON string {sucursal_id: precio} para modo por sucursal."
+    },
+    "ratio_personas_por_kilo": {
+      "type": "number",
+      "default": 10,
+      "description": "Pasteles F3: personas por kilo, para sugerir kilos."
+    },
+    "ratio_personas_es_global": {
+      "type": "boolean",
+      "default": true,
+      "description": "Pasteles F3: igual que precio pero para el ratio de personas."
+    },
+    "ratio_personas_por_sucursal": {
+      "type": "string",
+      "description": "Pasteles F3: JSON string {sucursal_id: ratio}."
+    }
+  },
+  "required": [
+    "nombre_negocio"
+  ]
+}

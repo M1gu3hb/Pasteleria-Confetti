@@ -1,0 +1,70 @@
+{
+  "name": "PlantillaGasto",
+  "type": "object",
+  "properties": {
+    "nombre": {
+      "type": "string",
+      "description": "Nombre identificador de la plantilla. Ej: 'Renta local', 'CFE mensual'."
+    },
+    "categoria": {
+      "type": "string",
+      "enum": [
+        "limpieza",
+        "transporte",
+        "reparacion",
+        "servicios",
+        "pago_extraordinario",
+        "marketing",
+        "otro"
+      ],
+      "default": "servicios"
+    },
+    "monto_sugerido": {
+      "type": "number",
+      "description": "Monto t\u00edpico del gasto. Editable al registrar el pago.",
+      "default": 0
+    },
+    "metodo_pago": {
+      "type": "string",
+      "enum": [
+        "efectivo",
+        "tarjeta",
+        "transferencia"
+      ],
+      "default": "efectivo"
+    },
+    "periodicidad": {
+      "type": "string",
+      "enum": [
+        "mensual",
+        "semanal",
+        "quincenal",
+        "anual",
+        "unico"
+      ],
+      "default": "mensual"
+    },
+    "dia_pago_sugerido": {
+      "type": "number",
+      "description": "D\u00eda sugerido del mes (1-31) cuando aplica. Solo informativo."
+    },
+    "notas": {
+      "type": "string"
+    },
+    "activa": {
+      "type": "boolean",
+      "default": true
+    },
+    "ultima_fecha_uso": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "veces_usada": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "nombre"
+  ]
+}

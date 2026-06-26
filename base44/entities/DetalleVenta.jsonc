@@ -1,0 +1,112 @@
+{
+  "name": "DetalleVenta",
+  "type": "object",
+  "properties": {
+    "venta_id": {
+      "type": "string"
+    },
+    "producto_id": {
+      "type": "string"
+    },
+    "producto_nombre": {
+      "type": "string"
+    },
+    "cantidad": {
+      "type": "number"
+    },
+    "precio_unitario_snapshot": {
+      "type": "number"
+    },
+    "costo_unitario_snapshot": {
+      "type": "number"
+    },
+    "subtotal": {
+      "type": "number"
+    },
+    "costo_total_linea_snapshot": {
+      "type": "number"
+    },
+    "utilidad_linea_snapshot": {
+      "type": "number"
+    },
+    "margen_linea_snapshot": {
+      "type": "number"
+    },
+    "notas_producto": {
+      "type": "string"
+    },
+    "modificadores_snapshot": {
+      "type": "string",
+      "description": "JSON string con array de {grupo, opciones} elegidos al agregar el producto. Solo informativo, no afecta precio/costo/inventario en v1."
+    },
+    "ingredientes_excluidos_snapshot": {
+      "type": "string",
+      "description": "PASO A: JSON string con array de ingredientes marcados como 'SIN' por el mesero. Estructura por entry: { ingrediente_id, ingrediente_nombre, unidad, cantidad_base_excluida (por unidad de producto, no multiplicada por cantidad de l\u00ednea) }. En PASO A solo se persiste (no afecta inventario). En PASO B Caja lo parsear\u00e1 al cobrar para excluir esos ingredientes del descuento de inventario."
+    },
+    "estado_preparacion": {
+      "type": "string",
+      "enum": [
+        "pendiente",
+        "en_preparacion",
+        "listo",
+        "entregado",
+        "cancelado"
+      ],
+      "default": "pendiente"
+    },
+    "area_preparacion_snapshot": {
+      "type": "string"
+    },
+    "tipo_venta_snapshot": {
+      "type": "string",
+      "enum": [
+        "precio_fijo",
+        "variable_medida",
+        "porcion_contenedor"
+      ],
+      "default": "precio_fijo",
+      "description": "6B: Snapshot del tipo_venta del producto al momento de la venta."
+    },
+    "unidad_variable_snapshot": {
+      "type": "string",
+      "description": "6B: Unidad mostrada al cliente (g/kg/ml/l) \u2014 snapshot."
+    },
+    "cantidad_variable_snapshot": {
+      "type": "number",
+      "description": "6B: Cantidad elegida en la unidad mostrada (ej. 500 si pidi\u00f3 500g)."
+    },
+    "cantidad_base_consumo": {
+      "type": "number",
+      "description": "6B: Cantidad convertida a unidad base del ingrediente (g o ml) \u2014 esto es lo que descuenta inventario."
+    },
+    "ingrediente_base_id_snapshot": {
+      "type": "string",
+      "description": "6B: id del ingrediente base."
+    },
+    "ingrediente_base_nombre_snapshot": {
+      "type": "string",
+      "description": "6B: nombre del ingrediente base."
+    },
+    "precio_por_unidad_snapshot": {
+      "type": "number",
+      "description": "6B: precio por unidad_variable o por porci\u00f3n \u2014 snapshot."
+    },
+    "nombre_porcion_snapshot": {
+      "type": "string",
+      "description": "6B: snapshot del nombre de la porci\u00f3n (shot/copa)."
+    },
+    "ml_por_porcion_snapshot": {
+      "type": "number",
+      "description": "6B: snapshot de ml por porci\u00f3n."
+    },
+    "cantidad_porciones_snapshot": {
+      "type": "number",
+      "description": "6B: n\u00famero de porciones vendidas en esa l\u00ednea."
+    }
+  },
+  "required": [
+    "venta_id",
+    "producto_id",
+    "cantidad"
+  ]
+}

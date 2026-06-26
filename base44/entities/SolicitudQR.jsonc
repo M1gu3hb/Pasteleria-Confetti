@@ -1,0 +1,113 @@
+{
+  "name": "SolicitudQR",
+  "type": "object",
+  "properties": {
+    "mesa_id": {
+      "type": "string"
+    },
+    "mesa_nombre": {
+      "type": "string"
+    },
+    "mesa_numero": {
+      "type": "number"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "ordenar",
+        "cuenta",
+        "ayuda"
+      ],
+      "description": "Tipo de solicitud del comensal."
+    },
+    "estado": {
+      "type": "string",
+      "enum": [
+        "pendiente",
+        "atendida",
+        "resuelta",
+        "cancelada"
+      ],
+      "default": "pendiente"
+    },
+    "fecha_creacion": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "fecha_atendida": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "fecha_resuelta": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "atendido_por_id": {
+      "type": "string"
+    },
+    "atendido_por_nombre": {
+      "type": "string"
+    },
+    "mesero_destino_id": {
+      "type": "string",
+      "description": "Mesero asignado a la mesa (si hay asignaci\u00f3n activa). S\u00f3lo a \u00e9l se le notifica."
+    },
+    "mesero_destino_nombre": {
+      "type": "string"
+    },
+    "ruteo_modo": {
+      "type": "string",
+      "enum": [
+        "asignado",
+        "general"
+      ],
+      "default": "general",
+      "description": "C\u00f3mo se rute\u00f3 la solicitud al crearse."
+    },
+    "origen": {
+      "type": "string",
+      "default": "portal_qr"
+    },
+    "token_mesa": {
+      "type": "string"
+    },
+    "notas": {
+      "type": "string"
+    },
+    "venta_id": {
+      "type": "string",
+      "description": "ID de la Venta activa de la mesa al momento de pedir cuenta. Solo informativo, no se usa para cobrar."
+    },
+    "subtotal_consumo": {
+      "type": "number",
+      "description": "Subtotal de la venta que ve el cliente al pedir cuenta. Snapshot informativo."
+    },
+    "propina_monto_sugerida": {
+      "type": "number",
+      "description": "Propina que el comensal eligi\u00f3 desde el QR. Caja la puede ajustar."
+    },
+    "propina_porcentaje_sugerido": {
+      "type": "number",
+      "description": "% si la propina fue por porcentaje (0 si fue monto manual o sin propina)."
+    },
+    "propina_tipo": {
+      "type": "string",
+      "enum": [
+        "sin_propina",
+        "porcentaje",
+        "monto_manual",
+        "decidir_en_caja",
+        "pendiente_cliente"
+      ],
+      "description": "C\u00f3mo eligi\u00f3 la propina el comensal."
+    },
+    "total_estimado": {
+      "type": "number",
+      "description": "subtotal_consumo + propina_monto_sugerida. Snapshot informativo."
+    }
+  },
+  "required": [
+    "mesa_id",
+    "tipo"
+  ]
+}

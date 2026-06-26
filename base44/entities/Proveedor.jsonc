@@ -1,0 +1,34 @@
+{
+  "name": "Proveedor",
+  "type": "object",
+  "properties": {
+    "nombre": {
+      "type": "string"
+    },
+    "contacto": {
+      "type": "string"
+    },
+    "telefono": {
+      "type": "string"
+    },
+    "whatsapp": {
+      "type": "string"
+    },
+    "correo": {
+      "type": "string"
+    },
+    "direccion": {
+      "type": "string"
+    },
+    "notas": {
+      "type": "string"
+    },
+    "activo": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "nombre"
+  ]
+}

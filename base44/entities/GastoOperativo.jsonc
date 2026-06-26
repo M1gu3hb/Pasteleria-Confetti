@@ -1,0 +1,58 @@
+{
+  "name": "GastoOperativo",
+  "type": "object",
+  "properties": {
+    "fecha": {
+      "type": "string",
+      "format": "date"
+    },
+    "categoria": {
+      "type": "string",
+      "enum": [
+        "limpieza",
+        "transporte",
+        "reparacion",
+        "servicios",
+        "pago_extraordinario",
+        "marketing",
+        "otro"
+      ]
+    },
+    "descripcion": {
+      "type": "string"
+    },
+    "monto": {
+      "type": "number"
+    },
+    "metodo_pago": {
+      "type": "string",
+      "enum": [
+        "efectivo",
+        "tarjeta",
+        "transferencia"
+      ]
+    },
+    "sucursal_id": {
+      "type": "string",
+      "description": "Multi-sucursal Fase 2C \u2014 segmentaci\u00f3n de caja. ID de la sucursal del gasto. Opcional, aditivo."
+    },
+    "sucursal_nombre": {
+      "type": "string",
+      "description": "Multi-sucursal Fase 2C \u2014 segmentaci\u00f3n de caja. Snapshot del nombre de la sucursal. Opcional."
+    },
+    "usuario_id": {
+      "type": "string"
+    },
+    "usuario_nombre": {
+      "type": "string"
+    },
+    "notas": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "fecha",
+    "descripcion",
+    "monto"
+  ]
+}

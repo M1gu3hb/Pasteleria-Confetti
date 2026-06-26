@@ -1,0 +1,46 @@
+{
+  "name": "RecetaEscandallo",
+  "type": "object",
+  "properties": {
+    "producto_id": {
+      "type": "string"
+    },
+    "ingrediente_id": {
+      "type": "string"
+    },
+    "ingrediente_nombre": {
+      "type": "string"
+    },
+    "cantidad_usada": {
+      "type": "number"
+    },
+    "unidad_usada": {
+      "type": "string"
+    },
+    "cantidad_convertida_unidad_base": {
+      "type": "number"
+    },
+    "merma_porcentaje": {
+      "type": "number",
+      "default": 0
+    },
+    "costo_unitario_base_snapshot": {
+      "type": "number"
+    },
+    "costo_linea_calculado": {
+      "type": "number"
+    },
+    "activo": {
+      "type": "boolean",
+      "default": true
+    },
+    "notas": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "producto_id",
+    "ingrediente_id",
+    "cantidad_usada"
+  ]
+}

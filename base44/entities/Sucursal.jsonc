@@ -1,0 +1,39 @@
+{
+  "name": "Sucursal",
+  "type": "object",
+  "properties": {
+    "nombre": {
+      "type": "string",
+      "description": "Nombre de la sucursal"
+    },
+    "direccion": {
+      "type": "string",
+      "description": "Direcci\u00f3n de la sucursal (opcional)"
+    },
+    "telefono": {
+      "type": "string",
+      "description": "Tel\u00e9fono de contacto (opcional)"
+    },
+    "activa": {
+      "type": "boolean",
+      "default": true,
+      "description": "Si la sucursal est\u00e1 activa"
+    },
+    "folio_prefijo": {
+      "type": "string",
+      "description": "Prefijo de folio de la sucursal (ej. A, B, C)"
+    },
+    "orden_visual": {
+      "type": "number",
+      "description": "Orden de aparici\u00f3n de la sucursal"
+    },
+    "notas": {
+      "type": "string",
+      "description": "Notas internas (opcional)"
+    }
+  },
+  "required": [
+    "nombre",
+    "folio_prefijo"
+  ]
+}

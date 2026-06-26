@@ -1,0 +1,191 @@
+{
+  "name": "PedidoPastel",
+  "type": "object",
+  "properties": {
+    "folio": {
+      "type": "string",
+      "description": "Folio \u00fanico por sucursal, ej. PP-A-0001"
+    },
+    "sucursal_id": {
+      "type": "string"
+    },
+    "sucursal_nombre": {
+      "type": "string"
+    },
+    "origen": {
+      "type": "string",
+      "enum": [
+        "pos_interno",
+        "web"
+      ],
+      "default": "pos_interno"
+    },
+    "estado": {
+      "type": "string",
+      "enum": [
+        "pendiente",
+        "confirmado",
+        "con_anticipo",
+        "pagado",
+        "entregado",
+        "cancelado"
+      ],
+      "default": "pendiente"
+    },
+    "cliente_nombre": {
+      "type": "string"
+    },
+    "cliente_telefono": {
+      "type": "string"
+    },
+    "cliente_email": {
+      "type": "string"
+    },
+    "cliente_direccion": {
+      "type": "string"
+    },
+    "fecha_entrega": {
+      "type": "string",
+      "format": "date"
+    },
+    "hora_entrega": {
+      "type": "string",
+      "description": "Formato HH:MM"
+    },
+    "kilos": {
+      "type": "number"
+    },
+    "personas_estimadas": {
+      "type": "number"
+    },
+    "ratio_personas_por_kilo_usado": {
+      "type": "number",
+      "description": "Snapshot del ratio usado al calcular"
+    },
+    "decorado": {
+      "type": "string"
+    },
+    "concepto": {
+      "type": "string"
+    },
+    "rellenos": {
+      "type": "string"
+    },
+    "leyenda_pastel": {
+      "type": "string",
+      "description": "Texto escrito en el pastel"
+    },
+    "incluye_base": {
+      "type": "boolean",
+      "default": false
+    },
+    "precio_base": {
+      "type": "number",
+      "default": 0
+    },
+    "incluye_oblea": {
+      "type": "boolean",
+      "default": false
+    },
+    "precio_oblea": {
+      "type": "number",
+      "default": 0
+    },
+    "incluye_muneca": {
+      "type": "boolean",
+      "default": false
+    },
+    "precio_muneca": {
+      "type": "number",
+      "default": 0
+    },
+    "incluye_velas": {
+      "type": "boolean",
+      "default": false
+    },
+    "precio_velas": {
+      "type": "number",
+      "default": 0
+    },
+    "precio_kilo_usado": {
+      "type": "number",
+      "description": "Snapshot del precio/kilo al crear"
+    },
+    "subtotal_pastel": {
+      "type": "number"
+    },
+    "subtotal_extras": {
+      "type": "number"
+    },
+    "total_calculado": {
+      "type": "number"
+    },
+    "total_final": {
+      "type": "number",
+      "description": "Editable, puede diferir del calculado"
+    },
+    "a_cuenta": {
+      "type": "number",
+      "default": 0,
+      "description": "Anticipo \u2014 solo dato, sin circuito financiero (Fase 4)"
+    },
+    "resta": {
+      "type": "number",
+      "description": "total_final - a_cuenta"
+    },
+    "total_abonado": {
+      "type": "number",
+      "default": 0,
+      "description": "Fase 4: suma de Abonos registrados con circuito financiero"
+    },
+    "saldo_pendiente": {
+      "type": "number",
+      "description": "Fase 4: total_final - total_abonado"
+    },
+    "devolver_base": {
+      "type": "boolean",
+      "default": true,
+      "description": "FAVOR DE DEVOLVER LA BASE LIMPIA"
+    },
+    "nota_interna": {
+      "type": "string",
+      "description": "B\u00fasqueda r\u00e1pida, ej. pastel para Lupita"
+    },
+    "imagen_referencia_url": {
+      "type": "string"
+    },
+    "notas_generales": {
+      "type": "string"
+    },
+    "creado_por_id": {
+      "type": "string"
+    },
+    "creado_por_nombre": {
+      "type": "string"
+    },
+    "fecha_confirmacion": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "fecha_anticipo": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "fecha_pago_completo": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "fecha_entrega_real": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "folio",
+    "sucursal_id",
+    "cliente_nombre",
+    "cliente_telefono",
+    "kilos",
+    "fecha_entrega"
+  ]
+}

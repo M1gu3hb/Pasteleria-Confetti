@@ -1,0 +1,37 @@
+{
+  "name": "Cliente",
+  "type": "object",
+  "properties": {
+    "nombre": {
+      "type": "string"
+    },
+    "telefono": {
+      "type": "string"
+    },
+    "correo": {
+      "type": "string"
+    },
+    "notas": {
+      "type": "string"
+    },
+    "total_visitas": {
+      "type": "number",
+      "default": 0
+    },
+    "total_consumido": {
+      "type": "number",
+      "default": 0
+    },
+    "ultima_visita": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "activo": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "nombre"
+  ]
+}

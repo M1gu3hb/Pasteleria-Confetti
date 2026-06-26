@@ -1,0 +1,890 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Dancing+Script:wght@600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-heading: 'Playfair Display', serif;
+    --font-body: 'Plus Jakarta Sans', sans-serif;
+
+    /* Pastelería Confetti — Crema / Rosa / Café */
+    --background: 22 100% 97%;          /* #FFF8F4 crema */
+    --foreground: 28 54% 12%;           /* café texto */
+    --card: 0 0% 100%;
+    --card-foreground: 28 54% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 28 54% 12%;
+    --primary: 333 75% 63%;             /* #E8579A rosa principal */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 18 43% 89%;            /* #F0DDD5 beige */
+    --secondary-foreground: 18 51% 24%; /* #5C2D1E café */
+    --muted: 24 80% 95%;                /* crema medio */
+    --muted-foreground: 14 21% 40%;     /* café claro */
+    --accent: 18 51% 24%;               /* #5C2D1E café */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 18 43% 89%;               /* #F0DDD5 */
+    --input: 18 43% 89%;
+    --ring: 333 75% 63%;                /* rosa focus */
+    --radius: 0.75rem;
+
+    --success: 152 60% 40%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 222 47% 11%;
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
+
+    --chart-1: 217 91% 55%;
+    --chart-2: 199 89% 48%;
+    --chart-3: 152 60% 40%;
+    --chart-4: 38 92% 50%;
+    --chart-5: 280 60% 55%;
+
+    /* Sidebar — café profundo Confetti con acento rosa */
+    --sidebar-background: 18 51% 24%;   /* #5C2D1E café */
+    --sidebar-foreground: 22 100% 97%;  /* crema texto */
+    --sidebar-primary: 333 75% 63%;     /* rosa activos */
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 18 57% 18%;       /* café hover */
+    --sidebar-accent-foreground: 22 100% 97%;
+    --sidebar-border: 18 57% 18%;
+    --sidebar-ring: 333 75% 63%;
+  }
+
+  .dark {
+    --background: 24 58% 7%;            /* café muy oscuro */
+    --foreground: 22 100% 97%;
+    --card: 28 54% 12%;                 /* #2E1D0E */
+    --card-foreground: 22 100% 97%;
+    --popover: 28 54% 12%;
+    --popover-foreground: 22 100% 97%;
+    --primary: 333 75% 63%;            /* rosa */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 18 57% 18%;
+    --secondary-foreground: 22 100% 97%;
+    --muted: 24 62% 13%;
+    --muted-foreground: 20 30% 69%;
+    --accent: 330 79% 80%;             /* #F5A0C8 rosa claro */
+    --accent-foreground: 28 54% 12%;
+    --destructive: 0 72% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 18 57% 18%;
+    --input: 18 57% 18%;
+    --ring: 333 75% 63%;
+    --sidebar-background: 24 67% 5%;
+    --sidebar-foreground: 22 100% 97%;
+    --sidebar-primary: 333 75% 63%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 28 54% 12%;
+    --sidebar-accent-foreground: 22 100% 97%;
+    --sidebar-border: 28 54% 12%;
+    --sidebar-ring: 333 75% 63%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html, body, #root {
+    /* Evita bordes/zonas blancas inferiores y laterales cuando el contenido
+       es más corto que el viewport o cuando hay overscroll en móvil iOS. */
+    min-height: 100dvh;
+    background-color: hsl(var(--background));
+  }
+  body {
+    @apply bg-background text-foreground font-body;
+    overscroll-behavior-y: none;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+  }
+}
+
+/* =====================================================
+   MODO OSCURO — Animación al alternar tema
+   =====================================================
+   La clase `.theme-anim` se aplica al <html> SOLO durante ~600ms
+   cuando el usuario cambia tema. Esto permite que el navegador
+   anime fondo/color/borde sin penalizar el resto del tiempo. */
+html.theme-anim,
+html.theme-anim body,
+html.theme-anim *:not(input):not(textarea):not(select):not(svg):not(svg *) {
+  transition: background-color 480ms cubic-bezier(0.4, 0, 0.2, 1),
+              background-image 480ms cubic-bezier(0.4, 0, 0.2, 1),
+              color 480ms cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 480ms cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 480ms cubic-bezier(0.4, 0, 0.2, 1),
+              fill 480ms cubic-bezier(0.4, 0, 0.2, 1),
+              stroke 480ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* En modo oscuro, los logos PNG con fondo blanco/transparente claro
+   pueden “desaparecer”. Aplicamos un sutil tratamiento al logo de
+   marca de agua para que siga visible y elegante. */
+html.dark .brand-watermark {
+  filter: grayscale(20%) brightness(1.6) contrast(0.9);
+}
+
+/* =====================================================
+   REFLEJO PREMIUM — superficie con brillo sutil arriba
+   =====================================================
+   Aplica con className="premium-sheen" a cards/paneles/cuadritos
+   donde quieras el efecto 3D elegante (Recetas-like).
+   Más sutil en dark, claro y elegante en light. */
+.premium-sheen {
+  position: relative;
+  isolation: isolate;
+}
+.premium-sheen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.55) 0%,
+    rgba(255, 255, 255, 0.18) 6%,
+    rgba(255, 255, 255, 0)   24%,
+    rgba(255, 255, 255, 0)   100%
+  );
+  mix-blend-mode: overlay;
+  opacity: 0.85;
+  z-index: 1;
+}
+html.dark .premium-sheen::before {
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.10) 0%,
+    rgba(255, 255, 255, 0.05) 8%,
+    rgba(255, 255, 255, 0)    28%,
+    rgba(255, 255, 255, 0)    100%
+  );
+  opacity: 0.9;
+}
+/* Asegurar que el contenido quede arriba del reflejo */
+.premium-sheen > * { position: relative; z-index: 2; }
+
+/* =====================================================
+   PARCHE DARK — Conversión automática de patrones light
+   hardcoded en el código antiguo.
+   =====================================================
+   Razones: muchos componentes históricos usan colores claros
+   como `bg-white/70`, `bg-emerald-50`, `bg-amber-50` en
+   superficies que en dark deberían convertirse a oscuro real.
+   Aquí los reescribimos solo en `.dark` sin tocar light.
+   IMPORTANTE: no afecta lógica, no rompe modo claro. */
+html.dark .bg-white,
+html.dark .bg-white\/70,
+html.dark .bg-white\/80,
+html.dark .bg-white\/85,
+html.dark .bg-white\/90 {
+  background-color: hsl(var(--card)) !important;
+}
+html.dark .bg-white\/30,
+html.dark .bg-white\/40,
+html.dark .bg-white\/50,
+html.dark .bg-white\/60 {
+  background-color: hsl(var(--card) / 0.7) !important;
+}
+
+/* Tarjetas pálidas tipo bg-[color]-50 → versión dark sólida sutil */
+html.dark .bg-amber-50    { background-color: rgb(28 19 8 / 0.85) !important; }
+html.dark .bg-emerald-50  { background-color: rgb(10 26 18 / 0.85) !important; }
+html.dark .bg-rose-50     { background-color: rgb(31 13 18 / 0.85) !important; }
+html.dark .bg-red-50      { background-color: rgb(31 13 13 / 0.85) !important; }
+html.dark .bg-orange-50   { background-color: rgb(28 19 8 / 0.85) !important; }
+html.dark .bg-yellow-50   { background-color: rgb(28 22 8 / 0.85) !important; }
+html.dark .bg-blue-50     { background-color: rgb(11 20 36 / 0.85) !important; }
+html.dark .bg-indigo-50   { background-color: rgb(17 14 36 / 0.85) !important; }
+html.dark .bg-purple-50   { background-color: rgb(23 15 36 / 0.85) !important; }
+html.dark .bg-violet-50   { background-color: rgb(23 15 36 / 0.85) !important; }
+html.dark .bg-cyan-50     { background-color: rgb(8 32 38 / 0.85) !important; }
+html.dark .bg-pink-50     { background-color: rgb(31 13 22 / 0.85) !important; }
+html.dark .bg-slate-50    { background-color: rgb(15 23 42 / 0.85) !important; }
+html.dark .bg-gray-50     { background-color: rgb(15 23 42 / 0.85) !important; }
+html.dark .bg-stone-50    { background-color: rgb(18 16 14 / 0.85) !important; }
+
+html.dark .bg-amber-100   { background-color: rgb(58 39 16 / 0.85) !important; }
+html.dark .bg-emerald-100 { background-color: rgb(20 54 31 / 0.85) !important; }
+html.dark .bg-rose-100    { background-color: rgb(59 20 34 / 0.85) !important; }
+html.dark .bg-red-100     { background-color: rgb(59 20 20 / 0.85) !important; }
+html.dark .bg-orange-100  { background-color: rgb(58 39 16 / 0.85) !important; }
+html.dark .bg-yellow-100  { background-color: rgb(58 49 16 / 0.85) !important; }
+html.dark .bg-blue-100    { background-color: rgb(22 38 72 / 0.85) !important; }
+html.dark .bg-purple-100  { background-color: rgb(45 29 74 / 0.85) !important; }
+html.dark .bg-cyan-100    { background-color: rgb(15 63 74 / 0.85) !important; }
+html.dark .bg-pink-100    { background-color: rgb(59 20 34 / 0.85) !important; }
+
+html.dark .bg-amber-200   { background-color: rgb(74 50 18 / 0.9) !important; }
+html.dark .bg-red-200     { background-color: rgb(74 22 22 / 0.9) !important; }
+
+/* Textos de color-700/900 sobre bg dark se vuelven ilegibles → subimos a 200/300 */
+html.dark .text-amber-700,
+html.dark .text-amber-800,
+html.dark .text-amber-900    { color: rgb(252 211 77) !important; }
+html.dark .text-emerald-700,
+html.dark .text-emerald-800,
+html.dark .text-emerald-900  { color: rgb(134 239 172) !important; }
+html.dark .text-rose-700,
+html.dark .text-rose-800,
+html.dark .text-rose-900     { color: rgb(253 164 175) !important; }
+html.dark .text-red-700,
+html.dark .text-red-800,
+html.dark .text-red-900      { color: rgb(252 165 165) !important; }
+html.dark .text-orange-700,
+html.dark .text-orange-800,
+html.dark .text-orange-900   { color: rgb(253 186 116) !important; }
+html.dark .text-yellow-700,
+html.dark .text-yellow-800,
+html.dark .text-yellow-900   { color: rgb(253 224 71) !important; }
+html.dark .text-blue-700,
+html.dark .text-blue-800,
+html.dark .text-blue-900     { color: rgb(147 197 253) !important; }
+html.dark .text-purple-700,
+html.dark .text-purple-800,
+html.dark .text-purple-900   { color: rgb(196 181 253) !important; }
+html.dark .text-cyan-700,
+html.dark .text-cyan-800,
+html.dark .text-cyan-900     { color: rgb(103 232 249) !important; }
+html.dark .text-pink-700,
+html.dark .text-pink-800,
+html.dark .text-pink-900     { color: rgb(249 168 212) !important; }
+html.dark .text-emerald-600  { color: rgb(74 222 128) !important; }
+html.dark .text-rose-600     { color: rgb(251 113 133) !important; }
+html.dark .text-red-600      { color: rgb(248 113 113) !important; }
+html.dark .text-orange-600   { color: rgb(251 146 60) !important; }
+html.dark .text-amber-600    { color: rgb(251 191 36) !important; }
+html.dark .text-blue-600     { color: rgb(96 165 250) !important; }
+
+/* Bordes de color-200 pálidos → tonos más visibles en dark */
+html.dark .border-amber-200,
+html.dark .border-amber-200\/60  { border-color: rgb(146 64 14 / 0.7) !important; }
+html.dark .border-emerald-200,
+html.dark .border-emerald-200\/60 { border-color: rgb(22 101 52 / 0.7) !important; }
+html.dark .border-rose-200,
+html.dark .border-rose-200\/60   { border-color: rgb(159 18 57 / 0.7) !important; }
+html.dark .border-red-200        { border-color: rgb(153 27 27 / 0.7) !important; }
+html.dark .border-orange-200     { border-color: rgb(154 52 18 / 0.7) !important; }
+html.dark .border-yellow-200     { border-color: rgb(133 77 14 / 0.7) !important; }
+html.dark .border-blue-200       { border-color: rgb(30 58 138 / 0.7) !important; }
+html.dark .border-white,
+html.dark .border-white\/60      { border-color: hsl(var(--border)) !important; }
+
+/* Anillos ring-* claros para destacar → tonos dark visibles */
+html.dark .ring-amber-200  { --tw-ring-color: rgb(146 64 14 / 0.6) !important; }
+html.dark .ring-emerald-200{ --tw-ring-color: rgb(22 101 52 / 0.6) !important; }
+html.dark .ring-rose-200   { --tw-ring-color: rgb(159 18 57 / 0.6) !important; }
+
+/* Hover states: `hover:bg-muted/30` etc se ven bien por tokens.
+   Pero `bg-muted/30` plano se ve muy similar al fondo. Lo subimos sutilmente. */
+html.dark .bg-muted\/20 { background-color: hsl(var(--muted) / 0.4) !important; }
+html.dark .bg-muted\/30 { background-color: hsl(var(--muted) / 0.55) !important; }
+html.dark .bg-muted\/50 { background-color: hsl(var(--muted) / 0.7) !important; }
+
+/* "backdrop-blur" sobre fondos blancos ya no aplica → quitar blur en dark
+   evita un halo difuso indeseado sobre cards oscuras */
+html.dark .backdrop-blur,
+html.dark .backdrop-blur-sm,
+html.dark .backdrop-blur-md,
+html.dark .backdrop-blur-xl { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+
+/* =====================================================
+   DOCUMENTOS IMPRIMIBLES — SIEMPRE BLANCOS Y LEGIBLES
+   =====================================================
+   Blindaje visual para tickets, PDFs de cierre, PDFs de corte y fichas
+   de producto. Sin importar si el sistema está en dark mode, estos
+   documentos DEBEN salir con fondo blanco y texto negro/gris oscuro.
+   Esta capa anula cualquier override de dark mode dentro de estos
+   contenedores y también aplica en @media print.
+
+   Clases protegidas: .ticket-printable .cash-cut-pdf .pdf-corte-caja .printable-doc
+   No cambia lógica funcional. Solo asegura legibilidad de impresión. */
+
+/* 1) Contenedores raíz — fondo blanco fijo, texto oscuro */
+.ticket-printable,
+.cash-cut-pdf,
+.pdf-corte-caja,
+.printable-doc,
+html.dark .ticket-printable,
+html.dark .cash-cut-pdf,
+html.dark .pdf-corte-caja,
+html.dark .printable-doc {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  color-scheme: light !important;
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}
+
+/* 2) Todo el árbol — texto oscuro legible y sin fondos oscuros */
+.ticket-printable *,
+.cash-cut-pdf *,
+.pdf-corte-caja *,
+.printable-doc *,
+html.dark .ticket-printable *,
+html.dark .cash-cut-pdf *,
+html.dark .pdf-corte-caja *,
+html.dark .printable-doc * {
+  color: #111827 !important;
+  border-color: #d1d5db;
+}
+
+/* 3) Anular cualquier clase de "texto claro" usada para dark mode */
+.ticket-printable .text-white,
+.ticket-printable .text-slate-50,
+.ticket-printable .text-slate-100,
+.ticket-printable .text-slate-200,
+.ticket-printable .text-gray-50,
+.ticket-printable .text-gray-100,
+.ticket-printable .text-gray-200,
+.ticket-printable .text-zinc-50,
+.ticket-printable .text-zinc-100,
+.ticket-printable .text-neutral-50,
+.ticket-printable .text-neutral-100,
+.cash-cut-pdf .text-white,
+.cash-cut-pdf .text-slate-50,
+.cash-cut-pdf .text-slate-100,
+.cash-cut-pdf .text-slate-200,
+.cash-cut-pdf .text-gray-50,
+.cash-cut-pdf .text-gray-100,
+.cash-cut-pdf .text-gray-200,
+.pdf-corte-caja .text-white,
+.pdf-corte-caja .text-slate-50,
+.pdf-corte-caja .text-slate-100,
+.pdf-corte-caja .text-slate-200,
+.pdf-corte-caja .text-gray-50,
+.pdf-corte-caja .text-gray-100,
+.pdf-corte-caja .text-gray-200,
+.printable-doc .text-white,
+.printable-doc .text-slate-50,
+.printable-doc .text-slate-100,
+.printable-doc .text-slate-200,
+.printable-doc .text-gray-50,
+.printable-doc .text-gray-100,
+.printable-doc .text-gray-200 {
+  color: #111827 !important;
+}
+
+/* 4) Anular cualquier sufijo dark: dentro de imprimibles */
+html.dark .ticket-printable [class*="dark:text-white"],
+html.dark .ticket-printable [class*="dark:text-slate-"],
+html.dark .ticket-printable [class*="dark:text-gray-"],
+html.dark .ticket-printable [class*="dark:text-zinc-"],
+html.dark .ticket-printable [class*="dark:text-neutral-"],
+html.dark .cash-cut-pdf [class*="dark:text-white"],
+html.dark .cash-cut-pdf [class*="dark:text-slate-"],
+html.dark .cash-cut-pdf [class*="dark:text-gray-"],
+html.dark .pdf-corte-caja [class*="dark:text-white"],
+html.dark .pdf-corte-caja [class*="dark:text-slate-"],
+html.dark .pdf-corte-caja [class*="dark:text-gray-"],
+html.dark .printable-doc [class*="dark:text-white"],
+html.dark .printable-doc [class*="dark:text-slate-"],
+html.dark .printable-doc [class*="dark:text-gray-"] {
+  color: #111827 !important;
+}
+
+/* 5) Texto secundario / notas / footers — gris oscuro legible */
+.ticket-printable .text-gray-400,
+.ticket-printable .text-gray-500,
+.ticket-printable .text-gray-600,
+.ticket-printable .text-gray-700,
+.ticket-printable .text-slate-400,
+.ticket-printable .text-slate-500,
+.ticket-printable .text-slate-600,
+.ticket-printable .text-muted-foreground,
+.cash-cut-pdf .text-gray-400,
+.cash-cut-pdf .text-gray-500,
+.cash-cut-pdf .text-gray-600,
+.cash-cut-pdf .text-gray-700,
+.cash-cut-pdf .text-slate-400,
+.cash-cut-pdf .text-slate-500,
+.cash-cut-pdf .text-slate-600,
+.cash-cut-pdf .text-muted-foreground,
+.pdf-corte-caja .text-gray-400,
+.pdf-corte-caja .text-gray-500,
+.pdf-corte-caja .text-gray-600,
+.pdf-corte-caja .text-gray-700,
+.pdf-corte-caja .text-muted-foreground,
+.printable-doc .text-gray-400,
+.printable-doc .text-gray-500,
+.printable-doc .text-gray-600,
+.printable-doc .text-gray-700,
+.printable-doc .text-muted-foreground {
+  color: #4b5563 !important;
+}
+
+/* 6) Fondos: por defecto transparente (heredan blanco del contenedor) */
+.ticket-printable *:not(.bg-gray-50):not(.bg-gray-100):not(.bg-gray-200):not(.bg-slate-50):not(.bg-slate-100):not(.bg-black):not([style*="background"]),
+.cash-cut-pdf *:not(.bg-gray-50):not(.bg-gray-100):not(.bg-gray-200):not(.bg-slate-50):not(.bg-slate-100):not(.bg-black):not([style*="background"]),
+.pdf-corte-caja *:not(.bg-gray-50):not(.bg-gray-100):not(.bg-gray-200):not(.bg-slate-50):not(.bg-slate-100):not(.bg-black):not([style*="background"]),
+.printable-doc *:not(.bg-gray-50):not(.bg-gray-100):not(.bg-gray-200):not(.bg-slate-50):not(.bg-slate-100):not(.bg-black):not([style*="background"]) {
+  background-color: transparent !important;
+}
+
+/* 7) Fondos grises claros permitidos (tablas, encabezados de sección) */
+.ticket-printable .bg-gray-50,
+.ticket-printable .bg-slate-50,
+.cash-cut-pdf .bg-gray-50,
+.cash-cut-pdf .bg-slate-50,
+.pdf-corte-caja .bg-gray-50,
+.pdf-corte-caja .bg-slate-50,
+.printable-doc .bg-gray-50,
+.printable-doc .bg-slate-50 { background-color: #f9fafb !important; }
+.ticket-printable .bg-gray-100,
+.ticket-printable .bg-slate-100,
+.cash-cut-pdf .bg-gray-100,
+.cash-cut-pdf .bg-slate-100,
+.pdf-corte-caja .bg-gray-100,
+.pdf-corte-caja .bg-slate-100,
+.printable-doc .bg-gray-100,
+.printable-doc .bg-slate-100 { background-color: #f3f4f6 !important; }
+.ticket-printable .bg-gray-200,
+.cash-cut-pdf .bg-gray-200,
+.pdf-corte-caja .bg-gray-200,
+.printable-doc .bg-gray-200 { background-color: #e5e7eb !important; }
+
+/* 8) Bordes — negros se respetan, los demás van a gris claro legible */
+.ticket-printable .border-black,
+.cash-cut-pdf .border-black,
+.pdf-corte-caja .border-black,
+.printable-doc .border-black { border-color: #000000 !important; }
+
+/* 9) Anular tokens HSL (border, muted, etc.) que vendrían del tema dark */
+.ticket-printable [class*="border-border"],
+.ticket-printable [class*="border-muted"],
+.cash-cut-pdf [class*="border-border"],
+.cash-cut-pdf [class*="border-muted"],
+.pdf-corte-caja [class*="border-border"],
+.pdf-corte-caja [class*="border-muted"],
+.printable-doc [class*="border-border"],
+.printable-doc [class*="border-muted"] {
+  border-color: #d1d5db !important;
+}
+
+/* 10) Mismas reglas dentro de @media print — protección final */
+@media print {
+  .ticket-printable,
+  .cash-cut-pdf,
+  .pdf-corte-caja,
+  .printable-doc {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+    color-scheme: light !important;
+  }
+  .ticket-printable *,
+  .cash-cut-pdf *,
+  .pdf-corte-caja *,
+  .printable-doc * {
+    color: #111827 !important;
+  }
+  .ticket-printable .text-white,
+  .ticket-printable [class*="text-slate-1"],
+  .ticket-printable [class*="text-slate-2"],
+  .ticket-printable [class*="text-gray-1"],
+  .ticket-printable [class*="text-gray-2"],
+  .cash-cut-pdf .text-white,
+  .cash-cut-pdf [class*="text-slate-1"],
+  .cash-cut-pdf [class*="text-slate-2"],
+  .cash-cut-pdf [class*="text-gray-1"],
+  .cash-cut-pdf [class*="text-gray-2"],
+  .pdf-corte-caja .text-white,
+  .pdf-corte-caja [class*="text-slate-1"],
+  .pdf-corte-caja [class*="text-slate-2"],
+  .printable-doc .text-white,
+  .printable-doc [class*="text-slate-1"],
+  .printable-doc [class*="text-slate-2"] {
+    color: #111827 !important;
+  }
+  .ticket-printable .text-gray-400,
+  .ticket-printable .text-gray-500,
+  .ticket-printable .text-gray-600,
+  .ticket-printable .text-muted-foreground,
+  .cash-cut-pdf .text-gray-400,
+  .cash-cut-pdf .text-gray-500,
+  .cash-cut-pdf .text-gray-600,
+  .cash-cut-pdf .text-muted-foreground,
+  .pdf-corte-caja .text-gray-400,
+  .pdf-corte-caja .text-gray-500,
+  .pdf-corte-caja .text-gray-600,
+  .printable-doc .text-gray-400,
+  .printable-doc .text-gray-500,
+  .printable-doc .text-gray-600 {
+    color: #4b5563 !important;
+  }
+}
+
+
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
+}
+
+/* =====================================================
+   IMPRESIÓN — Reglas globales
+   Modo "thermal" (80mm) y modo "letter" (carta) son
+   mutuamente excluyentes a nivel de @page.
+   El JS añade <html data-print-mode="thermal|letter">
+   antes de window.print() para activar el correcto.
+   ===================================================== */
+
+@media print {
+  /* Ocultar todo por defecto */
+  body * { visibility: hidden; }
+
+  /* Solo el contenedor imprimible es visible */
+  .ticket-printable, .ticket-printable * { visibility: visible; }
+  .cash-cut-pdf, .cash-cut-pdf * { visibility: visible; }
+
+  .ticket-printable, .cash-cut-pdf {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    background: white !important;
+    color: black !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+  }
+
+  /* Nunca imprimir UI/chrome del navegador */
+  .no-print, .no-print * { display: none !important; visibility: hidden !important; }
+
+  /* Evitar que iframes o stickys impriman fondos */
+  body { background: white !important; }
+}
+
+/* ----- Térmico 58/80mm DESACTIVADO -----
+   Cancelamos el modo térmico para tickets: ahora se imprimen siempre como
+   carta vía iframe oculto desde lib/print.js (printTicketViaIframe).
+   El iframe inyecta su propio CSS @page letter y solo imprime el ticket,
+   nunca el POS completo.
+   Este bloque queda como fallback visual mínimo si por error alguien
+   marcara data-print-mode="thermal" en la página completa. */
+@media print {
+  html[data-print-mode="thermal"] .ticket-printable {
+    width: 100% !important;
+    max-width: 720px !important;
+    margin: 0 auto !important;
+    padding: 16px 20px !important;
+    color: #000 !important;
+    background: #fff !important;
+  }
+  html[data-print-mode="thermal"] .ticket-printable img {
+    max-width: 160px !important;
+    max-height: 80px !important;
+    width: auto !important;
+    height: auto !important;
+    object-fit: contain !important;
+    display: block !important;
+    margin: 0 auto 8px !important;
+    page-break-inside: avoid !important;
+  }
+}
+
+/* ----- Documento A4/carta ----- */
+@media print {
+  html[data-print-mode="letter"] body {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  html[data-print-mode="letter"] .cash-cut-pdf,
+  html[data-print-mode="letter"] .ticket-printable.letter-doc,
+  html[data-print-mode="letter"] .pdf-corte-caja {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 8mm !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    transform: none !important;
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    position: static !important;
+  }
+  html[data-print-mode="letter"] table {
+    page-break-inside: auto;
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+  html[data-print-mode="letter"] tr { page-break-inside: avoid; page-break-after: auto; }
+  html[data-print-mode="letter"] thead { display: table-header-group; }
+  html[data-print-mode="letter"] tfoot { display: table-footer-group; }
+  html[data-print-mode="letter"] .avoid-break,
+  html[data-print-mode="letter"] h1,
+  html[data-print-mode="letter"] h2,
+  html[data-print-mode="letter"] h3 { page-break-inside: avoid; page-break-after: avoid; }
+  html[data-print-mode="letter"] .page-break { page-break-before: always; }
+  /* Asegurar que el contenedor padre no recorte */
+  html[data-print-mode="letter"] [role="dialog"],
+  html[data-print-mode="letter"] [data-radix-portal] {
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+    position: static !important;
+  }
+}
+
+/* @page por defecto = A4 (para PDFs de corte de caja).
+   El modo térmico ya no necesita override aquí — se imprime por iframe
+   (lib/print.js) con su propio @page 58mm. */
+@page { size: A4; margin: 12mm; }
+
+/* Web pública Confetti — prevenir scroll horizontal en mobile.
+   IMPORTANTE: overflow-x:hidden en <body> rompe el scroll con rueda del mouse.
+   La corrección correcta: html controla el ancho; body usa overflow-x:clip
+   (bloquea horizontal SIN afectar el scroll vertical). */
+html {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+body {
+  overflow-x: clip;
+}
+
+/* Confetti POS — Tipografías web en el POS interno */
+.font-display { font-family: 'Playfair Display', serif; }
+
+/* Animación de entrada para cards y botones de productos */
+@keyframes confetti-pop {
+  0% { transform: scale(0.96); opacity: 0.7; }
+  60% { transform: scale(1.03); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.animate-pop { animation: confetti-pop 0.25s ease-out; }
+
+/* Botón de cobro principal — ahora skeuomorphic, se hunde al tocar */
+.btn-cobrar {
+  background: linear-gradient(180deg, #f06aab 0%, #e8579a 40%, #d44488 100%);
+  box-shadow:
+    0 4px 0 rgba(160,40,90,0.7),
+    0 6px 16px rgba(232,87,154,0.35),
+    0 1px 0 rgba(255,255,255,0.35) inset;
+  transform: translateY(-2px);
+  transition: all 0.12s ease;
+}
+.btn-cobrar:hover {
+  box-shadow:
+    0 5px 0 rgba(160,40,90,0.75),
+    0 8px 24px rgba(232,87,154,0.5),
+    0 1px 0 rgba(255,255,255,0.35) inset;
+  transform: translateY(-3px);
+}
+.btn-cobrar:active {
+  box-shadow:
+    0 1px 0 rgba(160,40,90,0.7),
+    0 2px 4px rgba(232,87,154,0.2),
+    0 0 0 rgba(255,255,255,0) inset;
+  transform: translateY(2px);
+}
+
+/* Touch targets tablet — mínimo 48px */
+.touch-target { min-height: 48px; min-width: 48px; }
+
+/* ══════════════════════════════════════════
+   SISTEMA SKEUOMORPHISM — Pastelería Confetti
+   Cards, botones e inputs con profundidad física
+   ══════════════════════════════════════════ */
+
+/* Card elevada — papel grueso con sombra real */
+.skeu-card {
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.85) inset,
+    0 -1px 0 rgba(0,0,0,0.06) inset,
+    0 4px 12px rgba(92,45,30,0.10),
+    0 1px 3px rgba(92,45,30,0.06),
+    0 0 0 1px rgba(240,221,213,0.8);
+  background: linear-gradient(160deg, rgba(255,255,255,1) 0%, rgba(255,248,244,0.95) 100%);
+  transition: box-shadow 0.2s ease, transform 0.15s ease;
+}
+.skeu-card:hover {
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.9) inset,
+    0 -1px 0 rgba(0,0,0,0.06) inset,
+    0 8px 24px rgba(92,45,30,0.14),
+    0 2px 6px rgba(92,45,30,0.08),
+    0 0 0 1px rgba(232,87,154,0.25);
+  transform: translateY(-1px);
+}
+
+/* Card de producto — etiqueta de panadería */
+.skeu-product {
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.9) inset,
+    0 6px 16px rgba(92,45,30,0.12),
+    0 2px 4px rgba(92,45,30,0.08),
+    0 0 0 1px rgba(240,221,213,0.9);
+  background: linear-gradient(150deg, #ffffff 0%, #fff8f4 60%, #fff3ee 100%);
+}
+.skeu-product:active {
+  box-shadow:
+    0 0 0 rgba(255,255,255,0.9) inset,
+    0 2px 6px rgba(92,45,30,0.10),
+    0 1px 2px rgba(92,45,30,0.06),
+    0 0 0 1px rgba(232,87,154,0.3);
+  transform: scale(0.97) translateY(1px);
+}
+
+/* Input grabado — hundido en la superficie.
+   El truco: en claro, fondo ligeramente más oscuro que
+   la card. En oscuro, fondo notablemente más claro que
+   el contenedor para crear contraste real. */
+.skeu-input {
+  box-shadow:
+    0 3px 8px rgba(0,0,0,0.13) inset,
+    0 1px 0 rgba(255,255,255,1),
+    0 0 0 1px rgba(200,160,140,0.4);
+  background: rgba(245,234,228,0.55);
+  transition: box-shadow 0.15s ease, background 0.15s ease;
+}
+.skeu-input:focus {
+  box-shadow:
+    0 4px 10px rgba(0,0,0,0.16) inset,
+    0 1px 0 rgba(255,255,255,1),
+    0 0 0 2px rgba(232,87,154,0.45);
+  background: rgba(255,248,244,0.85);
+  outline: none;
+}
+
+/* Textarea grabado — variante del input (no hereda focus de Input) */
+.skeu-textarea {
+  box-shadow:
+    0 3px 8px rgba(0,0,0,0.13) inset,
+    0 1px 0 rgba(255,255,255,1),
+    0 0 0 1px rgba(200,160,140,0.4);
+  background: rgba(245,234,228,0.55);
+  transition: box-shadow 0.15s ease, background 0.15s ease;
+  resize: vertical;
+}
+.skeu-textarea:focus {
+  box-shadow:
+    0 4px 10px rgba(0,0,0,0.16) inset,
+    0 1px 0 rgba(255,255,255,1),
+    0 0 0 2px rgba(232,87,154,0.45);
+  background: rgba(255,248,244,0.85);
+  outline: none;
+}
+
+/* Botón principal skeuomorphic — se hunde al tocar */
+.skeu-btn-primary {
+  background: linear-gradient(180deg, #f06aab 0%, #e8579a 40%, #d44488 100%);
+  box-shadow:
+    0 4px 0 rgba(160,40,90,0.7),
+    0 6px 16px rgba(232,87,154,0.35),
+    0 1px 0 rgba(255,255,255,0.35) inset,
+    0 0 0 1px rgba(180,50,110,0.5);
+  transform: translateY(-2px);
+  transition: all 0.1s ease;
+}
+.skeu-btn-primary:hover {
+  box-shadow:
+    0 5px 0 rgba(160,40,90,0.7),
+    0 8px 20px rgba(232,87,154,0.45),
+    0 1px 0 rgba(255,255,255,0.35) inset,
+    0 0 0 1px rgba(180,50,110,0.5);
+  transform: translateY(-3px);
+}
+.skeu-btn-primary:active {
+  box-shadow:
+    0 1px 0 rgba(160,40,90,0.7),
+    0 2px 6px rgba(232,87,154,0.25),
+    0 0 0 rgba(255,255,255,0) inset,
+    0 0 0 1px rgba(180,50,110,0.5);
+  transform: translateY(2px);
+}
+
+/* Sección de formulario — ticket de papel */
+.skeu-section {
+  background: linear-gradient(160deg, rgba(255,255,255,0.98) 0%, rgba(255,248,244,0.92) 100%);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.9) inset,
+    0 -1px 0 rgba(0,0,0,0.04) inset,
+    0 2px 8px rgba(92,45,30,0.08),
+    0 0 0 1px rgba(240,221,213,0.7);
+  border-radius: 1rem;
+  border: none;
+}
+
+/* Badge / tag — etiqueta pegada */
+.skeu-badge {
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.6) inset,
+    0 1px 3px rgba(0,0,0,0.12),
+    0 0 0 1px rgba(0,0,0,0.06);
+}
+
+/* Modo oscuro — todo más cálido, no negro frío */
+.dark .skeu-card {
+  background: linear-gradient(160deg, rgba(60,28,14,0.95) 0%, rgba(46,29,14,1) 100%);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.06) inset,
+    0 -1px 0 rgba(0,0,0,0.3) inset,
+    0 4px 12px rgba(0,0,0,0.4),
+    0 0 0 1px rgba(74,35,20,0.8);
+}
+.dark .skeu-product {
+  background: linear-gradient(150deg, rgba(60,28,14,0.95) 0%, rgba(46,29,14,1) 100%);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.06) inset,
+    0 6px 16px rgba(0,0,0,0.4),
+    0 0 0 1px rgba(74,35,20,0.8);
+}
+/* Modo oscuro: el campo debe ser MÁS CLARO que el fondo
+   del formulario para crear contraste visible. */
+.dark .skeu-input {
+  box-shadow:
+    0 3px 10px rgba(0,0,0,0.55) inset,
+    0 1px 0 rgba(255,255,255,0.07),
+    0 0 0 1px rgba(255,255,255,0.06);
+  background: rgba(255,248,244,0.07);
+  color: rgba(255,248,244,0.92);
+  transition: box-shadow 0.15s ease, background 0.15s ease;
+}
+.dark .skeu-input:focus {
+  box-shadow:
+    0 4px 12px rgba(0,0,0,0.65) inset,
+    0 1px 0 rgba(255,255,255,0.08),
+    0 0 0 2px rgba(232,87,154,0.5);
+  background: rgba(255,248,244,0.11);
+  outline: none;
+}
+.dark .skeu-textarea {
+  box-shadow:
+    0 3px 10px rgba(0,0,0,0.55) inset,
+    0 1px 0 rgba(255,255,255,0.07),
+    0 0 0 1px rgba(255,255,255,0.06);
+  background: rgba(255,248,244,0.07);
+  color: rgba(255,248,244,0.92);
+}
+.dark .skeu-textarea:focus {
+  box-shadow:
+    0 4px 12px rgba(0,0,0,0.65) inset,
+    0 1px 0 rgba(255,255,255,0.08),
+    0 0 0 2px rgba(232,87,154,0.5);
+  background: rgba(255,248,244,0.11);
+  outline: none;
+}
+.dark .skeu-section {
+  background: linear-gradient(160deg, rgba(60,28,14,0.9) 0%, rgba(46,29,14,0.95) 100%);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.05) inset,
+    0 2px 8px rgba(0,0,0,0.35),
+    0 0 0 1px rgba(74,35,20,0.7);
+}

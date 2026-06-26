@@ -1,0 +1,73 @@
+{
+  "name": "LiquidacionPropina",
+  "type": "object",
+  "properties": {
+    "folio": {
+      "type": "string",
+      "description": "Folio \u00fanico de la liquidaci\u00f3n."
+    },
+    "fecha_liquidacion": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "rango_inicio": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Inicio del periodo liquidado."
+    },
+    "rango_fin": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fin del periodo liquidado."
+    },
+    "rango_tipo": {
+      "type": "string",
+      "enum": [
+        "dia",
+        "semana",
+        "quincena",
+        "mes",
+        "personalizado",
+        "mesero"
+      ],
+      "default": "personalizado"
+    },
+    "mesero_id": {
+      "type": "string",
+      "description": "Si es null, la liquidaci\u00f3n es global para varios meseros."
+    },
+    "mesero_nombre": {
+      "type": "string"
+    },
+    "total_liquidado": {
+      "type": "number",
+      "default": 0
+    },
+    "numero_ventas": {
+      "type": "number",
+      "default": 0,
+      "description": "Cantidad de ventas con propina incluidas."
+    },
+    "venta_ids": {
+      "type": "string",
+      "description": "JSON string con array de venta IDs liquidados."
+    },
+    "desglose_meseros": {
+      "type": "string",
+      "description": "JSON string con [{mesero_id, mesero_nombre, total, num_ventas}]."
+    },
+    "usuario_liquido_id": {
+      "type": "string"
+    },
+    "usuario_liquido_nombre": {
+      "type": "string"
+    },
+    "notas": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "folio",
+    "fecha_liquidacion"
+  ]
+}

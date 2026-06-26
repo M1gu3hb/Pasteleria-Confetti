@@ -1,0 +1,93 @@
+{
+  "name": "Ingrediente",
+  "type": "object",
+  "properties": {
+    "nombre": {
+      "type": "string"
+    },
+    "categoria_id": {
+      "type": "string"
+    },
+    "unidad_base": {
+      "type": "string",
+      "enum": [
+        "g",
+        "ml",
+        "pieza"
+      ],
+      "description": "Unidad base de medida"
+    },
+    "unidad_compra_default": {
+      "type": "string",
+      "enum": [
+        "kg",
+        "litro",
+        "caja",
+        "paquete",
+        "pieza",
+        "bolsa",
+        "unidad"
+      ]
+    },
+    "cantidad_por_compra_default": {
+      "type": "number"
+    },
+    "costo_compra_default": {
+      "type": "number"
+    },
+    "costo_por_unidad_base": {
+      "type": "number"
+    },
+    "stock_actual": {
+      "type": "number",
+      "default": 0
+    },
+    "stock_minimo": {
+      "type": "number",
+      "default": 0
+    },
+    "stock_critico": {
+      "type": "number",
+      "default": 0
+    },
+    "proveedor_default_id": {
+      "type": "string"
+    },
+    "activo": {
+      "type": "boolean",
+      "default": true
+    },
+    "notas": {
+      "type": "string"
+    },
+    "tipo_ingrediente": {
+      "type": "string",
+      "enum": [
+        "normal",
+        "contenedor"
+      ],
+      "default": "normal",
+      "description": "6B: 'normal' es el ingrediente cl\u00e1sico (g/ml/pieza). 'contenedor' representa botellas/contenedores cuyo stock se maneja en ml internos pero se compran por unidad (botellas). Solo se descuenta en ml por porci\u00f3n."
+    },
+    "capacidad_contenedor_ml": {
+      "type": "number",
+      "description": "6B: Capacidad por contenedor en ml. Solo si tipo_ingrediente='contenedor'."
+    },
+    "porciones_por_contenedor_default": {
+      "type": "number",
+      "description": "6B: Porciones est\u00e1ndar por contenedor (referencia para productos por porci\u00f3n). Solo si tipo_ingrediente='contenedor'."
+    },
+    "ml_por_porcion_default": {
+      "type": "number",
+      "description": "6B: ml por porci\u00f3n est\u00e1ndar (referencia visual). Solo si tipo_ingrediente='contenedor'."
+    },
+    "nombre_porcion_default": {
+      "type": "string",
+      "description": "6B: Texto visual est\u00e1ndar (shot, copa, vaso). Solo si tipo_ingrediente='contenedor'."
+    }
+  },
+  "required": [
+    "nombre",
+    "unidad_base"
+  ]
+}

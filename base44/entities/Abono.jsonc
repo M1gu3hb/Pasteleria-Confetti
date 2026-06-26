@@ -1,0 +1,53 @@
+{
+  "name": "Abono",
+  "type": "object",
+  "properties": {
+    "pedido_id": {
+      "type": "string"
+    },
+    "sucursal_id": {
+      "type": "string"
+    },
+    "sucursal_nombre": {
+      "type": "string"
+    },
+    "monto": {
+      "type": "number"
+    },
+    "metodo_pago": {
+      "type": "string",
+      "enum": [
+        "efectivo",
+        "tarjeta",
+        "transferencia"
+      ]
+    },
+    "afecta_caja": {
+      "type": "boolean",
+      "default": true
+    },
+    "corte_caja_id": {
+      "type": "string",
+      "description": "ID del CorteCaja abierto al registrar"
+    },
+    "registrado_por_id": {
+      "type": "string"
+    },
+    "registrado_por_nombre": {
+      "type": "string"
+    },
+    "fecha_abono": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "notas": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "pedido_id",
+    "sucursal_id",
+    "monto",
+    "metodo_pago"
+  ]
+}

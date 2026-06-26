@@ -1,0 +1,32 @@
+{
+  "name": "MenuQRSeccion",
+  "type": "object",
+  "properties": {
+    "nombre": {
+      "type": "string",
+      "description": "Ej: Bebidas, Postres, Men\u00fa comida, Vinos."
+    },
+    "descripcion": {
+      "type": "string"
+    },
+    "imagen_url": {
+      "type": "string",
+      "description": "Imagen/cartel del men\u00fa subido."
+    },
+    "archivo_url": {
+      "type": "string",
+      "description": "URL alternativa (PDF/imagen). Si est\u00e1 vac\u00eda, se usa imagen_url."
+    },
+    "orden": {
+      "type": "number",
+      "default": 0
+    },
+    "activo": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "nombre"
+  ]
+}

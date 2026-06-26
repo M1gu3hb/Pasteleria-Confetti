@@ -1,0 +1,43 @@
+{
+  "name": "CompraInsumo",
+  "type": "object",
+  "properties": {
+    "proveedor_id": {
+      "type": "string"
+    },
+    "proveedor_nombre": {
+      "type": "string"
+    },
+    "fecha": {
+      "type": "string",
+      "format": "date"
+    },
+    "total_compra": {
+      "type": "number"
+    },
+    "metodo_pago": {
+      "type": "string",
+      "enum": [
+        "efectivo",
+        "tarjeta",
+        "transferencia"
+      ]
+    },
+    "factura_folio": {
+      "type": "string"
+    },
+    "notas": {
+      "type": "string"
+    },
+    "usuario_id": {
+      "type": "string"
+    },
+    "usuario_nombre": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "fecha",
+    "total_compra"
+  ]
+}

@@ -1,0 +1,190 @@
+{
+  "name": "PedidoPreparacion",
+  "type": "object",
+  "properties": {
+    "venta_id": {
+      "type": "string"
+    },
+    "venta_folio": {
+      "type": "string"
+    },
+    "mesa_id": {
+      "type": "string"
+    },
+    "mesa_numero": {
+      "type": "number"
+    },
+    "area": {
+      "type": "string",
+      "enum": [
+        "cocina",
+        "barra"
+      ],
+      "description": "LEGACY. Se mantiene por compatibilidad con la vista actual de Cocina (filter({area:'cocina'})). Cuando estaciones est\u00e1n activas, F3 usa estacion_preparacion_id."
+    },
+    "estado": {
+      "type": "string",
+      "enum": [
+        "nuevo",
+        "en_preparacion",
+        "listo",
+        "entregado",
+        "cancelado"
+      ],
+      "default": "nuevo"
+    },
+    "fecha_creacion": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "fecha_inicio": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "fecha_listo": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "fecha_entregado": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "usuario_responsable_id": {
+      "type": "string"
+    },
+    "notas": {
+      "type": "string"
+    },
+    "items": {
+      "type": "array",
+      "description": "Array de items del pedido con producto_nombre, cantidad, notas, estado, modificadores. 6B: incluye campos opcionales para productos variables (tipo_venta, cantidad_variable, unidad_variable, nombre_porcion, cantidad_porciones). PASO A: incluye ingredientes_excluidos (array estructurado de 'SIN ingrediente').",
+      "items": {
+        "type": "object",
+        "properties": {
+          "producto_id": {
+            "type": "string"
+          },
+          "producto_nombre": {
+            "type": "string"
+          },
+          "cantidad": {
+            "type": "number"
+          },
+          "notas": {
+            "type": "string"
+          },
+          "estado": {
+            "type": "string"
+          },
+          "tipo_venta": {
+            "type": "string",
+            "description": "6B: precio_fijo / variable_medida / porcion_contenedor."
+          },
+          "unidad_variable": {
+            "type": "string",
+            "description": "6B: unidad mostrada al cliente (g/kg/ml/l)."
+          },
+          "cantidad_variable": {
+            "type": "number",
+            "description": "6B: cantidad en unidad_variable (ej. 500 g)."
+          },
+          "nombre_porcion": {
+            "type": "string",
+            "description": "6B: nombre legible de la porci\u00f3n (shot/copa/vaso)."
+          },
+          "cantidad_porciones": {
+            "type": "number",
+            "description": "6B: n\u00famero de porciones (ej. 4 shots)."
+          },
+          "modificadores": {
+            "type": "array",
+            "description": "Modificadores elegidos al agregar el producto (ej. t\u00e9rmino de carne, salsas). Solo informativo.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "grupo_id": {
+                  "type": "string"
+                },
+                "grupo_nombre": {
+                  "type": "string"
+                },
+                "opciones": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "nombre": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "ingredientes_excluidos": {
+            "type": "array",
+            "description": "PASO A: Ingredientes marcados como 'SIN' por el mesero. Cocina los muestra; Caja los usar\u00e1 en PASO B para excluirlos del descuento de inventario. cantidad_base_excluida es por unidad de producto.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "ingrediente_id": {
+                  "type": "string"
+                },
+                "ingrediente_nombre": {
+                  "type": "string"
+                },
+                "unidad": {
+                  "type": "string"
+                },
+                "cantidad_base_excluida": {
+                  "type": "number"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "estacion_preparacion_id": {
+      "type": "string",
+      "description": "F3: ID de EstacionPreparacion a la que pertenece este pedido. Vac\u00edo si estaciones est\u00e1n apagadas (fallback a 'area' legacy)."
+    },
+    "estacion_preparacion_nombre": {
+      "type": "string",
+      "description": "F3: Snapshot del nombre de la estaci\u00f3n (visual)."
+    },
+    "estacion_preparacion_color": {
+      "type": "string",
+      "description": "F3: Snapshot del color de la estaci\u00f3n (visual)."
+    },
+    "origen_pedido": {
+      "type": "string",
+      "enum": [
+        "mesero",
+        "portal_qr",
+        "pos"
+      ],
+      "description": "F3: Origen del pedido. Solo informativo, no afecta la l\u00f3gica de cocina."
+    },
+    "notas_alergias": {
+      "type": "string",
+      "description": "6A: Snapshot de alergias/indicaciones cr\u00edticas de la mesa al momento de crear el pedido. Visible en Cocina."
+    },
+    "celebracion_especial": {
+      "type": "boolean",
+      "default": false,
+      "description": "6A: Snapshot \u2014 la mesa estaba en celebraci\u00f3n al crear el pedido."
+    },
+    "tipo_celebracion": {
+      "type": "string",
+      "description": "6A: Snapshot del tipo de celebraci\u00f3n."
+    }
+  },
+  "required": [
+    "venta_id"
+  ]
+}

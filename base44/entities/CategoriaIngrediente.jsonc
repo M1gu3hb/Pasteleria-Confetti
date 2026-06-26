@@ -1,0 +1,23 @@
+{
+  "name": "CategoriaIngrediente",
+  "type": "object",
+  "properties": {
+    "nombre": {
+      "type": "string"
+    },
+    "descripcion": {
+      "type": "string"
+    },
+    "color": {
+      "type": "string",
+      "default": "#718096"
+    },
+    "activo": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "nombre"
+  ]
+}

@@ -1,0 +1,126 @@
+{
+  "name": "Mesa",
+  "type": "object",
+  "properties": {
+    "numero": {
+      "type": "number"
+    },
+    "nombre": {
+      "type": "string"
+    },
+    "zona": {
+      "type": "string",
+      "default": "Interior"
+    },
+    "capacidad": {
+      "type": "number",
+      "default": 4
+    },
+    "forma": {
+      "type": "string",
+      "enum": [
+        "redonda",
+        "cuadrada",
+        "rectangular"
+      ],
+      "default": "redonda"
+    },
+    "tamano": {
+      "type": "string",
+      "enum": [
+        "chica",
+        "mediana",
+        "grande"
+      ],
+      "default": "mediana"
+    },
+    "posicion_x": {
+      "type": "number",
+      "default": 100
+    },
+    "posicion_y": {
+      "type": "number",
+      "default": 100
+    },
+    "estado": {
+      "type": "string",
+      "enum": [
+        "libre",
+        "esperando_orden",
+        "pedido_enviado",
+        "en_preparacion",
+        "en_espera_entrega",
+        "ocupada",
+        "cuenta_solicitada",
+        "limpieza",
+        "pagada",
+        "cancelada"
+      ],
+      "default": "libre"
+    },
+    "venta_activa_id": {
+      "type": "string"
+    },
+    "personas_actuales": {
+      "type": "number",
+      "default": 0
+    },
+    "cliente_temporal": {
+      "type": "string"
+    },
+    "notas_alergias": {
+      "type": "string",
+      "description": "6A: Indicaciones cr\u00edticas / alergias de la mesa (informativo). Limpiadas al liberar mesa."
+    },
+    "celebracion_especial": {
+      "type": "boolean",
+      "default": false,
+      "description": "6A: Si la mesa est\u00e1 en celebraci\u00f3n (cumplea\u00f1os, aniversario...). Limpiado al liberar."
+    },
+    "tipo_celebracion": {
+      "type": "string",
+      "description": "6A: Texto libre del tipo de celebraci\u00f3n (cumplea\u00f1os, aniversario, etc.)."
+    },
+    "activo": {
+      "type": "boolean",
+      "default": true
+    },
+    "orden": {
+      "type": "number",
+      "default": 0
+    },
+    "qr_token": {
+      "type": "string",
+      "description": "Token p\u00fablico estable para identificar la mesa en el Portal QR."
+    },
+    "qr_activo": {
+      "type": "boolean",
+      "default": true,
+      "description": "Si est\u00e1 desactivado, el QR de la mesa no muestra men\u00fa al cliente."
+    },
+    "mesero_asignado_id": {
+      "type": "string",
+      "description": "Mesero fijo de esta mesa cuando asignacion_mesas_activa = true."
+    },
+    "mesero_asignado_nombre": {
+      "type": "string"
+    },
+    "mesero_asignado_color": {
+      "type": "string",
+      "description": "Color HEX visual del mesero asignado (snapshot)."
+    },
+    "atendido_por_id": {
+      "type": "string",
+      "description": "Mesero que tom\u00f3 la mesa en modo sin asignaci\u00f3n fija."
+    },
+    "atendido_por_nombre": {
+      "type": "string"
+    },
+    "atendido_por_color": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "numero"
+  ]
+}

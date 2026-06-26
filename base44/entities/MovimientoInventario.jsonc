@@ -1,0 +1,65 @@
+{
+  "name": "MovimientoInventario",
+  "type": "object",
+  "properties": {
+    "ingrediente_id": {
+      "type": "string"
+    },
+    "ingrediente_nombre": {
+      "type": "string"
+    },
+    "tipo_movimiento": {
+      "type": "string",
+      "enum": [
+        "entrada_compra",
+        "salida_venta",
+        "ajuste_manual",
+        "merma",
+        "devolucion",
+        "correccion"
+      ]
+    },
+    "cantidad": {
+      "type": "number"
+    },
+    "unidad_base": {
+      "type": "string"
+    },
+    "stock_anterior": {
+      "type": "number"
+    },
+    "stock_nuevo": {
+      "type": "number"
+    },
+    "costo_unitario_en_momento": {
+      "type": "number"
+    },
+    "costo_total_movimiento": {
+      "type": "number"
+    },
+    "referencia_tipo": {
+      "type": "string"
+    },
+    "referencia_id": {
+      "type": "string"
+    },
+    "motivo": {
+      "type": "string"
+    },
+    "usuario_id": {
+      "type": "string"
+    },
+    "usuario_nombre": {
+      "type": "string"
+    },
+    "fecha": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "ingrediente_id",
+    "tipo_movimiento",
+    "cantidad"
+  ]
+}

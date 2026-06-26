@@ -1,0 +1,39 @@
+{
+  "name": "EstacionPreparacion",
+  "type": "object",
+  "properties": {
+    "nombre": {
+      "type": "string",
+      "description": "Nombre legible de la estaci\u00f3n (ej. Cocina general, Barra, Postres, Barbacoa)."
+    },
+    "descripcion": {
+      "type": "string"
+    },
+    "color": {
+      "type": "string",
+      "default": "#4A5568",
+      "description": "Color HEX visual de la estaci\u00f3n (badges, futura cocina filtrada)."
+    },
+    "icono": {
+      "type": "string",
+      "description": "Nombre del \u00edcono (opcional, para futuras vistas)."
+    },
+    "orden": {
+      "type": "number",
+      "default": 0,
+      "description": "Orden de presentaci\u00f3n en listas."
+    },
+    "activo": {
+      "type": "boolean",
+      "default": true
+    },
+    "es_general": {
+      "type": "boolean",
+      "default": false,
+      "description": "Marca la estaci\u00f3n 'Cocina general' (fallback). Solo debe existir una con este flag."
+    }
+  },
+  "required": [
+    "nombre"
+  ]
+}

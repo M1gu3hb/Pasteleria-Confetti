@@ -1,0 +1,43 @@
+{
+  "name": "DetalleCompra",
+  "type": "object",
+  "properties": {
+    "compra_id": {
+      "type": "string"
+    },
+    "ingrediente_id": {
+      "type": "string"
+    },
+    "ingrediente_nombre": {
+      "type": "string"
+    },
+    "cantidad_comprada": {
+      "type": "number"
+    },
+    "unidad_compra": {
+      "type": "string"
+    },
+    "cantidad_convertida_unidad_base": {
+      "type": "number"
+    },
+    "costo_total": {
+      "type": "number"
+    },
+    "costo_unitario_base_calculado": {
+      "type": "number"
+    },
+    "fecha_caducidad": {
+      "type": "string",
+      "format": "date"
+    },
+    "notas": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "compra_id",
+    "ingrediente_id",
+    "cantidad_comprada",
+    "costo_total"
+  ]
+}

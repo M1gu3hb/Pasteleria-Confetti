@@ -1,0 +1,26 @@
+{
+  "name": "FolioContador",
+  "type": "object",
+  "properties": {
+    "tipo": {
+      "type": "string",
+      "description": "Tipo de folio. Ej: pedido_pastel"
+    },
+    "sucursal_id": {
+      "type": "string"
+    },
+    "prefijo": {
+      "type": "string",
+      "description": "Prefijo de sucursal. Ej: A, B, C"
+    },
+    "ultimo_numero": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "tipo",
+    "sucursal_id",
+    "prefijo"
+  ]
+}

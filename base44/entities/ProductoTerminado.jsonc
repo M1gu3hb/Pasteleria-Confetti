@@ -1,0 +1,220 @@
+{
+  "name": "ProductoTerminado",
+  "type": "object",
+  "properties": {
+    "nombre": {
+      "type": "string"
+    },
+    "categoria_id": {
+      "type": "string"
+    },
+    "categoria_nombre": {
+      "type": "string"
+    },
+    "descripcion": {
+      "type": "string"
+    },
+    "descripcion_web": {
+      "type": "string",
+      "description": "Web Confetti (Fase 7): descripci\u00f3n corta visible en el cat\u00e1logo p\u00fablico de la p\u00e1gina web. Independiente de 'descripcion'. Opcional."
+    },
+    "sucursal_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Web Confetti (Fase 7): IDs de sucursales donde est\u00e1 disponible. Vac\u00edo o null = global (todas las sucursales). Opcional, aditivo."
+    },
+    "precio_venta": {
+      "type": "number"
+    },
+    "costo_calculado_actual": {
+      "type": "number",
+      "default": 0
+    },
+    "utilidad_bruta_actual": {
+      "type": "number",
+      "default": 0
+    },
+    "margen_bruto_actual": {
+      "type": "number",
+      "default": 0
+    },
+    "imagen_url": {
+      "type": "string"
+    },
+    "area_preparacion": {
+      "type": "string",
+      "enum": [
+        "cocina",
+        "barra",
+        "ambos",
+        "ninguno"
+      ],
+      "default": "ninguno"
+    },
+    "activo": {
+      "type": "boolean",
+      "default": true
+    },
+    "visible_en_pos": {
+      "type": "boolean",
+      "default": true
+    },
+    "visible_en_menu_digital": {
+      "type": "boolean",
+      "default": true
+    },
+    "visible_en_web": {
+      "type": "boolean",
+      "default": false,
+      "description": "Web Confetti (Fase 1): controla si el producto aparece en el cat\u00e1logo p\u00fablico de la p\u00e1gina web. Independiente de visible_en_menu_digital (paquete Pro). Opcional, aditivo."
+    },
+    "tiempo_preparacion_estimado": {
+      "type": "number"
+    },
+    "notas": {
+      "type": "string"
+    },
+    "modificadores": {
+      "type": "array",
+      "description": "Grupos de opciones de preparaci\u00f3n (modificadores). Cada grupo tiene opciones que el comensal/mesero puede elegir al agregar el producto. v1: solo informativo, no afecta precio/costo/inventario.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "nombre": {
+            "type": "string"
+          },
+          "obligatorio": {
+            "type": "boolean",
+            "default": false
+          },
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "unica",
+              "multiple"
+            ],
+            "default": "unica"
+          },
+          "activo": {
+            "type": "boolean",
+            "default": true
+          },
+          "opciones": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "nombre": {
+                  "type": "string"
+                },
+                "activo": {
+                  "type": "boolean",
+                  "default": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "tipo_venta": {
+      "type": "string",
+      "enum": [
+        "precio_fijo",
+        "variable_medida",
+        "porcion_contenedor"
+      ],
+      "default": "precio_fijo",
+      "description": "6B: Tipo de venta del producto. 'precio_fijo' es el flujo cl\u00e1sico. 'variable_medida' vende por peso o volumen (g, kg, ml, l). 'porcion_contenedor' vende porciones (shot, copa, vaso) tomadas de un contenedor con capacidad en ml."
+    },
+    "ingrediente_base_id": {
+      "type": "string",
+      "description": "6B: Ingrediente base que se descuenta al vender. Solo aplica si tipo_venta != 'precio_fijo'."
+    },
+    "ingrediente_base_nombre": {
+      "type": "string",
+      "description": "6B: Snapshot del nombre del ingrediente base."
+    },
+    "unidad_variable": {
+      "type": "string",
+      "enum": [
+        "g",
+        "kg",
+        "ml",
+        "l"
+      ],
+      "description": "6B: Unidad mostrada al usuario al elegir cantidad (g/kg/ml/l). Se convierte a unidad base del ingrediente (g o ml) al cobrar."
+    },
+    "precio_por_unidad_variable": {
+      "type": "number",
+      "description": "6B: Precio por 1 unidad_variable (ej. precio por gramo o por mililitro). Solo si tipo_venta='variable_medida'."
+    },
+    "cantidad_minima_variable": {
+      "type": "number",
+      "description": "6B: Cantidad m\u00ednima por orden (en unidad_variable). Opcional."
+    },
+    "cantidad_maxima_variable": {
+      "type": "number",
+      "description": "6B: Cantidad m\u00e1xima por orden (en unidad_variable). Opcional."
+    },
+    "incremento_variable": {
+      "type": "number",
+      "description": "6B: Incremento permitido (en unidad_variable). Opcional."
+    },
+    "presets_variable_qr": {
+      "type": "array",
+      "description": "6B: Presets visibles en Portal QR (ej. [250, 500, 1000] para barbacoa por gramos).",
+      "items": {
+        "type": "number"
+      }
+    },
+    "unidad_contenedor_base": {
+      "type": "string",
+      "enum": [
+        "ml"
+      ],
+      "default": "ml",
+      "description": "6B: Unidad interna del contenedor (siempre ml en v1)."
+    },
+    "capacidad_contenedor_ml": {
+      "type": "number",
+      "description": "6B: Capacidad total del contenedor en ml (ej. 750 para una botella de tequila). Solo si tipo_venta='porcion_contenedor'."
+    },
+    "porciones_por_contenedor": {
+      "type": "number",
+      "description": "6B: N\u00famero de porciones por contenedor (ej. 25 shots por botella). Solo si tipo_venta='porcion_contenedor'."
+    },
+    "ml_por_porcion": {
+      "type": "number",
+      "description": "6B: ml descontados por cada porci\u00f3n vendida (ej. 30 ml por shot). Si no se captura, se calcula = capacidad_contenedor_ml / porciones_por_contenedor."
+    },
+    "nombre_porcion": {
+      "type": "string",
+      "description": "6B: Texto mostrado al usuario (shot, copa, vaso, trago)."
+    },
+    "precio_por_porcion": {
+      "type": "number",
+      "description": "6B: Precio por 1 porci\u00f3n. Solo si tipo_venta='porcion_contenedor'."
+    },
+    "presets_porcion_qr": {
+      "type": "array",
+      "description": "6B: Presets visibles en Portal QR (ej. [1, 2, 4] shots).",
+      "items": {
+        "type": "number"
+      }
+    }
+  },
+  "required": [
+    "nombre",
+    "precio_venta"
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "name": "DescuentoInventarioVenta",
+  "type": "object",
+  "properties": {
+    "venta_id": {
+      "type": "string"
+    },
+    "detalle_venta_id": {
+      "type": "string"
+    },
+    "producto_id": {
+      "type": "string"
+    },
+    "ingrediente_id": {
+      "type": "string"
+    },
+    "ingrediente_nombre": {
+      "type": "string"
+    },
+    "cantidad_producto": {
+      "type": "number"
+    },
+    "cantidad_ingrediente_por_producto": {
+      "type": "number"
+    },
+    "cantidad_total_descontada": {
+      "type": "number"
+    },
+    "unidad_base": {
+      "type": "string"
+    },
+    "costo_unitario_snapshot": {
+      "type": "number"
+    },
+    "costo_total_descontado": {
+      "type": "number"
+    },
+    "fecha": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "venta_id",
+    "ingrediente_id",
+    "cantidad_total_descontada"
+  ]
+}

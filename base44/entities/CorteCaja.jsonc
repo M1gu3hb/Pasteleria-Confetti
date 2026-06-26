@@ -1,0 +1,164 @@
+{
+  "name": "CorteCaja",
+  "type": "object",
+  "properties": {
+    "folio": {
+      "type": "string"
+    },
+    "tipo_corte": {
+      "type": "string",
+      "enum": [
+        "cierre_diario",
+        "turno"
+      ],
+      "default": "cierre_diario",
+      "description": "cierre_diario = caja del d\u00eda. turno = corte parcial."
+    },
+    "corte_padre_id": {
+      "type": "string"
+    },
+    "fecha_inicio": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "fecha_apertura": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "fecha_cierre": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sucursal_id": {
+      "type": "string",
+      "description": "Multi-sucursal Fase 2C \u2014 segmentaci\u00f3n de caja. ID de la sucursal del corte. Opcional, aditivo."
+    },
+    "sucursal_nombre": {
+      "type": "string",
+      "description": "Multi-sucursal Fase 2C \u2014 segmentaci\u00f3n de caja. Snapshot del nombre de la sucursal. Opcional."
+    },
+    "usuario_cajero_id": {
+      "type": "string"
+    },
+    "usuario_cajero_nombre": {
+      "type": "string"
+    },
+    "usuario_apertura_id": {
+      "type": "string"
+    },
+    "usuario_apertura_nombre": {
+      "type": "string"
+    },
+    "efectivo_inicial_contado": {
+      "type": "number",
+      "default": 0
+    },
+    "fondo_esperado_apertura": {
+      "type": "number",
+      "default": 0
+    },
+    "diferencia_apertura": {
+      "type": "number",
+      "default": 0
+    },
+    "notas_apertura": {
+      "type": "string"
+    },
+    "total_efectivo": {
+      "type": "number",
+      "default": 0
+    },
+    "total_tarjeta": {
+      "type": "number",
+      "default": 0
+    },
+    "total_transferencia": {
+      "type": "number",
+      "default": 0
+    },
+    "total_general": {
+      "type": "number",
+      "default": 0,
+      "description": "Total de ventas reales SIN propina."
+    },
+    "total_propinas": {
+      "type": "number",
+      "default": 0,
+      "description": "Suma de propinas del periodo. Separada de ventas/utilidad."
+    },
+    "total_descuentos": {
+      "type": "number",
+      "default": 0
+    },
+    "total_cancelaciones": {
+      "type": "number",
+      "default": 0
+    },
+    "numero_ventas": {
+      "type": "number",
+      "default": 0
+    },
+    "ticket_promedio": {
+      "type": "number",
+      "default": 0
+    },
+    "costo_total_estimado": {
+      "type": "number",
+      "default": 0
+    },
+    "utilidad_bruta_total": {
+      "type": "number",
+      "default": 0
+    },
+    "margen_promedio": {
+      "type": "number",
+      "default": 0
+    },
+    "utilidad_neta_estimada": {
+      "type": "number",
+      "default": 0
+    },
+    "efectivo_esperado": {
+      "type": "number",
+      "default": 0
+    },
+    "efectivo_contado": {
+      "type": "number",
+      "default": 0
+    },
+    "diferencia_efectivo": {
+      "type": "number",
+      "default": 0
+    },
+    "dinero_dejado_en_caja": {
+      "type": "number",
+      "default": 0
+    },
+    "total_gastos": {
+      "type": "number",
+      "default": 0
+    },
+    "estado": {
+      "type": "string",
+      "enum": [
+        "abierto",
+        "cerrado",
+        "registrado"
+      ],
+      "default": "abierto"
+    },
+    "notas": {
+      "type": "string"
+    },
+    "resumen_ingredientes": {
+      "type": "string"
+    },
+    "propinas_por_mesero": {
+      "type": "string",
+      "description": "JSON string con array [{mesero_id, mesero_nombre, total}]."
+    }
+  },
+  "required": [
+    "folio"
+  ]
+}

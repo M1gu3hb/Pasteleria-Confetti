@@ -1,0 +1,55 @@
+{
+  "name": "PlantillaCompra",
+  "type": "object",
+  "properties": {
+    "nombre": {
+      "type": "string",
+      "description": "Nombre de la plantilla recurrente (ej. 'Compra semanal panader\u00eda')"
+    },
+    "lineas": {
+      "type": "array",
+      "description": "L\u00edneas de la plantilla con ingrediente_id, ingrediente_nombre, cantidad, unidad_compra, costo_total",
+      "items": {
+        "type": "object",
+        "properties": {
+          "ingrediente_id": {
+            "type": "string"
+          },
+          "ingrediente_nombre": {
+            "type": "string"
+          },
+          "cantidad": {
+            "type": "number"
+          },
+          "unidad_compra": {
+            "type": "string"
+          },
+          "costo_total": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "ultima_fecha_uso": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "veces_usada": {
+      "type": "number",
+      "default": 0
+    },
+    "proveedor_nombre": {
+      "type": "string"
+    },
+    "activa": {
+      "type": "boolean",
+      "default": true
+    },
+    "notas": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "nombre"
+  ]
+}

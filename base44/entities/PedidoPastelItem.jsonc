@@ -1,0 +1,43 @@
+{
+  "name": "PedidoPastelItem",
+  "type": "object",
+  "properties": {
+    "pedido_id": {
+      "type": "string"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "pastel",
+        "base",
+        "oblea",
+        "muneca",
+        "velas",
+        "extra"
+      ]
+    },
+    "descripcion": {
+      "type": "string"
+    },
+    "cantidad": {
+      "type": "number",
+      "default": 1
+    },
+    "precio_unitario": {
+      "type": "number",
+      "default": 0
+    },
+    "subtotal": {
+      "type": "number",
+      "default": 0
+    },
+    "notas": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "pedido_id",
+    "tipo",
+    "descripcion"
+  ]
+}

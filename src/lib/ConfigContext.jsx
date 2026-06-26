@@ -1,0 +1,113 @@
+import React, { createContext, useContext } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { base44 } from '@/api/base44Client';
+import {
+  getCurrentPackage,
+  getPackageLabel,
+  getPackageFeatures,
+  canAccessModule as canAccessModuleHelper,
+} from '@/lib/packageConfig';
+
+// Logo oficial por defecto de la plataforma MH Astral Systems
+export const MH_LOGO_URL = 'https://media.base44.com/images/public/69fbe8877069565e6f39775c/44176242f_1000129680.png';
+
+const PLATFORM_BRAND = 'MH Astral Systems';
+const DEFAULT_SYSTEM_NAME = 'MH Astral POS';
+
+const DEFAULT_CONFIG = {
+  nombre_negocio: PLATFORM_BRAND,
+  nombre_sistema: DEFAULT_SYSTEM_NAME,
+  platform_brand: PLATFORM_BRAND,
+  logo_url: MH_LOGO_URL,
+  logo_ticket_url: '',
+  logo_pdf_url: '',
+  background_logo_url: '',
+  background_image_url: '',
+  background_fit: 'cover',
+  background_opacity: 0.12,
+  color_primario: '#1e40af',
+  color_secundario: '#0f172a',
+  color_acento: '#38bdf8',
+  moneda: 'MXN',
+  simbolo_moneda: '$',
+  iva_porcentaje: 0,
+  usa_mesas: true,
+  usa_cocina: true,
+  usa_barra: true,
+  permitir_venta_sin_stock: false,
+  mostrar_costos_a_caja: false,
+  mostrar_logo_ticket: true,
+  mensaje_ticket: '¡Gracias por tu visita!',
+  ticket_footer: '',
+  pdf_footer: '',
+  footer_text: '',
+  descargar_pdf_corte_auto: true,
+  formato_export_default: 'csv',
+  colorear_importes_monetarios: true,
+  paquete_modo: 'restaurante_pro',
+  modo_presentacion_activo: false,
+  presentacion_password: '2797',
+};
+
+const ConfigContext = createContext({ config: DEFAULT_CONFIG, isLoading: false });
+
+export function ConfigProvider({ children }) {
+  // HOTFIX persistencia: sin initialData:[] para distinguir "primer fetch"
+  // de "vacío real". placeholderData mantiene el valor previo durante refetch
+  // (evita parpadeos de switches en cualquier pantalla que use useConfig).
+  const { data, isLoading } = useQuery({
+    queryKey: ['config'],
+    queryFn: () => base44.entities.ConfiguracionNegocio.list(),
+    placeholderData: (prev) => prev,
+    staleTime: 3000,
+  });
+
+  const stored = (Array.isArray(data) && data[0]) ? data[0] : {};
+
+  // Resolución de logos: si no hay específico, usar logo_url; y si tampoco, usar el oficial.
+  const logoPrincipal = stored.logo_url || MH_LOGO_URL;
+
+  const config = {
+    ...DEFAULT_CONFIG,
+    ...stored,
+    nombre_negocio: stored.nombre_negocio || PLATFORM_BRAND,
+    nombre_sistema: stored.nombre_sistema || DEFAULT_SYSTEM_NAME,
+    platform_brand: stored.platform_brand || PLATFORM_BRAND,
+    logo_url: logoPrincipal,
+    logo_ticket_url: stored.logo_ticket_url || logoPrincipal,
+    logo_pdf_url: stored.logo_pdf_url || logoPrincipal,
+    // IMPORTANTE: NO usar logoPrincipal como fallback de background_logo_url.
+    // Antes esto provocaba que el logo del negocio se mostrara como un
+    // rectángulo flotante en medio de la pantalla aunque el usuario nunca
+    // hubiera configurado un fondo. Si está vacío, debe quedar vacío.
+    background_logo_url: stored.background_logo_url || '',
+    background_image_url: stored.background_image_url || '',
+  };
+
+  // Helpers de paquete expuestos globalmente
+  const paquete_modo = getCurrentPackage(config);
+  const modo_presentacion_activo = !!config.modo_presentacion_activo;
+  const presentacion_password = config.presentacion_password || '2797';
+  const canAccessModule = (moduleName) => canAccessModuleHelper(moduleName, paquete_modo);
+  const packageLabel = getPackageLabel(paquete_modo);
+  const packageFeatures = getPackageFeatures(paquete_modo);
+
+  return (
+    <ConfigContext.Provider value={{
+      config,
+      isLoading,
+      paquete_modo,
+      modo_presentacion_activo,
+      presentacion_password,
+      canAccessModule,
+      packageLabel,
+      packageFeatures,
+    }}>
+      {children}
+    </ConfigContext.Provider>
+  );
+}
+
+export function useConfig() {
+  return useContext(ConfigContext);
+}

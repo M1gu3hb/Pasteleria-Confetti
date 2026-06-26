@@ -1,0 +1,74 @@
+{
+  "name": "UsuarioPOS",
+  "type": "object",
+  "properties": {
+    "nombre": {
+      "type": "string",
+      "description": "Nombre del usuario"
+    },
+    "rol": {
+      "type": "string",
+      "enum": [
+        "administrador",
+        "caja",
+        "mesero",
+        "cocina",
+        "barra"
+      ]
+    },
+    "pin": {
+      "type": "string",
+      "description": "PIN de 4 d\u00edgitos"
+    },
+    "activo": {
+      "type": "boolean",
+      "default": true
+    },
+    "color": {
+      "type": "string",
+      "description": "Color HEX del usuario (visual). Se usa para meseros (mesas/solicitudes) y, cuando estaciones est\u00e1n activas, para usuarios de cocina."
+    },
+    "telefono": {
+      "type": "string",
+      "description": "Tel\u00e9fono de contacto del usuario (opcional, uso interno)."
+    },
+    "correo": {
+      "type": "string",
+      "description": "Correo del usuario (opcional, uso interno, no se usa para login)."
+    },
+    "sucursal_id": {
+      "type": "string",
+      "description": "Multi-sucursal (Fase 1): ID de la sucursal asignada. Opcional, aditivo. A\u00fan no se aplica para login ni filtros."
+    },
+    "sucursal_nombre": {
+      "type": "string",
+      "description": "Multi-sucursal (Fase 1): Snapshot legible del nombre de la sucursal. Opcional."
+    },
+    "permisos_extra": {
+      "type": "string",
+      "description": "Permisos adicionales JSON"
+    },
+    "estacion_preparacion_id": {
+      "type": "string",
+      "description": "F2: ID de EstacionPreparacion. Solo aplica si rol='cocina' y estaciones est\u00e1n activas. Si est\u00e1 vac\u00edo y puede_ver_todas_estaciones=false, en F3 quedar\u00e1 sin pedidos visibles."
+    },
+    "estacion_preparacion_nombre": {
+      "type": "string",
+      "description": "F2: Snapshot del nombre de la estaci\u00f3n asignada (solo visual)."
+    },
+    "estacion_preparacion_color": {
+      "type": "string",
+      "description": "F2: Snapshot del color de la estaci\u00f3n asignada (solo visual)."
+    },
+    "puede_ver_todas_estaciones": {
+      "type": "boolean",
+      "default": false,
+      "description": "F2: Si true, este usuario de cocina ve todas las estaciones (vista general). Mutuamente excluyente con estacion_preparacion_id en la pr\u00e1ctica."
+    }
+  },
+  "required": [
+    "nombre",
+    "rol",
+    "pin"
+  ]
+}
