@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { Layers, Plus, Trash2 } from 'lucide-react';
-import { sincronizarRellenosAWeb } from '@/utils/posApiClient';
 
 // Configuración de los rellenos del formulario de pastel.
 // Lee/escribe el campo rellenos_pastel (JSON string) de ConfiguracionNegocio.
@@ -72,8 +71,6 @@ export default function RellenosPastelSection({ cfg }) {
         rellenos_pastel: rellenosJSON,
       });
       await queryClient.refetchQueries({ queryKey: ['config'] });
-      // Sincronizar rellenos a la web (fire and forget)
-      sincronizarRellenosAWeb(rellenosJSON).catch(() => {});
       toast.success('Rellenos guardados');
     } catch (err) {
       console.error('[RellenosPastelSection] guardar:', err);

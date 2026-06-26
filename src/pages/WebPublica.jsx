@@ -12,7 +12,6 @@ import SelectorSucursalesProducto from '@/components/productos/SelectorSucursale
 import ImageUploader from '@/components/common/ImageUploader';
 import NuevoProductoWebDialog from '@/components/productos/NuevoProductoWebDialog';
 import EliminarProductoDialog from '@/components/productos/EliminarProductoDialog';
-import { sincronizarActualizacionProducto } from '@/utils/posApiClient';
 
 const WEB_URL = 'https://confetti-pasteleria.base44.app/confetti';
 
@@ -72,12 +71,6 @@ export default function WebPublica() {
         visible_en_web: !producto.visible_en_web,
       });
       queryClient.invalidateQueries({ queryKey: ['productosParaWeb'] });
-
-      // Sincronizar visibilidad en el catálogo web (fire and forget).
-      // Empareja por producto_pos_id (ID estable), con backfill por nombre.
-      sincronizarActualizacionProducto(producto.id, producto.nombre, {
-        visible_en_web: !producto.visible_en_web,
-      }).catch(() => {});
     } catch (e) {
       console.error('Error al cambiar visibilidad:', e);
     }
@@ -109,28 +102,6 @@ export default function WebPublica() {
         ...(esDueno ? { sucursal_ids: Array.isArray(editForm.sucursal_ids) ? editForm.sucursal_ids : [] } : {}),
       });
       queryClient.invalidateQueries({ queryKey: ['productosParaWeb'] });
-
-      // Sincronizar con el catálogo web (fire and forget). Empareja por
-      // producto_pos_id (ID estable), con backfill por nombre. Incluimos
-      // nombre y categoria_nombre para que renombrar/recategorizar en el POS
-      // se refleje en la MISMA copia web (no por nombre, no duplica).
-      const productoActual = lista.find(p => p.id === productoId);
-      if (productoActual?.id) {
-        sincronizarActualizacionProducto(productoActual.id, productoActual.nombre, {
-          nombre: productoActual.nombre,
-          categoria_nombre: productoActual.categoria_nombre || null,
-          precio_venta: parseFloat(editForm.precio_venta) || 0,
-          imagen_url: editForm.imagen_url || null,
-          descripcion_web: editForm.descripcion_web || null,
-          ...(esDueno
-            ? {
-                visible_en_web: (editForm.sucursal_ids?.length === 0) || productoActual.visible_en_web,
-                sucursal_ids: Array.isArray(editForm.sucursal_ids) ? editForm.sucursal_ids : [],
-              }
-            : {}),
-        }).catch(() => {});
-      }
-
       setEditandoId(null);
       setEditForm({});
     } catch (e) {

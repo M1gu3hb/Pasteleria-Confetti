@@ -5,8 +5,6 @@ import Sidebar from './Sidebar';
 import BrandedBackground from './BrandedBackground';
 import BrandColorsApplier from './BrandColorsApplier';
 import NotificationsWatcher from './NotificationsWatcher';
-import SolicitudesQRWatcher from './SolicitudesQRWatcher';
-import PedidoListoWatcher from './PedidoListoWatcher';
 import MobileAdminRadialMenu from './MobileAdminRadialMenu';
 import { useRouteCleanup } from '@/lib/useRouteCleanup';
 
@@ -49,8 +47,6 @@ export default function AppLayout() {
         </div>
       </main>
       <NotificationsWatcher />
-      <SolicitudesQRWatcher />
-      <PedidoListoWatcher />
       <MobileAdminRadialMenu />
     </div>
   );

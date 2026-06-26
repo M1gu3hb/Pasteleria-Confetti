@@ -11,7 +11,6 @@ import { toast } from 'sonner';
 import CategoriaSelect from './CategoriaSelect';
 import ImageUploader from '@/components/common/ImageUploader';
 import { ensureCategoriaExists } from '@/utils/categoriaUtils';
-import { sincronizarProductoCreado, sincronizarActualizacionProducto } from '@/utils/posApiClient';
 import { TIPO_VENTA, validarProductoVariable, esProductoVariable } from '@/utils/tipoVentaUtils';
 import { useTerminal } from '@/lib/TerminalContext';
 import SelectorSucursalesProducto from './SelectorSucursalesProducto';
@@ -169,27 +168,10 @@ export default function ProductoSimpleDialog({ open, onClose, producto = null })
         ...tipoVentaPayload,
       };
       if (producto?.id) {
+        // Opción A (DB compartida): la web lee la misma tabla; no hay sync.
         await base44.entities.ProductoTerminado.update(producto.id, data);
-        // Sincronizar la edición a la web pública (fire-and-forget), emparejando
-        // por producto_pos_id (ID estable). Se dispara también al RENOMBRAR:
-        // 'nombre' viaja en el payload, así la web actualiza la misma copia.
-        sincronizarActualizacionProducto(producto.id, data.nombre, {
-          nombre: data.nombre,
-          precio_venta: data.precio_venta,
-          categoria_nombre: data.categoria_nombre || null,
-          imagen_url: data.imagen_url || null,
-          descripcion_web: producto?.descripcion_web || null,
-          visible_en_web: data.visible_en_web !== false,
-          sucursal_ids: data.sucursal_ids,
-        }).catch(() => {});
       } else {
-        const creado = await base44.entities.ProductoTerminado.create(data);
-        // Sincronizar a la web pública (fire-and-forget). sucursal_ids viaja en el sync.
-        sincronizarProductoCreado(creado).then(res => {
-          if (!res) toast.warning('Producto creado, pero no se sincronizó con la web. Edítalo y guarda para reintentar.');
-        }).catch(() => {
-          toast.warning('Producto creado, pero no se sincronizó con la web. Edítalo y guarda para reintentar.');
-        });
+        await base44.entities.ProductoTerminado.create(data);
       }
       queryClient.invalidateQueries({ queryKey: ['productos_all'] });
       queryClient.invalidateQueries({ queryKey: ['productos_pos'] });

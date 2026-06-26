@@ -32,7 +32,6 @@ import { useTerminal } from '@/lib/TerminalContext';
 import { sucursalIdDe } from '@/lib/sucursalQuery';
 import SucursalBadge from '@/components/common/SucursalBadge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import PropinasRegistros from '@/components/propinas/PropinasRegistros';
 import { tipsEnabled } from '@/utils/tipsUtils';
 import { useLocation } from 'react-router-dom';
 
@@ -262,9 +261,6 @@ export default function Registros() {
         <TabsList className="flex-wrap h-auto bg-white/70 backdrop-blur-sm">
           <TabsTrigger value="cortes" className="gap-1"><FileText className="w-3 h-3" />Cortes ({cortes.length}{hayMasCortes ? '+' : ''})</TabsTrigger>
           <TabsTrigger value="ventas" className="gap-1"><Receipt className="w-3 h-3" />Ventas ({ventas.length}{hayMasVentas ? '+' : ''})</TabsTrigger>
-          {showPropinas && (
-            <TabsTrigger value="propinas" className="gap-1"><Heart className="w-3 h-3" />Propinas</TabsTrigger>
-          )}
           {showOperativos && (
             <TabsTrigger value="compras" className="gap-1"><ShoppingBag className="w-3 h-3" />Compras ({comprasFiltradas.length})</TabsTrigger>
           )}
@@ -276,12 +272,6 @@ export default function Registros() {
           )}
         </TabsList>
 
-        {/* PROPINAS */}
-        {showPropinas && (
-          <TabsContent value="propinas" className="mt-4">
-            <PropinasRegistros />
-          </TabsContent>
-        )}
 
         {/* CORTES */}
         <TabsContent value="cortes" className="mt-4 space-y-3">

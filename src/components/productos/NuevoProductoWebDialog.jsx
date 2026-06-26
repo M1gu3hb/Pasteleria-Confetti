@@ -10,7 +10,6 @@ import { toast } from 'sonner';
 import SelectorSucursalesProducto from './SelectorSucursalesProducto';
 import CategoriaSelect from './CategoriaSelect';
 import ImageUploader from '@/components/common/ImageUploader';
-import { crearProductoEnWeb } from '@/utils/posApiClient';
 
 /**
  * NuevoProductoWebDialog — Fase 7
@@ -58,8 +57,9 @@ export default function NuevoProductoWebDialog({ open, esDueno, onClose, onCreat
       const visible = form.visible_en_web !== false;
       const sucursalIds = Array.isArray(form.sucursal_ids) ? form.sucursal_ids : [];
 
-      // 1) Crear en el POS.
-      const creado = await base44.entities.ProductoTerminado.create({
+      // Opción A (DB compartida): crear en la tabla `productos`. La web lee la
+      // misma tabla (vista catalogo_publico) — ya no hay sync ni producto_pos_id.
+      await base44.entities.ProductoTerminado.create({
         nombre,
         precio_venta: precio,
         imagen_url: form.imagen_url || null,
@@ -69,28 +69,6 @@ export default function NuevoProductoWebDialog({ open, esDueno, onClose, onCreat
         sucursal_ids: sucursalIds,
         categoria_id: form.categoria_id || null,
         categoria_nombre: form.categoria_nombre || null,
-      });
-
-      // 2) Sincronizar a la web pública (fire and forget). Si falla la red,
-      // el producto ya quedó guardado en el POS — solo avisamos suavemente.
-      // VÍNCULO POR ID: producto_pos_id = id del producto recién creado.
-      crearProductoEnWeb({
-        producto_pos_id: creado?.id || null,
-        nombre,
-        precio_venta: precio,
-        imagen_url: form.imagen_url || null,
-        descripcion_web: form.descripcion_web || null,
-        visible_en_web: visible,
-        activo: true,
-        categoria_id: form.categoria_id || null,
-        categoria_nombre: form.categoria_nombre || null,
-        sucursal_ids: sucursalIds,
-      }).then((res) => {
-        if (!res) {
-          toast.warning('El producto se guardó, pero no pudo sincronizarse con la web. Edítalo y guarda para reintentar.');
-        }
-      }).catch(() => {
-        toast.warning('El producto se guardó, pero no pudo sincronizarse con la web. Edítalo y guarda para reintentar.');
       });
 
       toast.success('Producto creado');

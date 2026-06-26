@@ -678,16 +678,26 @@ export default function Caja() {
 
   const handleBuscarFolioWeb = async () => {
     if (!busquedaFolioWeb.trim()) return;
+    // 🔒 CANDADO 3 (corrección): el cobro por folio se LIMITA a la sucursal del
+    // terminal. Antes este buscador NO filtraba por sucursal, así un operativo
+    // podía cobrar un pedido de OTRA sucursal y el dinero caía en la caja
+    // equivocada (la Venta paralela se sella con la sucursal del terminal).
+    const sucId = sucursalEfectiva?.sucursal_id || null;
+    if (!sucId) {
+      toast.error('Selecciona la sucursal de la terminal para buscar pedidos.');
+      return;
+    }
     try {
       const resultados = await base44.entities.PedidoPastel.filter({
         folio: busquedaFolioWeb.trim(),
         tipo_pedido: 'productos_catalogo',
+        sucursal_id: sucId,
       });
       if (Array.isArray(resultados) && resultados.length > 0) {
         setPedidoWebBuscado(resultados[0]);
       } else {
         setPedidoWebBuscado(null);
-        toast.error('No se encontró pedido web con ese folio.');
+        toast.error('No se encontró un pedido web con ese folio en tu sucursal.');
       }
     } catch (e) {
       console.error('Error búsqueda folio web:', e);

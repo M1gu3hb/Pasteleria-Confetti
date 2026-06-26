@@ -8,7 +8,6 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Trash2, AlertTriangle } from 'lucide-react';
-import { eliminarProductoConCascada } from '@/utils/posApiClient';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 
@@ -29,17 +28,12 @@ export default function EliminarProductoDialog({ open, onClose, producto, onDele
     if (!producto?.id) return;
     setBorrando(true);
     try {
-      const res = await eliminarProductoConCascada(
-        producto,
-        base44.entities.ProductoTerminado
-      );
-      if (res.ok) {
-        toast.success(`"${producto.nombre}" se eliminó de todos lados.`);
-        onDeleted?.();
-        onClose?.();
-      } else {
-        toast.error(res.error || 'No se pudo eliminar. Reintenta.');
-      }
+      // Opción A (DB compartida): un solo registro. Borrar del POS lo quita
+      // también del catálogo web por construcción (la web lee la misma tabla).
+      await base44.entities.ProductoTerminado.delete(producto.id);
+      toast.success(`"${producto.nombre}" se eliminó.`);
+      onDeleted?.();
+      onClose?.();
     } catch (e) {
       console.error('[EliminarProductoDialog]', e);
       toast.error('Ocurrió un error al eliminar. Reintenta.');

@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { Gift } from 'lucide-react';
-import { sincronizarExtrasAWeb } from '@/utils/posApiClient';
 
 // Función 1D — Configuración de los extras del formulario de pastel.
 // Lee/escribe el campo extras_pastel (JSON string) de ConfiguracionNegocio.
@@ -45,8 +44,6 @@ export default function ExtrasPastelSection({ cfg }) {
         extras_pastel: extrasJSON,
       });
       await queryClient.refetchQueries({ queryKey: ['config'] });
-      // Sincronizar extras a la web (fire and forget)
-      sincronizarExtrasAWeb(extrasJSON).catch(() => {});
       toast.success('Extras guardados');
     } catch (err) {
       console.error('[ExtrasPastelSection] guardar:', err);
