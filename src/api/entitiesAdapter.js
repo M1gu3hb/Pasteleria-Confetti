@@ -31,7 +31,7 @@ const TABLE_MAP = {
 // Base44 que no existen en el esquema migrado y evita "column does not exist").
 const COLUMNS = {
   sucursales: ['nombre','direccion','telefono','activa','folio_prefijo','orden_visual','notas','google_maps_url','whatsapp_numero'],
-  usuarios_pos: ['nombre','rol','pin','pin_hash','auth_user_id','activo','color','telefono','correo','sucursal_id','sucursal_nombre','permisos_extra'],
+  usuarios_pos: ['nombre','rol','pin_hash','auth_user_id','activo','color','telefono','correo','sucursal_id','sucursal_nombre','permisos_extra'],
   configuracion_negocio: ['nombre_negocio','nombre_sistema','platform_brand','logo_url','logo_ticket_url','logo_pdf_url','background_logo_url','background_image_url','background_fit','background_opacity','color_primario','color_secundario','color_acento','colorear_importes_monetarios','moneda','simbolo_moneda','iva_porcentaje','paquete_modo','usa_mesas','usa_cocina','usa_barra','permitir_venta_sin_stock','mostrar_costos_a_caja','mostrar_logo_ticket','mensaje_ticket','ticket_footer','pdf_footer','footer_text','descargar_pdf_corte_auto','formato_export_default','modo_presentacion_activo','presentacion_password','propinas_activas','propina_porcentajes_sugeridos','sonidos_activos','hora_inicio_dia_operativo','precio_kilo_global','precio_kilo_es_global','precio_kilo_por_sucursal','ratio_personas_por_kilo','ratio_personas_es_global','ratio_personas_por_sucursal','extras_pastel','rellenos_pastel','direccion','telefono','whatsapp','correo'],
   categorias_producto: ['nombre','descripcion','color','icono','orden','activo'],
   productos: ['nombre','categoria_id','categoria_nombre','descripcion','descripcion_web','sucursal_ids','precio_venta','imagen_url','orden','activo','visible_en_pos','visible_en_web','notas'],
