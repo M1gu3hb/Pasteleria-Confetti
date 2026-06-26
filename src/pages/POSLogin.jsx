@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
+import { loginConPin } from '@/api/supabaseClient';
 import { usePOSAuth } from '@/lib/POSAuthContext';
 import { useConfig } from '@/lib/ConfigContext';
 import { ROLE_HOME_ROUTES, ROLE_LABELS } from '@/lib/constants';
@@ -61,7 +62,10 @@ export default function POSLogin() {
         if (cargaTokenRef.current !== miToken) return;
       }
       try {
-        const list = await base44.entities.UsuarioPOS.filter({ activo: true });
+        // Fase 4: lista desde la vista usuarios_login (anon-legible, sin
+        // pin_hash y SIN cuentas terminal). Reemplaza la lectura directa de
+        // usuarios_pos (ya bloqueada para anon).
+        const list = await base44.entities.UsuarioLogin.filter({});
         if (cargaTokenRef.current !== miToken) return;
         if (Array.isArray(list)) {
           setUsuarios(list);
@@ -102,19 +106,26 @@ export default function POSLogin() {
   const tryLogin = async (pinToUse) => {
     if (!pinToUse || pinToUse.length < 4) return;
     setLoading(true);
-    const found = usuarios.find(u =>
-      u.pin === pinToUse && u.activo !== false &&
-      (selectedUser ? u.id === selectedUser.id : true)
-    );
-    if (found) {
-      login(found);
-      navigate(ROLE_HOME_ROUTES[found.rol] || '/');
-      toast.success(`Bienvenido, ${found.nombre}`);
-    } else {
-      toast.error('PIN incorrecto');
+    try {
+      // Fase 4: valida server-side y abre la sesión Supabase del operador
+      // (login_pos + signInWithPassword). Reemplaza la comparación en cliente
+      // `u.pin === pin` (la columna pin ya no existe).
+      const op = await loginConPin(pinToUse, selectedUser?.id || null);
+      if (op) {
+        login(op);
+        navigate(ROLE_HOME_ROUTES[op.rol] || '/');
+        toast.success(`Bienvenido, ${op.nombre}`);
+      } else {
+        toast.error('PIN incorrecto');
+        setPin('');
+      }
+    } catch (err) {
+      console.error('[POSLogin] tryLogin:', err);
+      toast.error('No se pudo validar el PIN.');
       setPin('');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {

@@ -25,6 +25,9 @@ const TABLE_MAP = {
   Abono: 'abonos',
   FolioContador: 'folio_contador',
   GastoOperativo: 'gastos_operativos',
+  // Vista de login (anon-legible, SIN pin_hash). Solo lectura: lista operadores
+  // seleccionables en POSLogin. No tiene COLUMNS (no se escribe).
+  UsuarioLogin: 'usuarios_login',
 };
 
 // Columnas permitidas por tabla (whitelist para writes: descarta campos de

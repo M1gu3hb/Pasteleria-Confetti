@@ -1,6 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useTerminal } from '@/lib/TerminalContext';
 import { usePOSAuth } from '@/lib/POSAuthContext';
+import { loginTerminal } from '@/api/supabaseClient';
 import ConfigurarTerminal from '@/pages/ConfigurarTerminal';
 import AccesoDuenoGate from './AccesoDuenoGate';
 
@@ -23,23 +24,39 @@ import AccesoDuenoGate from './AccesoDuenoGate';
 export default function TerminalGate({ children }) {
   const { terminal, modoDuenoDispositivo, isLoading: terminalLoading } = useTerminal();
   const { posUser, login, isLoading: authLoading } = usePOSAuth();
+  const [sesionError, setSesionError] = useState(null);
+  // Evita doble apertura de sesión terminal mientras posUser aún no se refleja.
+  const autoLoginRef = useRef(false);
 
   // Auto-login del empleado virtual cuando hay terminal y aún no hay usuario.
-  // Rol 'caja' = acceso operativo a Caja/POS sin módulos admin.
-  // NO aplica en dispositivo de dueño (ahí siempre se entra con PIN).
+  // Fase 4: ANTES de loguear al empleado, abre la sesión Supabase de la cuenta
+  // TERMINAL de la sucursal (scoped por RLS). Rol 'caja' = acceso operativo a
+  // Caja/POS sin módulos admin. NO aplica en dispositivo de dueño (entra con PIN).
   useEffect(() => {
     if (terminalLoading || authLoading) return;
     if (modoDuenoDispositivo) return;
     if (!terminal) return;
     if (posUser) return;
-    login({
-      id: 'empleado_terminal',
-      nombre: 'Empleado',
-      rol: 'caja',
-      es_empleado_virtual: true,
-      sucursal_id: terminal.sucursal_id,
-      sucursal_nombre: terminal.sucursal_nombre,
-    });
+    if (autoLoginRef.current) return;
+    autoLoginRef.current = true;
+
+    (async () => {
+      const res = await loginTerminal(terminal.sucursal_id);
+      if (!res.ok) {
+        autoLoginRef.current = false;
+        setSesionError(res.error || 'No se pudo abrir la sesión de la terminal.');
+        return;
+      }
+      setSesionError(null);
+      login({
+        id: 'empleado_terminal',
+        nombre: 'Empleado',
+        rol: 'caja',
+        es_empleado_virtual: true,
+        sucursal_id: terminal.sucursal_id,
+        sucursal_nombre: terminal.sucursal_nombre,
+      });
+    })();
   }, [terminal, modoDuenoDispositivo, posUser, terminalLoading, authLoading, login]);
 
   if (terminalLoading || authLoading) {
@@ -58,6 +75,25 @@ export default function TerminalGate({ children }) {
   // Sin terminal → pantalla de configuración (sin PIN).
   if (!terminal) {
     return <ConfigurarTerminal />;
+  }
+
+  // Falló la apertura de la sesión terminal (Supabase) → no entrar a ciegas.
+  if (sesionError) {
+    return (
+      <div className="fixed inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
+        <p className="text-sm text-muted-foreground max-w-sm">
+          No se pudo conectar la terminal con el servidor. Revisa la conexión e intenta de nuevo.
+        </p>
+        <p className="text-[11px] text-muted-foreground/60">{sesionError}</p>
+        <button
+          type="button"
+          onClick={() => { autoLoginRef.current = false; setSesionError(null); }}
+          className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold"
+        >
+          Reintentar
+        </button>
+      </div>
+    );
   }
 
   // Con terminal pero el auto-login aún no resolvió → spinner breve.

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { validarPin } from '@/api/supabaseClient';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Delete, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
@@ -37,25 +37,13 @@ export default function ModalPinAdmin({
     if (validando) return;
     setValidando(true);
     try {
-      // Traer usuarios activos con rol admin (dueño o administrador) y
-      // buscar por PIN en memoria (filtro por rol exacto no admite OR).
-      // Reintento corto: un usuario recién creado puede no aparecer en la
-      // primera lectura por consistencia eventual. Si no se encuentra, se
-      // reintenta una vez tras una breve espera (cubre el "PIN no disponible
-      // hasta re-guardar" sin tocar la lógica de creación).
-      const buscarUsuario = async () => {
-        const users = await base44.entities.UsuarioPOS.filter({ activo: true });
-        const arr = Array.isArray(users) ? users : [];
-        return arr.find(
-          (u) => u?.pin === pinToCheck && ROLES_ADMIN.includes(u?.rol)
-        );
-      };
-
-      let found = await buscarUsuario();
-      if (!found) {
-        await new Promise((r) => setTimeout(r, 600));
-        found = await buscarUsuario();
-      }
+      // Fase 4: valida el PIN server-side vía RPC login_pos (contra pin_hash
+      // bcrypt). NO abre sesión Supabase: el modo administrador se queda sobre
+      // la sesión TERMINAL (hereda su sucursal); el dueño abre su sesión global
+      // en su propio handler (loginConPin con _pin). Solo se acepta si el
+      // operador resultante tiene rol admin/dueño.
+      const op = await validarPin(pinToCheck);
+      const found = op && ROLES_ADMIN.includes(op.rol) ? op : null;
 
       if (!found) {
         toast.error('PIN incorrecto');
@@ -74,7 +62,9 @@ export default function ModalPinAdmin({
 
       const adminRole = esDueno ? 'dueno' : 'administrador';
       toast.success(`Acceso ${esDueno ? 'dueño' : 'administrador'}: ${found.nombre}`);
-      if (typeof onSuccess === 'function') onSuccess({ ...found, adminRole });
+      // _pin: lo necesita el handler del dueño para abrir su sesión global
+      // (signInWithPassword). Transitorio, solo en memoria.
+      if (typeof onSuccess === 'function') onSuccess({ ...found, adminRole, _pin: pinToCheck });
       onOpenChange(false);
     } catch (err) {
       console.error('[ModalPinAdmin] validar:', err);

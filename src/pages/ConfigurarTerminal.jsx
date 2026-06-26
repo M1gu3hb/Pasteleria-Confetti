@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { loginConPin } from '@/api/supabaseClient';
 import { useConfig } from '@/lib/ConfigContext';
 import { useTerminal } from '@/lib/TerminalContext';
 import { usePOSAuth } from '@/lib/POSAuthContext';
@@ -24,12 +25,25 @@ export default function ConfigurarTerminal({ onConfigurado }) {
   const [guardando, setGuardando] = useState(false);
   const [showPinDueno, setShowPinDueno] = useState(false);
 
-  // Flujo "Soy dueño": valida PIN de dueño, marca el dispositivo como de
-  // dueño (no terminal fija) y abre sesión de dueño.
-  const handleDuenoSuccess = (duenoUser) => {
+  // Flujo "Soy dueño": valida PIN de dueño, abre su sesión Supabase global,
+  // marca el dispositivo como de dueño (no terminal fija) y entra.
+  const handleDuenoSuccess = async (duenoUser) => {
     try {
+      // Fase 4: sesión Supabase REAL del dueño (global, pos_is_admin).
+      const op = await loginConPin(duenoUser._pin, duenoUser.id);
+      if (!op) {
+        toast.error('No se pudo iniciar la sesión de dueño.');
+        return;
+      }
       activarDispositivoDueno();
-      activarAdmin('dueno');
+      // FIX: activarAdmin espera el UsuarioPOS COMPLETO (lee usuario.rol).
+      // Antes recibía el string 'dueno' → rol undefined → adminMode quedaba en
+      // false y el dispositivo de dueño no dejaba entrar.
+      const res = await activarAdmin(duenoUser);
+      if (res && res.ok === false) {
+        console.error('[ConfigurarTerminal] activarAdmin:', res.error);
+        return;
+      }
       login({ ...duenoUser, sucursal_id: null, sucursal_nombre: null });
     } catch (err) {
       console.error('[ConfigurarTerminal] handleDuenoSuccess:', err);

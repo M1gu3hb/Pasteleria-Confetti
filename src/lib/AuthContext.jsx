@@ -4,10 +4,11 @@ import { ensureSession } from '@/api/supabaseClient';
 // =====================================================================
 // AuthContext (migrado): ya NO usa el auth de plataforma de Base44
 // (createAxiosClient, /public-settings, base44.auth.me). El login de
-// OPERADOR del POS vive en POSAuthContext (rol/PIN). Aquí solo se asegura
-// una sesión Supabase temporal (rol authenticated) para que apliquen las
-// políticas RLS amplias en Fase 2/3. En Fase 4 esto se reemplaza por
-// Supabase Auth real por usuario.
+// OPERADOR del POS vive en POSAuthContext (rol/PIN). Aquí solo se llama a
+// ensureSession() al montar para que, si este dispositivo es una TERMINAL
+// configurada, quede abierta su sesión Supabase (scoped por RLS a su
+// sucursal) antes de las primeras queries. La sesión staging de Fase 2/3 ya
+// NO se usa: el bootstrap es la cuenta terminal (ver supabaseClient.js).
 // Se conserva la MISMA interfaz pública para no tocar a los consumidores.
 // =====================================================================
 const AuthContext = createContext();

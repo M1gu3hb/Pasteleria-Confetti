@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { loginConPin, loginTerminal, logoutOperador } from '@/api/supabaseClient';
 import { usePOSAuth } from '@/lib/POSAuthContext';
 import { useTerminal } from '@/lib/TerminalContext';
 import { useConfig } from '@/lib/ConfigContext';
 import { getNavForRole } from '@/lib/permissions';
 import { isRouteAllowed } from '@/lib/packageConfig';
-import { ROLE_LABELS } from '@/lib/constants';
 import {
   LayoutDashboard, ShoppingCart, UtensilsCrossed, ChefHat,
   Receipt, Scissors, Package, ShoppingBag, BookOpen, Tag, Settings,
@@ -93,10 +93,31 @@ export default function Sidebar({ collapsed, onToggle }) {
   useEffect(() => { setMobileOpen(false); }, [location.pathname]);
 
   // PIN validado para ENTRAR a modo admin → activar con el usuario completo.
-  // activarAdmin guarda el adminUser y valida sucursal del administrador.
-  // Si el administrador no tiene sucursal asignada, NO entra y se avisa.
+  // Fase 4 (mapeo sesión→RLS):
+  //  - DUEÑO: abre su sesión Supabase REAL (global, pos_is_admin) → ve todas.
+  //  - ADMINISTRADOR: NO cambia la sesión; se queda sobre la sesión TERMINAL
+  //    (hereda su sucursal). Solo eleva la UI. Debe ser de ESTA sucursal.
   const handleAdminSuccess = async (adminUser) => {
     try {
+      const esDuenoLogin = adminUser?.adminRole === 'dueno';
+
+      if (esDuenoLogin) {
+        // Sesión global del dueño (ModalPinAdmin ya validó el PIN; loginConPin
+        // lo revalida y hace signInWithPassword).
+        const op = await loginConPin(adminUser._pin, adminUser.id);
+        if (!op) {
+          toast.error('No se pudo iniciar la sesión de dueño.');
+          return;
+        }
+      } else if (terminal?.sucursal_id && adminUser?.sucursal_id !== terminal.sucursal_id) {
+        // Administrador de OTRA sucursal: no eleva en esta terminal (la RLS lo
+        // confinaría a la sucursal de la terminal de todos modos; esto da UX clara).
+        toast.error('Este administrador es de otra sucursal y no puede entrar en esta terminal.');
+        return;
+      }
+      // (Administrador de esta sucursal: NO se toca la sesión Supabase; opera
+      //  sobre la sesión terminal scoped.)
+
       const res = await activarAdmin(adminUser);
       if (res && res.ok === false) {
         toast.error(res.error || 'No se pudo activar el modo administrador.');
@@ -133,13 +154,22 @@ export default function Sidebar({ collapsed, onToggle }) {
 
   // Salir de modo admin → volver al empleado virtual (sin sesión admin).
   // En dispositivo de dueño no hay empleado virtual: solo se cierra la sesión.
-  const handleSalirAdmin = () => {
+  const handleSalirAdmin = async () => {
     try {
+      const wasDueno = esDueno; // capturar antes de que salirAdmin() lo limpie
       salirAdmin();
       if (modoDuenoDispositivo) {
-        // Dispositivo de dueño → AccesoDuenoGate volverá a pedir PIN.
+        // Dispositivo de dueño → cerrar la sesión Supabase del dueño;
+        // AccesoDuenoGate volverá a pedir PIN.
+        await logoutOperador();
         logout();
         return;
+      }
+      // Terminal física: si veníamos de una sesión de DUEÑO (global), volver a
+      // la sesión TERMINAL (scoped) antes de operar como empleado. Para
+      // administrador no hubo cambio de sesión, así que no hay nada que restaurar.
+      if (wasDueno && terminal?.sucursal_id) {
+        await loginTerminal(terminal.sucursal_id);
       }
       login({
         id: 'empleado_terminal',

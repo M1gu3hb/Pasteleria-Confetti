@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { useConfig } from '@/lib/ConfigContext';
 import { useTerminal } from '@/lib/TerminalContext';
 import { usePOSAuth } from '@/lib/POSAuthContext';
+import { loginConPin } from '@/api/supabaseClient';
 import ModalPinAdmin from './ModalPinAdmin';
 import { Crown, Sparkles } from 'lucide-react';
+import { toast } from 'sonner';
 
 /**
  * AccesoDuenoGate — Fase 2A.fix
@@ -27,6 +29,14 @@ export default function AccesoDuenoGate({ children }) {
 
   const handleSuccess = async (duenoUser) => {
     try {
+      // Fase 4: abre la sesión Supabase REAL del dueño (global, pos_is_admin).
+      // Sin esto la RLS no dejaría ver todas las sucursales. ModalPinAdmin ya
+      // validó el PIN; loginConPin lo revalida y hace signInWithPassword.
+      const op = await loginConPin(duenoUser._pin, duenoUser.id);
+      if (!op) {
+        toast.error('No se pudo iniciar la sesión de dueño.');
+        return;
+      }
       // activarAdmin espera el UsuarioPOS COMPLETO (lee usuario.rol). Antes se
       // pasaba el string 'dueno' → usuario.rol quedaba undefined, se trataba
       // como administrador sin sucursal y devolvía { ok:false }, dejando

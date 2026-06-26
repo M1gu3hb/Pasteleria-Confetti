@@ -1,6 +1,7 @@
 import React, { createContext, useContext } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 import {
   getCurrentPackage,
   getPackageLabel,
@@ -57,7 +58,21 @@ export function ConfigProvider({ children }) {
   // (evita parpadeos de switches en cualquier pantalla que use useConfig).
   const { data, isLoading } = useQuery({
     queryKey: ['config'],
-    queryFn: () => base44.entities.ConfiguracionNegocio.list(),
+    // Fase 4: autenticado (sesión terminal/dueño) → config COMPLETA de la tabla.
+    // Pre-login (anon, p. ej. ConfigurarTerminal / AccesoDuenoGate) → la tabla
+    // está bloqueada para anon, así que caemos a la vista pública config_publica
+    // (anon-legible) para preservar el branding de las pantallas de entrada.
+    queryFn: async () => {
+      try {
+        const full = await base44.entities.ConfiguracionNegocio.list();
+        if (Array.isArray(full) && full.length > 0) return full;
+      } catch { /* anon/sin acceso → fallback a vista pública */ }
+      try {
+        const { data: pub } = await supabase.from('config_publica').select('*').limit(1);
+        if (Array.isArray(pub) && pub.length > 0) return pub;
+      } catch { /* noop */ }
+      return [];
+    },
     placeholderData: (prev) => prev,
     staleTime: 3000,
   });
