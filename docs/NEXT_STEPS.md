@@ -1,6 +1,9 @@
 # NEXT_STEPS
 
-Última actualización: 2026-06-26 (fin de sesión: wiring de Fase 4 HECHO).
+Última actualización: 2026-06-26 (Fase 4 CERRADA + Fase 5 de fidelidad HECHA).
+
+> Nota de terminología: Miguel redefinió **Fase 5 = Validación de FIDELIDAD** (POS migrado vs Base44 vivo).
+> El **bot de paridad** pasa a ser "al final" (con la Web ya migrada), no Fase 5.
 
 > Repo/working tree estable: `C:\Pasteleria Confetti\pos` (clon de
 > `M1gu3hb/Pasteleria-Confetti@migracion/supabase`). El scratchpad de la sesión anterior era temporal.
@@ -11,10 +14,9 @@ PIN sobre la sesión terminal (scoped por RLS); administrador=PIN que **desbloqu
 terminal** (mismo alcance de sucursal, exige `sucursal==terminal`); dueño=PIN que abre **sesión global**
 (`pos_is_admin`). Ver `DECISIONS.md` y la sección de esta sesión en `CHANGELOG.md`.
 
-## ✅ WIRING DE FASE 4 — HECHO (pendiente de firma de Miguel)
-Wireados 6 archivos + `ConfigContext` (#7) + `entitiesAdapter` (mapeo de vista) + migración 0015
-(3 cuentas terminal; `usuarios_login` excluye `pin_hash null`). Build verde, **smoke UI 4/4**,
-**adversarial RLS 25/25** (`scripts/fase4_rls_adversarial.mjs`). Datos de prueba limpiados.
+## ✅ FASE 4 — CERRADA (firmada por Miguel)
+Wiring de auth (6 archivos + `ConfigContext` + `entitiesAdapter`) + migraciones 0015/0016. Auth real
+(terminal/admin/dueño), RLS scoped, adversarial 31/31, `_pin` no persiste, dueño entra y restaura terminal.
 
 ## ✅ GATE DE AISLAMIENTO — RESUELTO (sesión cont. 2)
 - **GATE-1:** `/login-pos`/`POSLogin` **RETIRADO** (era el hueco: un admin abría sesión global por ahí). No era load-bearing. Borrados ruta + componente + deps huérfanas.
@@ -23,14 +25,18 @@ Wireados 6 archivos + `ConfigContext` (#7) + `entitiesAdapter` (mapeo de vista) 
 - **GATE-4:** adversarial **31/31** incluyendo "validar PIN de admin NO escala la sesión; admin-B confinado a A".
 - **GATE-5 (re-smoke UI del fix `_pin`):** 4/4 por UI — empleado abre caja + vende; admin eleva (sesión sigue terminal, `posUser`=admin real); admin de otra sucursal rechazado; dueño entra (usa `_pin`, funciona tras el strip) → global → al salir restaura terminal. **`posUser` sin `_pin`** en ambas elevaciones. 0 errores.
 
-## 🔴 PRÓXIMO PASO: AUDITORÍA + FIRMA DE MIGUEL (no encadenar solo)
-Miguel/su arquitecto revisan `migracion/supabase` (dinero + aislamiento RLS) → cierra Fase 4. Decisiones ya aprobadas: admin=desbloqueo de UI; ConfigContext→config_publica; password terminal embebido OK staging (prod = provisión por dispositivo en cutover). Resto a confirmar:
-- Mapeo sesión→RLS: admin sobre la sesión terminal (no `signInWithPassword`); dueño global con restauración de la terminal al salir.
-- Migración 0016: en cutover real se re-siembra con los PINs del export de Base44.
+## ✅ FASE 5 — Validación de FIDELIDAD: HECHA (pendiente de revisión de Miguel)
+Comparación solo-lectura vs Base44 vivo (MCP). Detalle en `CHANGELOG.md` (sesión cont. 3).
+- **BLOQUE A** (maestros): **0 diffs** — sucursales 3, categorías 8, productos 20, usuarios 33, config (precio_kilo_global=140, ratio=7, propinas_activas=false, extras/rellenos) idénticos.
+- **BLOQUE B** (pantallas/flujos vs MD 03): todo presente y conforme (POS+Otros, Caja+CANDADO 3+cola web filtrada, Ventas cancel/devolver, Productos sin sync, PedidosPastel entregar saldo 0, Dashboard).
+- **BLOQUE C** (corte real línea por línea): **14/14 campos idénticos** en CONF-C-C073 (con abono efectivo → doble conteo presente e idéntico) y CONF-A-C03358 (sin abono). Harness `scripts/fase5_corte_fidelity.mjs`.
 
-## DESPUÉS (con luz verde de Fase 4)
-- **Fase 5** (bot de paridad vs Base44, ya existe en otro proyecto de Miguel): dejar el sistema listo para conectarlo; documentar cómo apuntarlo a esta Supabase/Vercel; correr a volumen y comparar cortes idénticos. Lo firma Miguel.
+## 🔴 PRÓXIMO PASO: REVISIÓN DE MIGUEL (no encadenar solo)
+Miguel revisa la Fase 5. **NO iniciar la Web** hasta su luz verde.
+
+## DESPUÉS (con luz verde de Fase 5)
 - **Web** (sub-proyecto aparte): apuntar a la misma Supabase (vista `catalogo_publico` + RLS anon ya listas).
+- **Bot de paridad** (al final, con la Web ya migrada; vive en otro proyecto de Miguel): correr a volumen y comparar cortes vs Base44. Lo firma Miguel.
 
 ## PENDIENTES HUMANOS DE MIGUEL
 - Import Vercel: GitHub→Vercel, repo PRIVADO, rama `migracion/supabase`, + 4 env vars (ver `supabase/STAGING_NOTES.md`). Sin Vercel CLI ni git-link, no es automatizable.

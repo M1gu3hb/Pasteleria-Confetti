@@ -12,8 +12,9 @@ Independizar el **POS interno** de Pastelería Confetti de Base44, dejándolo **
 - **Fase 1** (esquema unificado): COMPLETA y APLICADA en staging, auditada.
 - **Fase 2** (seed maestros + port capa de datos + smoke): COMPLETA, auditada. Build verde; smoke en preview local OK.
 - **Fase 3** (validación aritmética del dinero): COMPLETA, auditada. + **PASO 0 gate money-crítico CERRADO LIMPIO**.
-- **Fase 4** (Auth + RLS): capa DB+RLS HECHA y PROBADA, **y el WIRING de la UI de auth también HECHO** (Opción A; 6 archivos + ConfigContext + migración 0015). Build verde, **smoke UI 4/4**, **adversarial RLS 25/25**. La app YA loguea por UI (empleado/admin/dueño). **Fase 4 NO se da por cerrada hasta la firma de Miguel** (dinero + aislamiento). Ver `CHANGELOG.md` (sesión 2026-06-26 cont.) y `DECISIONS.md` (13–17).
-- **Fase 5** (bot de paridad vs Base44, vive en otro proyecto de Miguel): NO iniciada.
+- **Fase 4** (Auth + RLS + wiring): **CERRADA (firmada por Miguel).** Opción A; auth real terminal/admin/dueño; RLS scoped; migraciones 0015/0016; adversarial 31/31; `_pin` no persiste. Ver `CHANGELOG.md` (cont./cont.2) + `DECISIONS.md` (13–19).
+- **Fase 5** (Validación de FIDELIDAD vs Base44 vivo): **HECHA, pendiente de revisión de Miguel.** Maestros 0 diffs; pantallas/flujos conformes; corte real 14/14 campos idénticos (incl. doble conteo). Ver `CHANGELOG.md` (cont. 3). (El **bot de paridad** queda para el final, con la Web ya migrada.)
+- **Web** (sub-proyecto): NO iniciada (espera luz verde de Fase 5).
 
 ## 3. Stack
 - Frontend: React 18 + Vite 6 + Tailwind 3 + React Router 6 + React Query 5 (export de Base44, migrado). Sin TS en el front.

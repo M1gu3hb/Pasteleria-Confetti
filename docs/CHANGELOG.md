@@ -104,6 +104,32 @@ El strip de `_pin` tocó el flujo de elevación y no se había probado por UI. R
 - **(4) Dueño (PIN 9999):** **SÍ entra tras el strip** (usa `_pin` para `signInWithPassword`) → sesión global (`pos_is_admin=true`, cuenta dueño, no terminal), vista general (Dashboard/Pedidos/Ventas/Web/Config + "Ver otra sucursal"); `posUser`=TEST_DUENO **sin `_pin`**; al **Salir de dueño** RESTAURA la sesión terminal scoped (`pos_is_admin=false`, Xochimilco) ✓.
 - 0 errores de consola. Sin cambios de código (el fix ya estaba en commit `0602bca`). Datos/cuentas de prueba limpiados.
 
+## Sesión 2026-06-26 (cont. 3) — FASE 5: Validación de FIDELIDAD (POS migrado vs Base44 vivo)
+Comparación SOLO-LECTURA contra Base44 vía su MCP (app `Pasteleria Confetti` `6a28a71350ef872d8486262b`). No es el bot (eso es al final). NO se escribió nada en Base44.
+
+### BLOQUE A — Paridad de datos maestros: **0 diffs**
+- **sucursales** 3/3 (A/B/C, activas, orden 1/2/3) idénticas.
+- **categorías** 8/8 (7 activas + General inactiva; nombre/orden/activo) idénticas.
+- **productos** 20/20 idénticos (nombre, precio_venta, categoria_nombre, visible_en_web, visible_en_pos, activo, sucursal_ids): incl. `prueba 1` web=false y `prueba suscursal` con 1 sucursal (Xochimilco).
+- **usuarios** 33/33 idénticos (nombre, rol, sucursal, activo; pin no expuesto): 6 dueño + 12 admin + 15 caja.
+- **configuracion_negocio**: todos los campos migrados idénticos — `precio_kilo_global=140`, `ratio_personas_por_kilo=7`, `hora_inicio_dia_operativo=06:00`, `propinas_activas=false`, colores #E8579A/#FFF8F4/#5C2D1E, extras (base50/oblea30/muñeca80/velas25), rellenos (8, precio_kilo 0). (Campos de plantilla restaurante/integraciones/portal_qr NO migrados = subset curado, decisión de migración; no son datos que Confetti use.)
+
+### BLOQUE B — Paridad de pantallas/flujos (vs MD 03): todo presente y conforme
+- **POS**: tabs por categoría + bucket "Otros" para huérfanos.
+- **Caja**: corte lee solo `Venta estado='pagada'` (L193); cola web `tipo_pedido=productos_catalogo + origen=web + estado=pendiente + sucursal_id` (filtrada por sucursal); buscador de venta por folio; **CANDADO 3** = `handleBuscarFolioWeb` filtra por sucursal del terminal (L685-694).
+- **Ventas**: cancelar/devolver vía `CancelarVentaDialog`.
+- **Productos**: CRUD directo; **puente Base44 muerto** (sin `posApiClient`/`producto_pos_id`/sync — solo un comentario que lo documenta en `NuevoProductoWebDialog`).
+- **PedidosPastel**: `RegistrarPagoDialog` reusado (pastel y catálogo); "Entregado" bloqueado si `saldo_pendiente>0` (`PedidoPastelDetalleDialog`).
+- **Dashboard** del dueño presente. (Las 9 páginas de plantilla restaurante se descartaron en Fase 2 — no son de Confetti.)
+
+### BLOQUE C — Spot-check de corte real línea por línea: **14/14 campos idénticos**
+Harness `scripts/fase5_corte_fidelity.mjs`: recrea inputs EXACTOS de cortes reales en staging, los lee por la sesión terminal y genera el resumen con la **función real `desgloseMetodosPagoExacto`** + fórmulas verbatim del cierre (Caja.jsx:291-300, 1440), comparando contra los valores ALMACENADOS de Base44.
+- **CONF-C-C073** (San Gregorio, 42 ventas pagadas + 4 abonos, **con abono efectivo**): total_efectivo 30333.69, total_tarjeta 20032.46, total_transferencia 4839.6, total_general 55205.75, numero_ventas 42, ticket_promedio 1314.42…, **efectivo_esperado 30743.69** = total_efectivo + abono efectivo (410) → **doble conteo PRESENTE e idéntico en ambos lados**.
+- **CONF-A-C03358** (Xochimilco, 48 ventas pagadas + 2 abonos, sin abono efectivo): los 7 campos idénticos; efectivo_esperado 34405.4 (sin doble conteo, correcto).
+- total_cancelaciones = 0 en ambos (no se computa en el cierre, igual que Base44). Datos de prueba limpiados (staging solo maestros: usuarios_pos=36, login=33, transaccional=0).
+
+**Resultado Fase 5: el POS migrado cuadra IDÉNTICO a Base44** (maestros, pantallas y dinero del corte, incluido el quirk). Pendiente: revisión de Miguel. No se inicia la Web.
+
 ### Migraciones aplicadas en staging (repo `supabase/migrations/`)
 0001 esquema_unificado · 0002 hardening_anon_grants · 0003 harden_siguiente_folio_execute · 0004 harden_rls_auto_enable_execute · 0005 ajustes_schema_datos_vivos · 0006 seed_datos_maestros · 0007 config_campos_json_string · 0008 storage_bucket_uploads · 0009 actor_ids_a_text · 0010 config_propinas_activas · 0011 config_sonidos_activos · 0012 fase4_rls_por_rol_sucursal · 0013 fase4_drop_pin_plano · 0014 fase4_login_pos_rpc · 0015 fase4_cuentas_terminal · **0016 provision_auth_operadores**.
 (Nota: el seeding de `auth.users` por operador se hizo vía SQL directo, no como migración versionada — password derivado `POS-<pin>`; ver `supabase/STAGING_NOTES.md`.)
