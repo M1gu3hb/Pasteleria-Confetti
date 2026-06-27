@@ -16,17 +16,16 @@ Wireados 6 archivos + `ConfigContext` (#7) + `entitiesAdapter` (mapeo de vista) 
 (3 cuentas terminal; `usuarios_login` excluye `pin_hash null`). Build verde, **smoke UI 4/4**,
 **adversarial RLS 25/25** (`scripts/fase4_rls_adversarial.mjs`). Datos de prueba limpiados.
 
+## ✅ GATE DE AISLAMIENTO — RESUELTO (sesión cont. 2)
+- **GATE-1:** `/login-pos`/`POSLogin` **RETIRADO** (era el hueco: un admin abría sesión global por ahí). No era load-bearing. Borrados ruta + componente + deps huérfanas.
+- **GATE-2:** sellado de actor VERIFICADO = usa `posUser` → admin real al elevar (no centinela). Bug `_pin`→sessionStorage corregido.
+- **GATE-3:** migración **0016** reproduce los auth.users de operadores (idempotente, NO-OP en staging).
+- **GATE-4:** adversarial **31/31** incluyendo "validar PIN de admin NO escala la sesión; admin-B confinado a A".
+
 ## 🔴 PRÓXIMO PASO: AUDITORÍA + FIRMA DE MIGUEL (no encadenar solo)
-Miguel/su arquitecto revisan `migracion/supabase` (dinero + aislamiento RLS) antes de dar Fase 4 por
-cerrada. Puntos a auditar (marcados en código + CHANGELOG):
-- Mapeo sesión→RLS: admin sobre la sesión terminal (no `signInWithPassword`); dueño global con
-  restauración de la terminal al salir.
-- `ConfigContext` cae a `config_publica` sin sesión (preserva branding pre-login).
-- Cuentas terminal: password fijo embebido `POS-TERMINAL-CONFETTI` (en el bundle vía `VITE_*`; mismo
-  modelo de confianza que la cuenta staging; acotado por RLS scoped). ¿OK para staging? ¿Provisión por
-  dispositivo en producción?
-- `POSLogin` (`/login-pos`) es secundario/legacy: un operador que entre ahí abre SU sesión (un
-  administrador quedaría global por su rol). Decidir si se conserva o se retira esa ruta.
+Miguel/su arquitecto revisan `migracion/supabase` (dinero + aislamiento RLS) → cierra Fase 4. Decisiones ya aprobadas: admin=desbloqueo de UI; ConfigContext→config_publica; password terminal embebido OK staging (prod = provisión por dispositivo en cutover). Resto a confirmar:
+- Mapeo sesión→RLS: admin sobre la sesión terminal (no `signInWithPassword`); dueño global con restauración de la terminal al salir.
+- Migración 0016: en cutover real se re-siembra con los PINs del export de Base44.
 
 ## DESPUÉS (con luz verde de Fase 4)
 - **Fase 5** (bot de paridad vs Base44, ya existe en otro proyecto de Miguel): dejar el sistema listo para conectarlo; documentar cómo apuntarlo a esta Supabase/Vercel; correr a volumen y comparar cortes idénticos. Lo firma Miguel.

@@ -2,7 +2,7 @@
 
 ## Capa de datos
 ### `src/api/supabaseClient.js`
-Cliente Supabase + `ensureSession()`. Hoy `ensureSession` hace auto-signin de la cuenta temporal `staging-pos@confetti.local` (Fase 2/3). **Al cerrar Fase 4 (wiring):** quitar ese auto-signin; agregar `loginConPin(pin,userId?)` y `loginTerminal(sucursalId)` + `logoutOperador()`. **No romper:** `ensureSession()` lo llama el adapter antes de cada query.
+Cliente Supabase + auth (Fase 4 HECHA): `ensureSession()` bootstrapea la sesión **TERMINAL** desde localStorage (ya NO la cuenta staging) + `loginTerminal(sucursalId)` / `validarPin(pin,userId?)` (RPC, sin signin, para admin) / `loginConPin(pin,userId?)` (RPC + signin, para dueño) / `logoutOperador()`. **No romper:** `ensureSession()` lo llama el adapter antes de cada query (debe auto-resolver la sesión correcta).
 
 ### `src/api/entitiesAdapter.js` ⚠️ CRÍTICO
 Replica el contrato `base44.entities.X.filter/list/get/create/update/delete/bulkCreate` sobre Supabase.
@@ -29,24 +29,30 @@ Shim `base44`: `entities` (del adapter) + `integrations.Core.UploadFile`→Supab
 ### `src/utils/tipsUtils.js`
 - `desgloseMetodosPagoExacto` (función REAL usada por el resumen). `tipsEnabled` default-on si `propinas_activas` undefined → por eso se migró `propinas_activas=false`.
 
-## Auth (wiring PENDIENTE — Fase 4)
-### `src/pages/POSLogin.jsx`
-Hoy: lista `UsuarioPOS.filter({activo:true})` (anon ya NO puede) y compara `u.pin===pin` (pin eliminado). **Wiring:** listar vía vista `usuarios_login`; login vía `loginConPin(pin, selectedUser?.id)`.
+## Auth (Fase 4 — WIREADO; pendiente de firma)
+> `POSLogin.jsx` / ruta `/login-pos` **RETIRADOS** (hueco de aislamiento). También borrados `LoginBrandColors.jsx` y `ensureDefaultAdmin.js` (deps exclusivas). El modelo NO tiene login standalone.
 ### `src/components/common/TerminalGate.jsx`
-Auto-login de "Empleado" virtual (35-42) sin sesión Supabase. **Wiring:** `await loginTerminal(sucursal_id)` (opción A) antes de `login(...)`.
-### `src/components/common/ModalPinAdmin.jsx` + `AccesoDuenoGate.jsx`
-Validan PIN de admin/dueño. **LEERLOS antes de tocar** (no se leyeron). Wiring: validar vía `loginConPin`.
+Auto-login de "Empleado" virtual; ahora `await loginTerminal(terminal.sucursal_id)` (sesión terminal scoped) **antes** de `login(...)`; estado de error si falla.
+### `src/components/common/ModalPinAdmin.jsx`
+Valida PIN vía `validarPin` (RPC `login_pos`, **sin** abrir sesión). Devuelve el operador + `_pin` (transitorio).
+### `src/components/common/AccesoDuenoGate.jsx` + `src/pages/ConfigurarTerminal.jsx`
+Dueño: `loginConPin(_pin, id)` → sesión global. **Separan `_pin`** antes de `login()` (no persiste).
+### `src/components/common/Sidebar.jsx` ⚠️ candado-sensible
+Elevación: administrador = `activarAdmin` sobre la sesión terminal (exige `sucursal==terminal`, sin signin); dueño = `loginConPin` (global) y al salir `loginTerminal` (restaura scoped). Separa `_pin`.
+### `src/lib/ConfigContext.jsx`
+`queryFn` cae a la vista `config_publica` (anon) si la tabla no es legible sin sesión → branding pre-login.
 ### `src/lib/AuthContext.jsx`
-Ya simplificado (sin auth de plataforma Base44). Provee `useAuth` con interfaz estable; `isAuthenticated:true`. Asegura sesión Supabase.
+Llama `ensureSession()` al montar (bootstrap terminal). `useAuth` con interfaz estable; `isAuthenticated:true`.
 ### `src/lib/POSAuthContext.jsx`
-`posUser` en sessionStorage (identidad de UI). `login(user)`/`logout()`. La sesión Supabase es aparte (supabaseClient).
+`posUser` en sessionStorage (identidad de UI; = admin real al elevar). `login(user)`/`logout()`. La sesión Supabase es aparte (supabaseClient).
 
 ## Config / build
 - `vite.config.js`: sin `@base44/vite-plugin`; alias `@`→`./src` (lo daba el plugin; **no quitarlo**).
 - `package.json`: +`@supabase/supabase-js`; sin `@base44/*`, `@stripe/*`, `react-leaflet`, `three`.
-- `.env` (gitignored): VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, VITE_STAGING_AUTH_EMAIL/PASSWORD. Ver `.env.example` y `supabase/STAGING_NOTES.md`.
-- `.claude/launch.json`: dev server (vite :5173) para el preview MCP.
+- `.env` (gitignored): VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, **VITE_TERMINAL_PASSWORD** (cuentas terminal), VITE_STAGING_AUTH_EMAIL/PASSWORD (legado). Ver `.env.example` y `supabase/STAGING_NOTES.md`.
+- `.claude/launch.json`: dev server (vite) para el preview MCP.
 
 ## SQL
-- `supabase/migrations/0001-0014` — ver DATABASE.md / CHANGELOG.md.
+- `supabase/migrations/0001-0016` — ver DATABASE.md / CHANGELOG.md.
+- `scripts/fase4_rls_adversarial.mjs` — harness adversarial de RLS (31/31). Requiere datos sembrados + cuentas de prueba (ver CHANGELOG).
 - `supabase/STAGING_NOTES.md` — cuenta de staging + env vars Vercel + modelo auth por operador.

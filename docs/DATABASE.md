@@ -41,8 +41,14 @@ se queda sobre ella; el dueño abre su propia sesión global. **Gotcha:** al ins
 `confirmation_token/recovery_token/email_change/email_change_token_new` deben ir `''` (no NULL) o
 `signInWithPassword` da **500**.
 
+## auth.users de OPERADORES — reproducibilidad (0016)
+Los 33 `auth.users` de operadores se crearon ad-hoc (no reproducibles en DB fresca). **0016
+provision_auth_operadores** los provisiona idempotentemente por `nombre` con los PINs de 0006
+(token-cols en ''), saltando filas con `auth_user_id` ya asignado → **NO-OP en staging**. Para
+**cutover** con datos reales (Fase 6): re-sembrar el mismo patrón con los PINs del export de Base44.
+
 ## Migraciones (repo `supabase/migrations/`)
-0001 esquema_unificado · 0002 hardening_anon_grants · 0003 harden_siguiente_folio_execute · 0004 harden_rls_auto_enable_execute · 0005 ajustes_schema_datos_vivos · 0006 seed_datos_maestros · 0007 config_campos_json_string (jsonb→text) · 0008 storage_bucket_uploads · 0009 actor_ids_a_text · 0010 config_propinas_activas · 0011 config_sonidos_activos · 0012 fase4_rls_por_rol_sucursal · 0013 fase4_drop_pin_plano · 0014 fase4_login_pos_rpc · **0015 fase4_cuentas_terminal**.
+0001 esquema_unificado · 0002 hardening_anon_grants · 0003 harden_siguiente_folio_execute · 0004 harden_rls_auto_enable_execute · 0005 ajustes_schema_datos_vivos · 0006 seed_datos_maestros · 0007 config_campos_json_string (jsonb→text) · 0008 storage_bucket_uploads · 0009 actor_ids_a_text · 0010 config_propinas_activas · 0011 config_sonidos_activos · 0012 fase4_rls_por_rol_sucursal · 0013 fase4_drop_pin_plano · 0014 fase4_login_pos_rpc · 0015 fase4_cuentas_terminal · **0016 provision_auth_operadores**.
 
 ## Quirk de doble conteo (ver BUGS_PENDING)
 `efectivo_esperado = total_efectivo + abonosEfectivo`, pero la venta paralela del abono ya está en total_efectivo → cuenta el abono efectivo dos veces. **Verificado = comportamiento de Base44 (18/20 cortes reales). CANDADO: idéntico.**

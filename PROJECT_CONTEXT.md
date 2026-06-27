@@ -37,8 +37,7 @@ Una sola base Supabase sirve al POS y (después) a la Web, separadas por RLS. **
 - `src/api/base44Client.js` — shim `base44` (entities + `UploadFile`→Storage `{file_url}` + stubs auth/functions).
 - `src/pages/Caja.jsx` (~2249 líneas) — CANDADOS 1/2/3 + matemática del dinero. **Solo se redirige la fuente de datos; la lógica NO cambia.**
 - `src/components/pedidos/RegistrarPagoDialog.jsx` — abono → venta paralela (ver quirk doble conteo en `docs/BUGS_PENDING.md`).
-- `src/pages/POSLogin.jsx` — login standalone (`/login-pos`, secundario/legacy); wireado a `usuarios_login` + `login_pos`.
-- **Auth/sesión (Fase 4, wireados):** `supabaseClient.js` (`ensureSession`/`loginTerminal`/`validarPin`/`loginConPin`/`logoutOperador`), `TerminalGate.jsx`, `ModalPinAdmin.jsx`, `AccesoDuenoGate.jsx`, `ConfigurarTerminal.jsx`, `Sidebar.jsx`, `AuthContext.jsx`, `ConfigContext.jsx` (fallback `config_publica`). **NO tocan la matemática del dinero ni los candados.**
+- **Auth/sesión (Fase 4, wireados):** `supabaseClient.js` (`ensureSession`/`loginTerminal`/`validarPin`/`loginConPin`/`logoutOperador`), `TerminalGate.jsx`, `ModalPinAdmin.jsx`, `AccesoDuenoGate.jsx`, `ConfigurarTerminal.jsx`, `Sidebar.jsx`, `AuthContext.jsx`, `ConfigContext.jsx` (fallback `config_publica`). **NO tocan la matemática del dinero ni los candados.** (`POSLogin`/`/login-pos` RETIRADO — el modelo no tiene login standalone.)
 
 ## 8. Flujos críticos (matemática del dinero) — ver `docs/DATABASE.md`
 Corte lee SOLO `Venta estado='pagada'`; cancelar/devolver excluye por construcción; abono crea Abono (sucursal del pedido) + Venta paralela `pagada` (corte abierto, sucursal del terminal); entregar exige `saldo_pendiente=0`; efectivo_esperado = `total_efectivo + abonosEfectivo` (⚠️ doble conteo = quirk Base44, ver bugs).

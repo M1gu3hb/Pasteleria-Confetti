@@ -15,9 +15,9 @@
 - **Qué:** `productos.imagen_url` y `configuracion_negocio.logo_url` apuntan a `media.base44.com/.../...png` y `base44.app/...`. **Mueren cuando se apague Base44.**
 - **Acción (cutover):** re-hospedar imágenes en Supabase Storage (bucket `uploads` ya existe) o Vercel y reescribir las URLs. No urgente en staging (Base44 sigue vivo).
 
-## (d) Fase 4 — la app NO loguea por UI todavía
-- **Qué:** la RLS scoped ya reemplazó la sesión temporal compartida; la UI de auth (POSLogin, TerminalGate, ModalPinAdmin, AccesoDuenoGate, supabaseClient, AuthContext) **aún no consume** las sesiones reales (`login_pos`/`signInWithPassword`).
-- **Estado:** el backend está listo y probado (17/17). Falta el wiring (ver `NEXT_STEPS.md`), bloqueado por la decisión de modo empleado.
+## (d) Fase 4 — wiring de auth: HECHO (pendiente de firma de Miguel)
+- **Qué fue:** la UI de auth no consumía las sesiones reales. **Resuelto:** Opción A (cuentas terminal), admin=desbloqueo de UI sobre la sesión terminal, dueño=sesión global; `/login-pos` retirado (era hueco de aislamiento).
+- **Estado:** build verde, smoke UI 4/4, **adversarial 31/31**, advisors sin novedades. Falta solo la **firma de Miguel** (dinero + aislamiento). Ver CHANGELOG (sesiones cont. / cont. 2).
 
 ## (e) `uploads` bucket permite listar (advisor WARN)
 - Política SELECT pública amplia → clientes pueden listar archivos. Bajo riesgo (imágenes de catálogo públicas). Opcional: restringir a acceso por URL en hardening posterior.
