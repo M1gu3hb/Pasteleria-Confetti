@@ -168,8 +168,9 @@ anon sigue ciego a ventas/cortes/pedidos; `siguiente_folio` sigue authenticated-
   - (b) anon `SELECT … FROM pedidos` directo → **42501 permission denied** (sigue ciega).
   - (c) rechazos: falta `cliente_telefono` / `estado='pagada'` / `origen='pos_interno'` → excepción clara.
   - Limpieza: filas y contador de prueba borrados → **transaccional=0, folio_contador=0**.
-- **Regresión POS:** ningún candado/dinero tocado; 0019 solo AÑADE una función (no altera tablas, RLS ni folios del POS). Único cambio de esquema permitido en WEB-2.
+- **0020 `web_crear_pedido_rpc_harden`** (hardening detectado en la verificación): Supabase otorga EXECUTE a `authenticated` por default al crear funciones → `authenticated` quedaba pudiendo ejecutar la RPC (un `caja` podría crear un pedido web/pendiente para CUALQUIER sucursal vía la función DEFINER, saltándose `pos_sucursal()`). `revoke execute … from authenticated` → la RPC queda **solo anon** (= la única superficie de escritura nueva, como pidió Miguel). Patrón igual a 0003/0004. Verificado: `anon EXECUTE=true / authenticated=false / public=false`; anon sigue creando el pedido; authenticated → 42501 permission denied for function. El POS escribe `pedidos` por INSERT directo (RLS scoped), NO por esta función.
+- **Regresión POS:** ningún candado/dinero tocado; 0019/0020 solo AÑADEN una función + endurecen su grant (no alteran tablas, RLS ni folios del POS). Único cambio de esquema permitido en WEB-2.
 - **DETENIDO** para auditoría de Miguel antes de seguir con WEB-2 (cliente anon + adaptador → matar puente/auth → port de call-sites con NOMBRE→ID → build+smoke).
 
 ### Migraciones aplicadas en staging (actualizado)
-… · 0016 provision_auth_operadores · 0017 web_pedido_folio_trigger · 0018 web_uploads_bucket · **0019 web_crear_pedido_rpc**.
+… · 0016 provision_auth_operadores · 0017 web_pedido_folio_trigger · 0018 web_uploads_bucket · **0019 web_crear_pedido_rpc** · **0020 web_crear_pedido_rpc_harden**.
