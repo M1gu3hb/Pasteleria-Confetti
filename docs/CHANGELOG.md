@@ -96,6 +96,14 @@ Miguel aprobó el wiring y pidió cerrar UN hueco + 2 verificaciones antes de fi
 
 Build verde, lint del set limpio, advisors sin novedades. Datos/cuentas de prueba limpiados (transaccional=0, usuarios_pos=36, usuarios_login=33).
 
+### Re-smoke UI del fix `_pin` (sesión cont. 2b — pedido por Miguel antes de firmar)
+El strip de `_pin` tocó el flujo de elevación y no se había probado por UI. Re-corrido en el clon (dev server + 3 cuentas de prueba temporales, ya borradas):
+- **(1) Empleado Xochimilco:** sesión terminal scoped, ve SOLO Xochimilco; **abrió caja** (`CONF-A-C001`, sucursal A, actor "Empleado") y **vendió** (`CONF-A-V0001`, $35, pagada, ligada al corte, scoped a A). Write real bajo la sesión terminal ✓.
+- **(2) Admin Xochimilco (PIN 1111):** eleva; **sesión sigue terminal** (`pos_is_admin=false`, `pos_sucursal=A`); `posUser`=TEST_ADMIN_XOCHI (admin real). **`posUser` SIN `_pin`** (keys: id,email,nombre,rol,sucursal_id,sucursal_nombre,adminRole) ✓.
+- **(3) Admin Topilejo (PIN 2222) en terminal Xochimilco:** RECHAZADO (toast "otra sucursal"), sigue empleado ✓.
+- **(4) Dueño (PIN 9999):** **SÍ entra tras el strip** (usa `_pin` para `signInWithPassword`) → sesión global (`pos_is_admin=true`, cuenta dueño, no terminal), vista general (Dashboard/Pedidos/Ventas/Web/Config + "Ver otra sucursal"); `posUser`=TEST_DUENO **sin `_pin`**; al **Salir de dueño** RESTAURA la sesión terminal scoped (`pos_is_admin=false`, Xochimilco) ✓.
+- 0 errores de consola. Sin cambios de código (el fix ya estaba en commit `0602bca`). Datos/cuentas de prueba limpiados.
+
 ### Migraciones aplicadas en staging (repo `supabase/migrations/`)
 0001 esquema_unificado · 0002 hardening_anon_grants · 0003 harden_siguiente_folio_execute · 0004 harden_rls_auto_enable_execute · 0005 ajustes_schema_datos_vivos · 0006 seed_datos_maestros · 0007 config_campos_json_string · 0008 storage_bucket_uploads · 0009 actor_ids_a_text · 0010 config_propinas_activas · 0011 config_sonidos_activos · 0012 fase4_rls_por_rol_sucursal · 0013 fase4_drop_pin_plano · 0014 fase4_login_pos_rpc · 0015 fase4_cuentas_terminal · **0016 provision_auth_operadores**.
 (Nota: el seeding de `auth.users` por operador se hizo vía SQL directo, no como migración versionada — password derivado `POS-<pin>`; ver `supabase/STAGING_NOTES.md`.)

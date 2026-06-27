@@ -21,6 +21,7 @@ Wireados 6 archivos + `ConfigContext` (#7) + `entitiesAdapter` (mapeo de vista) 
 - **GATE-2:** sellado de actor VERIFICADO = usa `posUser` → admin real al elevar (no centinela). Bug `_pin`→sessionStorage corregido.
 - **GATE-3:** migración **0016** reproduce los auth.users de operadores (idempotente, NO-OP en staging).
 - **GATE-4:** adversarial **31/31** incluyendo "validar PIN de admin NO escala la sesión; admin-B confinado a A".
+- **GATE-5 (re-smoke UI del fix `_pin`):** 4/4 por UI — empleado abre caja + vende; admin eleva (sesión sigue terminal, `posUser`=admin real); admin de otra sucursal rechazado; dueño entra (usa `_pin`, funciona tras el strip) → global → al salir restaura terminal. **`posUser` sin `_pin`** en ambas elevaciones. 0 errores.
 
 ## 🔴 PRÓXIMO PASO: AUDITORÍA + FIRMA DE MIGUEL (no encadenar solo)
 Miguel/su arquitecto revisan `migracion/supabase` (dinero + aislamiento RLS) → cierra Fase 4. Decisiones ya aprobadas: admin=desbloqueo de UI; ConfigContext→config_publica; password terminal embebido OK staging (prod = provisión por dispositivo en cutover). Resto a confirmar:
