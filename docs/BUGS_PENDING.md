@@ -1,5 +1,11 @@
 # BUGS_PENDING / riesgos conocidos
 
+## (g) CORTE DE TURNO — **BOTÓN FANTASMA de Base44 (NO es bug)** — decisión de Miguel
+- **Decisión de Miguel (2026-06-27):** Confetti **NO usa cortes de turno**. Abel opera **solo con CIERRE DIARIO por sucursal**. El "Corte de turno" es un **elemento fantasma** heredado de la plantilla Base44, igual que mesas/propinas/restaurante. **NO es un bug a arreglar.**
+- **Qué pasa técnicamente (para la auditoría de fantasmas):** si alguien lo pulsara, `handleCorteTurno` (`Caja.jsx:1341-1365`) hace `CorteCaja.create({...})` **sin `sucursal_id`**, y la RLS `pos_scope_cortes` (`pos_is_admin() OR sucursal_id = pos_sucursal()`) rechaza la fila (`new row violates row-level security policy for table "cortes_caja"`). El cierre diario sí setea `sucursal_id`, por eso funciona. Además inserta columnas inexistentes en el esquema migrado (`corte_padre_id`, `total_propinas`, `propinas_por_mesero`).
+- **Acción:** **post-cutover** — en la auditoría de fantasmas con el sistema vivo, Miguel decide si se **quita el botón** o se deja muerto. NO se toca durante la migración. El **bot NO ejercita corte de turno** en las pruebas largas (no es operación real de Abel).
+- **Origen:** detectado por `Bot pruebas/bot-pruebas/bot-corte-turno.mjs` (reclasificado de 🐛 a fantasma por decisión de Miguel). Ver también auditoría de fantasmas en `MEJORAS_POST_CUTOVER.md` #5.
+
 ## (a) Doble conteo de `efectivo_esperado` con abonos en efectivo — quirk de Base44
 - **Qué:** `efectivo_esperado = total_efectivo + abonosEfectivo` (`Caja.jsx:1440`), pero la **venta paralela** que crea cada abono (`RegistrarPagoDialog.jsx`, `monto_efectivo=m`, `corte_caja_id=caja`) ya está dentro de `total_efectivo`. → el efectivo de un abono se cuenta **dos veces**.
 - **Verificación:** contra 20 cortes cerrados REALES de Base44 con abono efectivo → **18/20 coinciden EXACTO** con la fórmula (ii) (doble). Base44 SÍ doble-cuenta.
