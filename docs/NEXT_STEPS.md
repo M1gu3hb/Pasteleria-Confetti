@@ -50,4 +50,5 @@ Se hace **en el repo web** (`M1gu3hb/Pasteleria-Confetti-web-`, rama `migracion/
 ## CUTOVER (futuro, no ahora)
 - Sembrar `folio_contador.ultimo_numero` por (tipo, sucursal) con el MÁXIMO folio existente (evitar colisión con históricos).
 - Los 3 productos "prueba" ("prueba 1/2/suscursal") NO van al catálogo real de Abel.
-- Re-hospedar imágenes de `media.base44.com`.
+- 🔴 **BLOQUEANTE DE CUTOVER — fotos de producto del catálogo (Flag WEB-2):** las imágenes de producto que muestra la web pública vienen de **`productos.imagen_url`**, que aún apunta a **`media.base44.com`** (el CDN de Base44). Cargan hoy porque Base44 sigue vivo. **Antes de apagar Base44** hay que **re-hospedar esas imágenes en Supabase Storage y actualizar `productos.imagen_url`**; si no, el catálogo público de la web **pierde las fotos**. Es migración de DATOS del POS (no del repo web). Ver `BUGS_PENDING.md`.
+- Borrar la imagen de prueba residual del smoke WEB-2: `web-uploads/pedidos/db92b1c3-60bb-4e2b-a855-0e4df6d9b796.png` (por Storage dashboard / service_role).

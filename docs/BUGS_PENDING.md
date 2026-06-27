@@ -27,8 +27,18 @@
 ## (e) `uploads` bucket permite listar (advisor WARN)
 - Política SELECT pública amplia → clientes pueden listar archivos. Bajo riesgo (imágenes de catálogo públicas). Opcional: restringir a acceso por URL en hardening posterior.
 
+## (g) 🔴 Fotos de producto del catálogo web en `media.base44.com` — BLOQUEANTE DE CUTOVER (Flag WEB-2)
+- **Qué:** la web pública muestra las fotos de producto desde **`productos.imagen_url`**, que apunta a **`media.base44.com`** (CDN de Base44). Detectado en el smoke del port WEB-2 (catálogo: 16 imágenes servidas por el CDN de Base44).
+- **Riesgo:** cargan hoy solo porque Base44 sigue vivo. **Al apagar Base44, el catálogo público pierde las fotos.**
+- **Acción (antes del cutover, decisión de timing de Miguel):** re-hospedar esas imágenes en Supabase Storage y actualizar `productos.imagen_url`. Es migración de **datos del POS** (no del repo web; los 8 assets de marca de la web ya se re-hospedaron). NO ejecutada aún. Ver `NEXT_STEPS.md` (CUTOVER).
+
+## (h) Imagen de prueba residual en `web-uploads/pedidos/` (Flag WEB-2)
+- 1 objeto de prueba (93 B) del smoke del port: `web-uploads/pedidos/db92b1c3-60bb-4e2b-a855-0e4df6d9b796.png`. No listable (bucket sin SELECT anon), solo accesible por URL exacta.
+- No se pudo borrar sin `service_role`/Storage API (el trigger `storage.protect_delete()` bloquea el DELETE por SQL; **no se tocó RLS ni el trigger**). **Borrar por el Storage dashboard.**
+
 ## Notas de cutover (recordatorio)
 - Sembrar `folio_contador.ultimo_numero` por (tipo, sucursal) con el MÁXIMO folio existente (evitar colisión con folios históricos).
 - Los 3 productos "prueba" ("prueba 1", "prueba 2", "prueba suscursal") NO van al catálogo real de Abel.
 - Eliminar la cuenta `staging-pos@confetti.local` cuando el login real esté wireado.
 - Rotar la api_key Base44 `847df…`.
+- **Re-hospedar fotos de producto (`productos.imagen_url`) fuera de `media.base44.com`** — ver (g), bloqueante.

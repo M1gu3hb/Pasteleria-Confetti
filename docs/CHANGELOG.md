@@ -174,3 +174,12 @@ anon sigue ciego a ventas/cortes/pedidos; `siguiente_folio` sigue authenticated-
 
 ### Migraciones aplicadas en staging (actualizado)
 … · 0016 provision_auth_operadores · 0017 web_pedido_folio_trigger · 0018 web_uploads_bucket · **0019 web_crear_pedido_rpc** · **0020 web_crear_pedido_rpc_harden**.
+
+## Sesión 2026-06-27 (cont. 3) — WEB-2 cerrado: 0021 sello creador + flags de cutover
+- **0021 `web_crear_pedido_rpc_sello_creador`** (raíz del Flag 2 del port web): `create or replace` de `crear_pedido_web` que **SELLA `creado_por_nombre='Web Confetti'`** como constante server-side (igual que `origen='web'`; NO se lee del payload → no inyectable). Restaura la fidelidad con Base44: el pedido web nacía con ese sello y el POS lo usa para distinguir los pedidos que entraron por la web. Resto del cuerpo idéntico (candados origen/estado/tipo_pedido, whitelist, requeridos + sucursal activa, folio vía trigger 0017). `create or replace` preserva los grants de 0020 (anon-only); se reafirman en la migración.
+- **Verificado (anon):** RPC válido con `creado_por_nombre:"HACKER INYECTADO"` y `creado_por_id:"hacker-id"` en el payload → la fila queda con `creado_por_nombre='Web Confetti'` y `creado_por_id=null` (ambos ignorados); folio del trigger sale (`PP-A-0001`); privilegios `anon=true / authenticated=false / public=false`. Limpieza: transaccional=0, folio_contador=0.
+- **Flag 1 (fotos de catálogo en `media.base44.com`) — documentado como BLOQUEANTE DE CUTOVER** (NEXT_STEPS + BUGS_PENDING): las imágenes de producto vienen de `productos.imagen_url` (dato del POS), cargan por el CDN de Base44; antes de apagar Base44 hay que re-hospedarlas en Storage y actualizar `productos.imagen_url`. NO ejecutado (decisión de timing de Miguel).
+- **Flag 3 (imagen de prueba residual):** 1 objeto de prueba (93 B) en `web-uploads/pedidos/db92b1c3-…png` del smoke del port; no se pudo borrar sin `service_role` ni Storage API (el trigger de Supabase bloquea el delete por SQL; no se tocó RLS). Anotado para borrado por dashboard.
+
+### Migraciones aplicadas en staging (actualizado)
+… · 0019 web_crear_pedido_rpc · 0020 web_crear_pedido_rpc_harden · **0021 web_crear_pedido_rpc_sello_creador**.
