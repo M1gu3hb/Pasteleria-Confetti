@@ -1,8 +1,9 @@
 # PROJECT_CONTEXT — POS Pastelería Confetti (migración Base44 → Vercel + Supabase)
 
 > **Fuente principal de transferencia.** Léelo COMPLETO antes de tocar nada, junto con `CLAUDE.md` y `docs/`.
-> Última actualización: 2026-06-26 (fin de sesión: wiring de Fase 4 HECHO, pendiente de firma).
+> Última actualización: 2026-06-27 (POS Fases 0-5 completas+aprobadas; WEB-0/WEB-1 hechas; próximo = WEB-2).
 > **Working tree estable:** `C:\Pasteleria Confetti\pos` (clon de `M1gu3hb/Pasteleria-Confetti@migracion/supabase`).
+> **Repo Web (aparte):** `M1gu3hb/Pasteleria-Confetti-web-` (CON guion final) en `C:\Pasteleria Confetti\web`.
 
 ## 1. Objetivo
 Independizar el **POS interno** de Pastelería Confetti de Base44, dejándolo **idéntico en comportamiento** sobre infra propia: **React (Vite) en Vercel + Supabase (Postgres + Auth + RLS + Storage)**. NO es reconstrucción: el sistema ya estaba aprobado por el cliente (Abel); se migra, no se rediseña. El cliente sigue operando en Base44 en producción durante toda la migración; el corte a producción lo decide Miguel y NO es parte de esta fase.
@@ -13,8 +14,10 @@ Independizar el **POS interno** de Pastelería Confetti de Base44, dejándolo **
 - **Fase 2** (seed maestros + port capa de datos + smoke): COMPLETA, auditada. Build verde; smoke en preview local OK.
 - **Fase 3** (validación aritmética del dinero): COMPLETA, auditada. + **PASO 0 gate money-crítico CERRADO LIMPIO**.
 - **Fase 4** (Auth + RLS + wiring): **CERRADA (firmada por Miguel).** Opción A; auth real terminal/admin/dueño; RLS scoped; migraciones 0015/0016; adversarial 31/31; `_pin` no persiste. Ver `CHANGELOG.md` (cont./cont.2) + `DECISIONS.md` (13–19).
-- **Fase 5** (Validación de FIDELIDAD vs Base44 vivo): **HECHA, pendiente de revisión de Miguel.** Maestros 0 diffs; pantallas/flujos conformes; corte real 14/14 campos idénticos (incl. doble conteo). Ver `CHANGELOG.md` (cont. 3). (El **bot de paridad** queda para el final, con la Web ya migrada.)
-- **Web** (sub-proyecto): NO iniciada (espera luz verde de Fase 5).
+- **Fase 5** (Validación de FIDELIDAD vs Base44 vivo): **HECHA y APROBADA por Miguel.** Maestros 0 diffs; pantallas/flujos conformes; corte real 14/14 campos idénticos (incl. doble conteo). **POS migrado, independiente y fiel — Fases 0-5 COMPLETAS.**
+- **WEB-0 / WEB-1** (migración Web, repo aparte `M1gu3hb/Pasteleria-Confetti-web-`): **HECHAS.** Andamiaje web pusheado; GAP1 folio = **migración 0017** (trigger), GAP2 upload = **migración 0018** (bucket `web-uploads`) — ambas en ESTE repo POS (esquema = fuente única), verificadas (anon 11/11, regresión POS limpia). Ver `CHANGELOG.md` / `DATABASE.md` / `DECISIONS.md`.
+- **WEB-2** (port de la capa de datos de la web): **NO iniciado** — próximo paso. Se hace en el repo web; NO toca el esquema POS. Punto crítico: disponibilidad por sucursal **NOMBRES→IDs** (`sucursal_ids`); + decisión pendiente del folio en pantalla Gracias (anon no lee `pedidos`). Ver `docs/NEXT_STEPS.md`.
+- **Bot de paridad** (concurrencia/PDFs): AL FINAL, después de la Web. Vive en otro proyecto de Miguel.
 
 ## 3. Stack
 - Frontend: React 18 + Vite 6 + Tailwind 3 + React Router 6 + React Query 5 (export de Base44, migrado). Sin TS en el front.
