@@ -130,6 +130,25 @@ Harness `scripts/fase5_corte_fidelity.mjs`: recrea inputs EXACTOS de cortes real
 
 **Resultado Fase 5: el POS migrado cuadra IDÉNTICO a Base44** (maestros, pantallas y dinero del corte, incluido el quirk). Pendiente: revisión de Miguel. No se inicia la Web.
 
+## Sesión 2026-06-27 — WEB-1: fixes de DB para la web pública (migraciones 0017/0018 en la Supabase compartida)
+La web (repo aparte `M1gu3hb/Pasteleria-Confetti-web-`) se conecta a ESTA Supabase con anon key (Opción A). WEB-0 detectó 2 GAPs; se resuelven con cambios de **esquema** que viven aquí (fuente única de verdad), NO en el repo web. Decisiones de Miguel.
+
+### 0017 — `web_pedido_folio_trigger` (GAP 1: folio de pedido web)
+- Trigger `BEFORE INSERT` en `pedidos`, `WHEN (new.origen='web' AND new.folio IS NULL)`, función `set_web_pedido_folio()` **SECURITY DEFINER** (owned por postgres) → `new.folio := siguiente_folio('pedido_pastel', new.sucursal_id)`.
+- `folio` SIGUE NOT NULL; anon SIGUE sin EXECUTE directo sobre `siguiente_folio` (el trigger lo llama como definer). Mismo contador atómico que el POS → sin colisión web↔POS.
+- **Verificado:** anon INSERT pedido web sin folio → fila con `PP-A-0001`; con folio provisto → NO se re-folia (`ZZWEB1-PROVIDED`); anon `siguiente_folio` directo → 42501.
+
+### 0018 — `web_uploads_bucket` (GAP 2: imagen de referencia)
+- Bucket nuevo `web-uploads` (separado de `uploads` del POS): `public=true` (lectura por URL, **sin** policy SELECT → no listable), `file_size_limit=5MB`, `allowed_mime_types` solo imágenes.
+- Policy `web_uploads_anon_insert`: anon INSERT **solo** en `web-uploads`. El bucket `uploads` del POS queda **authenticated-only (intacto)**.
+- **Verificado:** anon sube imagen a web-uploads (legible por URL, HTTP 200); anon a `uploads` (POS) → RLS deniega; no-imagen → rechazo por mime; >5MB → rechazo por tamaño.
+
+### Regresión POS (verificada)
+anon sigue ciego a ventas/cortes/pedidos; `siguiente_folio` sigue authenticated-only; bucket `uploads` y la generación de folios del POS NO cambian. Harness `scripts/web1_gaps_verify.mjs` (11/11 anon). Datos/archivos/contadores de prueba limpiados (transaccional=0, folio_contador=0, web-uploads vacío).
+
+### Migraciones (repo `supabase/migrations/`)
+… · 0015 fase4_cuentas_terminal · 0016 provision_auth_operadores · **0017 web_pedido_folio_trigger** · **0018 web_uploads_bucket**.
+
 ### Migraciones aplicadas en staging (repo `supabase/migrations/`)
 0001 esquema_unificado · 0002 hardening_anon_grants · 0003 harden_siguiente_folio_execute · 0004 harden_rls_auto_enable_execute · 0005 ajustes_schema_datos_vivos · 0006 seed_datos_maestros · 0007 config_campos_json_string · 0008 storage_bucket_uploads · 0009 actor_ids_a_text · 0010 config_propinas_activas · 0011 config_sonidos_activos · 0012 fase4_rls_por_rol_sucursal · 0013 fase4_drop_pin_plano · 0014 fase4_login_pos_rpc · 0015 fase4_cuentas_terminal · **0016 provision_auth_operadores**.
 (Nota: el seeding de `auth.users` por operador se hizo vía SQL directo, no como migración versionada — password derivado `POS-<pin>`; ver `supabase/STAGING_NOTES.md`.)

@@ -47,8 +47,12 @@ provision_auth_operadores** los provisiona idempotentemente por `nombre` con los
 (token-cols en ''), saltando filas con `auth_user_id` ya asignado → **NO-OP en staging**. Para
 **cutover** con datos reales (Fase 6): re-sembrar el mismo patrón con los PINs del export de Base44.
 
+## Soporte para la Web pública (WEB-1, migraciones 0017/0018 — la web usa ESTA Supabase con anon key)
+- **0017 trigger folio web:** `set_web_pedido_folio()` SECURITY DEFINER + trigger `BEFORE INSERT` en `pedidos` `WHEN (origen='web' AND folio IS NULL)` → asigna `siguiente_folio('pedido_pastel', sucursal_id)`. Permite que anon inserte pedidos web sin exponerle `siguiente_folio` ni hacer `folio` nullable. Mismo contador que el POS.
+- **0018 bucket `web-uploads`:** público (lectura por URL, no listable), 5MB, solo imágenes; policy `web_uploads_anon_insert` (anon INSERT solo ahí). El bucket `uploads` del POS sigue authenticated-only.
+
 ## Migraciones (repo `supabase/migrations/`)
-0001 esquema_unificado · 0002 hardening_anon_grants · 0003 harden_siguiente_folio_execute · 0004 harden_rls_auto_enable_execute · 0005 ajustes_schema_datos_vivos · 0006 seed_datos_maestros · 0007 config_campos_json_string (jsonb→text) · 0008 storage_bucket_uploads · 0009 actor_ids_a_text · 0010 config_propinas_activas · 0011 config_sonidos_activos · 0012 fase4_rls_por_rol_sucursal · 0013 fase4_drop_pin_plano · 0014 fase4_login_pos_rpc · 0015 fase4_cuentas_terminal · **0016 provision_auth_operadores**.
+0001 esquema_unificado · 0002 hardening_anon_grants · 0003 harden_siguiente_folio_execute · 0004 harden_rls_auto_enable_execute · 0005 ajustes_schema_datos_vivos · 0006 seed_datos_maestros · 0007 config_campos_json_string (jsonb→text) · 0008 storage_bucket_uploads · 0009 actor_ids_a_text · 0010 config_propinas_activas · 0011 config_sonidos_activos · 0012 fase4_rls_por_rol_sucursal · 0013 fase4_drop_pin_plano · 0014 fase4_login_pos_rpc · 0015 fase4_cuentas_terminal · 0016 provision_auth_operadores · **0017 web_pedido_folio_trigger** · **0018 web_uploads_bucket**.
 
 ## Quirk de doble conteo (ver BUGS_PENDING)
 `efectivo_esperado = total_efectivo + abonosEfectivo`, pero la venta paralela del abono ya está en total_efectivo → cuenta el abono efectivo dos veces. **Verificado = comportamiento de Base44 (18/20 cortes reales). CANDADO: idéntico.**
