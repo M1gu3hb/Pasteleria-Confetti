@@ -183,3 +183,10 @@ anon sigue ciego a ventas/cortes/pedidos; `siguiente_folio` sigue authenticated-
 
 ### Migraciones aplicadas en staging (actualizado)
 … · 0019 web_crear_pedido_rpc · 0020 web_crear_pedido_rpc_harden · **0021 web_crear_pedido_rpc_sello_creador**.
+
+## Sesión 2026-06-27 (cont. 4) — WEB-3: validación end-to-end POS↔web (sin cambios de esquema)
+Validación de FLUJO CRUZADO sobre el Supabase compartido (solo lectura + datos de prueba; sin tocar esquema/código POS). Demuestra que el puente Base44 colapsó. Detalle completo en el repo web (`docs/CHANGELOG.md` 2026-06-27 cont. 3).
+- **FLUJO 1 (pedido web → POS):** pedidos web de Topilejo (pastel `PP-B-0001` + catálogo `PP-B-0002`) **visibles y fieles** en el POS como terminal Topilejo: PedidosPastel con badge **🌐 WEB**, detalle completo, imagen de referencia desde `web-uploads`, **"Creado por Web Confetti"** (el sello 0021, visible como la señal que Abel usa); catálogo en la cola web de Caja con kilos=0 + productos en texto. **Aislamiento RLS por sucursal verificado:** la terminal Xochimilco ve **0** pedidos de Topilejo.
+- **FLUJO 2 (producto POS → catálogo web):** edición de `Cheesecake` (nombre/precio) reflejada **de inmediato** en el catálogo web (misma fila vía `catalogo_publico`, sin sync); `visible_en_web` toggle funciona; la vista no expone costo/margen. Restaurado a originales.
+- **Regresión:** ningún cambio de esquema/código POS. Limpieza: transaccional=0, folio_contador=0; maestros intactos (productos 20, sucursales 3). Residual: 2 imágenes de prueba en `web-uploads/pedidos/` (ver BUGS_PENDING (h)).
+- **Sin diffs vs Base44** en el flujo cruzado. POS+Web listos para la auditoría de Miguel antes del bot de pruebas agresivas.

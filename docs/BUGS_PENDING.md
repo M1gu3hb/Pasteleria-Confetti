@@ -32,9 +32,9 @@
 - **Riesgo:** cargan hoy solo porque Base44 sigue vivo. **Al apagar Base44, el catálogo público pierde las fotos.**
 - **Acción (antes del cutover, decisión de timing de Miguel):** re-hospedar esas imágenes en Supabase Storage y actualizar `productos.imagen_url`. Es migración de **datos del POS** (no del repo web; los 8 assets de marca de la web ya se re-hospedaron). NO ejecutada aún. Ver `NEXT_STEPS.md` (CUTOVER).
 
-## (h) Imagen de prueba residual en `web-uploads/pedidos/` (Flag WEB-2)
-- 1 objeto de prueba (93 B) del smoke del port: `web-uploads/pedidos/db92b1c3-60bb-4e2b-a855-0e4df6d9b796.png`. No listable (bucket sin SELECT anon), solo accesible por URL exacta.
-- No se pudo borrar sin `service_role`/Storage API (el trigger `storage.protect_delete()` bloquea el DELETE por SQL; **no se tocó RLS ni el trigger**). **Borrar por el Storage dashboard.**
+## (h) Imágenes de prueba residuales en `web-uploads/pedidos/` (smokes WEB-2/WEB-3)
+- 2 objetos de prueba: `db92b1c3-…png` (93 B, WEB-2) y `74aa34e2-…png` (110 B, WEB-3). No listables (bucket sin SELECT anon), solo accesibles por URL exacta.
+- No se pudieron borrar sin `service_role`/Storage API (el trigger `storage.protect_delete()` bloquea el DELETE por SQL; **no se tocó RLS ni el trigger**). **Borrar por el Storage dashboard.** (Cada smoke con subida de imagen deja un objeto en `pedidos/`.)
 
 ## Notas de cutover (recordatorio)
 - Sembrar `folio_contador.ultimo_numero` por (tipo, sucursal) con el MÁXIMO folio existente (evitar colisión con folios históricos).

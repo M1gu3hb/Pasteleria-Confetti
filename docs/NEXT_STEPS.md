@@ -1,6 +1,6 @@
 # NEXT_STEPS
 
-Última actualización: 2026-06-27 (POS Fases 0-5 COMPLETAS+aprobadas; WEB-0/WEB-1 hechas; próximo = WEB-2).
+Última actualización: 2026-06-27 (POS Fases 0-5 COMPLETAS+aprobadas; WEB-0/1/2/3 hechas; migraciones web 0017-0021; pendiente humano = import Vercel + bot al final).
 
 > Nota de terminología: Miguel redefinió **Fase 5 = Validación de FIDELIDAD** (POS migrado vs Base44 vivo).
 > El **bot de paridad** pasa a ser "al final" (con la Web ya migrada), no Fase 5.
@@ -37,8 +37,8 @@ El POS migrado es FIEL a Base44 (solo-lectura MCP). Detalle en `CHANGELOG.md` (c
 - **WEB-0** (recon + andamiaje): repo web privado creado + andamiaje pusheado. Web = catálogo público mobile-first; Opción A (misma Supabase, anon key + RLS; el puente Base44 desaparece). 2 GAPs detectados.
 - **WEB-1** (fixes de DB, en ESTE repo POS — esquema = fuente única): **0017 `web_pedido_folio_trigger`** (GAP1: trigger BEFORE INSERT en `pedidos` origen='web'/folio NULL → `siguiente_folio` vía SECURITY DEFINER; folio sigue NOT NULL, anon sin execute directo) y **0018 `web_uploads_bucket`** (GAP2: bucket `web-uploads` público/no-listable, 5MB, solo imágenes; anon INSERT solo ahí; `uploads` del POS authenticated-only intacto). Verificado **anon 11/11** + folio `PP-A-0001` asignado + **regresión POS limpia**. Harness `scripts/web1_gaps_verify.mjs`.
 
-## 🔵 PRÓXIMO PASO: WEB-2 — port de la capa de datos de la web (NO iniciado)
-Se hace **en el repo web** (`M1gu3hb/Pasteleria-Confetti-web-`, rama `migracion/supabase`); ver su `docs/NEXT_STEPS.md` para los pasos exactos. **NO se toca el esquema POS** (0017/0018 ya cubren los GAPs; el esquema vive solo aquí).
+## ✅ WEB-2 y WEB-3 — HECHAS (validadas; pendiente solo import Vercel de Miguel)
+WEB-2 (port de la capa de datos) y WEB-3 (validación end-to-end POS↔web) **completas**. Esquema web = migraciones **0019/0020/0021** en ESTE repo POS; el port y los smokes en el repo web. WEB-3: pedido web visible y fiel en el POS (badge 🌐 WEB, "Creado por Web Confetti", imagen de referencia) + aislamiento por sucursal; edición de producto en el POS reflejada de inmediato en el catálogo web (misma fila, sin sync); sin diffs vs Base44. Ver repo web `docs/CHANGELOG.md` y este `CHANGELOG.md` (cont. 4). **Siguiente:** import Vercel (Miguel) + bot de pruebas agresivas (al final). _Notas del plan original abajo (referencia)._
 - ⚠️ **PUNTO DE FIDELIDAD CRÍTICO (cambio de LÓGICA, no plomería):** la web Base44 filtra/bloquea la sucursal por **`sucursales_disponibles` (NOMBRES)**; el esquema compartido usa **`sucursal_ids` (IDs)** y `catalogo_publico` expone `sucursal_ids`. Reescribir la disponibilidad para matchear por **ID** (vacío/null = global). **Un find-replace lo rompe en silencio** — verificar con un producto limitado a 1 sucursal.
 - ✅ **Folio en pantalla Gracias — RESUELTO (migración 0019, en ESTE repo POS).** RPC `crear_pedido_web(payload jsonb) → text` SECURITY DEFINER que inserta el pedido y **devuelve el folio**; el web usa `rpc('crear_pedido_web', {payload})` en vez de `insert`. Reaplica los candados del WITH CHECK anon, whitelist de columnas, valida requeridos + sucursal activa, reutiliza el trigger 0017 (un solo generador). anon: solo EXECUTE, sin SELECT. Verificado (folio real devuelto, web/pendiente, 42501 en SELECT directo, inválidos rechazados). Ver DECISIONS #22.
 
@@ -51,4 +51,4 @@ Se hace **en el repo web** (`M1gu3hb/Pasteleria-Confetti-web-`, rama `migracion/
 - Sembrar `folio_contador.ultimo_numero` por (tipo, sucursal) con el MÁXIMO folio existente (evitar colisión con históricos).
 - Los 3 productos "prueba" ("prueba 1/2/suscursal") NO van al catálogo real de Abel.
 - 🔴 **BLOQUEANTE DE CUTOVER — fotos de producto del catálogo (Flag WEB-2):** las imágenes de producto que muestra la web pública vienen de **`productos.imagen_url`**, que aún apunta a **`media.base44.com`** (el CDN de Base44). Cargan hoy porque Base44 sigue vivo. **Antes de apagar Base44** hay que **re-hospedar esas imágenes en Supabase Storage y actualizar `productos.imagen_url`**; si no, el catálogo público de la web **pierde las fotos**. Es migración de DATOS del POS (no del repo web). Ver `BUGS_PENDING.md`.
-- Borrar la imagen de prueba residual del smoke WEB-2: `web-uploads/pedidos/db92b1c3-60bb-4e2b-a855-0e4df6d9b796.png` (por Storage dashboard / service_role).
+- Borrar las 2 imágenes de prueba residuales de los smokes WEB-2/WEB-3 en `web-uploads/pedidos/` (`db92b1c3-…png`, `74aa34e2-…png`) por Storage dashboard / service_role. Ver BUGS_PENDING (h).

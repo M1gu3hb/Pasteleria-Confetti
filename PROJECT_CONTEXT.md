@@ -1,7 +1,7 @@
 # PROJECT_CONTEXT — POS Pastelería Confetti (migración Base44 → Vercel + Supabase)
 
 > **Fuente principal de transferencia.** Léelo COMPLETO antes de tocar nada, junto con `CLAUDE.md` y `docs/`.
-> Última actualización: 2026-06-27 (POS Fases 0-5 completas+aprobadas; WEB-0/WEB-1 hechas; próximo = WEB-2).
+> Última actualización: 2026-06-27 (POS Fases 0-5 completas+aprobadas; WEB-0/1/2/3 hechas; migraciones web 0017-0021; pendiente humano = import Vercel + bot al final).
 > **Working tree estable:** `C:\Pasteleria Confetti\pos` (clon de `M1gu3hb/Pasteleria-Confetti@migracion/supabase`).
 > **Repo Web (aparte):** `M1gu3hb/Pasteleria-Confetti-web-` (CON guion final) en `C:\Pasteleria Confetti\web`.
 
@@ -16,8 +16,9 @@ Independizar el **POS interno** de Pastelería Confetti de Base44, dejándolo **
 - **Fase 4** (Auth + RLS + wiring): **CERRADA (firmada por Miguel).** Opción A; auth real terminal/admin/dueño; RLS scoped; migraciones 0015/0016; adversarial 31/31; `_pin` no persiste. Ver `CHANGELOG.md` (cont./cont.2) + `DECISIONS.md` (13–19).
 - **Fase 5** (Validación de FIDELIDAD vs Base44 vivo): **HECHA y APROBADA por Miguel.** Maestros 0 diffs; pantallas/flujos conformes; corte real 14/14 campos idénticos (incl. doble conteo). **POS migrado, independiente y fiel — Fases 0-5 COMPLETAS.**
 - **WEB-0 / WEB-1** (migración Web, repo aparte `M1gu3hb/Pasteleria-Confetti-web-`): **HECHAS.** Andamiaje web pusheado; GAP1 folio = **migración 0017** (trigger), GAP2 upload = **migración 0018** (bucket `web-uploads`) — ambas en ESTE repo POS (esquema = fuente única), verificadas (anon 11/11, regresión POS limpia). Ver `CHANGELOG.md` / `DATABASE.md` / `DECISIONS.md`.
-- **WEB-2** (port de la capa de datos de la web): **EN CURSO** — sub-paso 1 hecho: **migración 0019 `web_crear_pedido_rpc`** (RPC `crear_pedido_web` SECURITY DEFINER que inserta el pedido y devuelve el folio → resuelve el folio-Gracias; único cambio de esquema permitido, en ESTE repo POS; verificada). El resto del port se hace en el repo web (NO toca el esquema POS). Punto crítico restante: disponibilidad por sucursal **NOMBRES→IDs** (`sucursal_ids`), en el port. Ver `docs/NEXT_STEPS.md`, `DECISIONS.md #22`.
-- **Bot de paridad** (concurrencia/PDFs): AL FINAL, después de la Web. Vive en otro proyecto de Miguel.
+- **WEB-2** (port de la capa de datos de la web): **HECHA.** Migraciones **0019** (RPC `crear_pedido_web` devuelve folio → folio-Gracias resuelto), **0020** (RPC anon-only), **0021** (sella `creado_por_nombre='Web Confetti'`) en ESTE repo POS; el port (cliente anon, adaptador, puente muerto, NOMBRE→ID, web-uploads) en el repo web, build verde + smoke real. Ver repo web `docs/CHANGELOG.md`.
+- **WEB-3** (validación end-to-end POS↔web): **HECHA y aprobada por evidencia.** Pedido web visible y fiel en el POS (badge 🌐 WEB, "Creado por Web Confetti", imagen de referencia) + aislamiento por sucursal; edición de producto en el POS reflejada de inmediato en el catálogo web (misma fila, sin sync). Sin diffs vs Base44. Ver `CHANGELOG.md` (cont. 4). **Pendiente humano:** import Vercel del repo web.
+- **Bot de paridad** (concurrencia/PDFs): AL FINAL, después de WEB-3 (ya hecho). Vive en otro proyecto de Miguel.
 
 ## 3. Stack
 - Frontend: React 18 + Vite 6 + Tailwind 3 + React Router 6 + React Query 5 (export de Base44, migrado). Sin TS en el front.
