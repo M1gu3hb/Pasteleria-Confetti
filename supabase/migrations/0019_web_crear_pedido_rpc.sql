@@ -31,6 +31,7 @@ declare
   v_sucursal_id uuid;
   v_origen text := coalesce(nullif(payload->>'origen', ''), 'web');
   v_estado text := coalesce(nullif(payload->>'estado', ''), 'pendiente');
+  v_tipo   text := coalesce(nullif(payload->>'tipo_pedido', ''), 'pastel_personalizado');
   v_folio  text;
 begin
   -- ── Candados idénticos a la RLS anon (rechaza, no "corrige" en silencio) ──
@@ -39,6 +40,11 @@ begin
   end if;
   if v_estado <> 'pendiente' then
     raise exception 'estado invalido (%): la web solo crea pedidos con estado=pendiente', v_estado;
+  end if;
+  -- tipo_pedido acotado a sus valores válidos (rechazo explícito, no "corrección";
+  -- el CHECK de la tabla lo cubre, pero el candado da un error claro y consistente).
+  if v_tipo not in ('pastel_personalizado', 'productos_catalogo') then
+    raise exception 'tipo_pedido invalido (%): debe ser pastel_personalizado o productos_catalogo', v_tipo;
   end if;
 
   -- ── Requeridos (fidelidad del formulario Base44) ──
@@ -77,8 +83,7 @@ begin
     total_calculado, total_final,
     imagen_referencia_url, notas_generales
   ) values (
-    'web', 'pendiente',
-    coalesce(nullif(payload->>'tipo_pedido', ''), 'pastel_personalizado'),
+    'web', 'pendiente', v_tipo,
     v_sucursal_id, nullif(payload->>'sucursal_nombre', ''),
     btrim(payload->>'cliente_nombre'), btrim(payload->>'cliente_telefono'),
     nullif(payload->>'cliente_email', ''), nullif(payload->>'cliente_direccion', ''),
