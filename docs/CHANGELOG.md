@@ -149,6 +149,12 @@ anon sigue ciego a ventas/cortes/pedidos; `siguiente_folio` sigue authenticated-
 ### Migraciones (repo `supabase/migrations/`)
 … · 0015 fase4_cuentas_terminal · 0016 provision_auth_operadores · **0017 web_pedido_folio_trigger** · **0018 web_uploads_bucket**.
 
+## Sesión 2026-06-27 (cierre / handoff) — Fase 5 aprobada; WEB-2 NO iniciado
+- **Fase 5 APROBADA por Miguel** (POS fiel a Base44). POS Fases 0-5 completas.
+- Se intentó arrancar **WEB-2** (port de la capa de datos de la web) pero se **pausó por ventana de contexto** y el port parcial se **descartó** (la próxima sesión arranca WEB-2 con clon fresco del repo web). Nada de WEB-2 quedó commiteado.
+- **Hallazgo nuevo (WEB-2, pendiente de decisión de Miguel):** la web (anon) hace INSERT en `pedidos` pero **no puede leer de vuelta el folio** (sin SELECT; probado 42501). El pedido SÍ queda con `PP-<prefijo>-####` (trigger 0017). Para mostrarlo en la pantalla Gracias: opción recomendada = RPC `crear_pedido_web(...)` SECURITY DEFINER (migración 0019, repo POS) que devuelva el folio; alternativas = Gracias sin folio, o policy anon SELECT (descartada). Ver `docs/NEXT_STEPS.md`.
+- **Imágenes de la web YA re-hospedadas** en `web-uploads/assets/` (8 archivos, mismos nombres; base `…/storage/v1/object/public/web-uploads/assets/`). WEB-2 solo cambia el prefijo de URL, NO re-subir.
+
 ### Migraciones aplicadas en staging (repo `supabase/migrations/`)
 0001 esquema_unificado · 0002 hardening_anon_grants · 0003 harden_siguiente_folio_execute · 0004 harden_rls_auto_enable_execute · 0005 ajustes_schema_datos_vivos · 0006 seed_datos_maestros · 0007 config_campos_json_string · 0008 storage_bucket_uploads · 0009 actor_ids_a_text · 0010 config_propinas_activas · 0011 config_sonidos_activos · 0012 fase4_rls_por_rol_sucursal · 0013 fase4_drop_pin_plano · 0014 fase4_login_pos_rpc · 0015 fase4_cuentas_terminal · **0016 provision_auth_operadores**.
 (Nota: el seeding de `auth.users` por operador se hizo vía SQL directo, no como migración versionada — password derivado `POS-<pin>`; ver `supabase/STAGING_NOTES.md`.)
