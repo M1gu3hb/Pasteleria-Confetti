@@ -135,7 +135,8 @@ export async function validarPin(pin, userId = null) {
 /**
  * Login completo por PIN: valida (login_pos) y ABRE la sesión Supabase del
  * operador (signInWithPassword con password derivado 'POS-'+pin). Lo usa el
- * DUEÑO (sesión global) y el login de operador (POSLogin).
+ * DUEÑO (sesión global). El administrador NO lo usa: valida con validarPin y
+ * se queda sobre la sesión terminal (no escala a sesión propia).
  * Devuelve el operador o null.
  */
 export async function loginConPin(pin, userId = null) {

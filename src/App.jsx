@@ -17,7 +17,6 @@ import AdminRoute from '@/components/common/AdminRoute';
 // Pages (solo las reales de Confetti — la basura de plantilla de restaurante
 // — Mesero/Mesas/Cocina/Barra/Inventario/Compras/Recetas/PortalQR/PortalCliente —
 // se descartó en la migración Fase 2).
-import POSLogin from './pages/POSLogin';
 import Dashboard from './pages/Dashboard';
 import POS from './pages/POS';
 import Productos from './pages/Productos';
@@ -37,8 +36,6 @@ const AuthenticatedApp = () => {
       <TerminalProvider>
         <ConfigProvider>
           <Routes>
-            <Route path="/login-pos" element={<POSLogin />} />
-
             <Route element={<TerminalGate><AppLayout /></TerminalGate>}>
               <Route path="/" element={<AdminRoute><Dashboard /></AdminRoute>} />
               <Route path="/pos" element={<POS />} />

@@ -5,7 +5,6 @@ const BRAND = 'MH Astral POS';
 
 const ROUTE_TITLES = {
   '/': `Dashboard | ${BRAND}`,
-  '/login-pos': `Login | ${BRAND}`,
   '/pos': `Caja POS | ${BRAND}`,
   '/mesero': `Mesero | ${BRAND}`,
   '/mesas': `Mesas | ${BRAND}`,

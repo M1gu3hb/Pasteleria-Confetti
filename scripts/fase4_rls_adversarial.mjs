@@ -29,7 +29,8 @@ const TERMINAL_PWD = env.VITE_TERMINAL_PASSWORD || 'POS-TERMINAL-CONFETTI';
 const SUC_A = '057f9ba7-b340-4060-ace3-7f1646da36fa'; // Xochimilco / Principal
 const SUC_B = '161185fa-adda-42cd-9568-b1d66dad5737'; // Topilejo
 const EMAIL_TERM = (s) => `terminal-${s.toLowerCase()}@pos.confetti.local`;
-const DUENO_PIN = '9999'; // cuenta TEST_DUENO temporal
+const DUENO_PIN = '9999';   // cuenta TEST_DUENO temporal
+const ADMIN_B_PIN = '2222'; // cuenta TEST_ADMIN_TOPILEJO (admin de la sucursal B)
 
 const newClient = () => createClient(URL_, ANON, { auth: { persistSession: false, autoRefreshToken: false } });
 
@@ -120,6 +121,32 @@ const soloSucursal = (rows, suc) => rows.length > 0 && rows.every((r) => r.sucur
     const csucs = new Set(c.rows.map((r) => r.sucursal_id));
     check('dueño ve cortes de A y B', csucs.has(SUC_A) && csucs.has(SUC_B));
   }
+
+  // ---------- ELEVACIÓN ADMIN NO ESCALA SESIÓN (ruta resuelta; /login-pos retirado) ----------
+  // El administrador valida su PIN con login_pos (RPC) pero NO abre sesión propia:
+  // se queda sobre la sesión TERMINAL. Probamos que validar el PIN de un admin de B
+  // en una terminal A NO escala la sesión ni da acceso a B / a todas. (El login
+  // standalone /login-pos fue retirado: ya no hay ruta para una sesión de admin global.)
+  const taElev = await clienteTerminal(SUC_A);
+  const { data: opB } = await taElev.rpc('login_pos', { p_pin: ADMIN_B_PIN, p_user_id: null });
+  const adminBrow = Array.isArray(opB) ? opB[0] : opB;
+  check('login_pos valida admin de B (rol=administrador, sucursal=B)',
+    !!adminBrow && adminBrow.rol === 'administrador' && adminBrow.sucursal_id === SUC_B);
+  check('validar PIN admin NO escala: sesion sigue terminal A (pos_is_admin=false)',
+    (await taElev.rpc('pos_is_admin')).data === false);
+  check('validar PIN admin NO escala: pos_sucursal sigue A',
+    (await taElev.rpc('pos_sucursal')).data === SUC_A);
+  check('admin-B sobre terminal A: confinado a A (no ve B ni todas)',
+    soloSucursal((await visibles(taElev, 'ventas')).rows, SUC_A));
+  {
+    const { error } = await taElev.from('ventas')
+      .insert({ folio: 'ZZRLS-ELEV', sucursal_id: SUC_B, estado: 'pagada', total: 1 }).select();
+    check('admin-B sobre terminal A: NO puede escribir en B', !!error, error ? error.code : 'SIN ERROR (mal)');
+  }
+  // Contraste: el DUEÑO sí escala a global (loginConPin = login_pos + signInWithPassword).
+  const duElev = await clienteDueno();
+  check('contraste: dueno SI escala a global (pos_is_admin=true) [intencional]',
+    (await duElev.rpc('pos_is_admin')).data === true);
 
   console.log(`\n=== RESULTADO: ${pass}/${pass + fail} ===`);
   process.exit(fail === 0 ? 0 : 1);

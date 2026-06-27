@@ -29,10 +29,12 @@ export default function AccesoDuenoGate({ children }) {
 
   const handleSuccess = async (duenoUser) => {
     try {
+      // _pin solo para abrir la sesión; no debe persistir en posUser.
+      const { _pin, ...duenoLimpio } = duenoUser || {};
       // Fase 4: abre la sesión Supabase REAL del dueño (global, pos_is_admin).
       // Sin esto la RLS no dejaría ver todas las sucursales. ModalPinAdmin ya
       // validó el PIN; loginConPin lo revalida y hace signInWithPassword.
-      const op = await loginConPin(duenoUser._pin, duenoUser.id);
+      const op = await loginConPin(_pin, duenoLimpio.id);
       if (!op) {
         toast.error('No se pudo iniciar la sesión de dueño.');
         return;
@@ -47,7 +49,7 @@ export default function AccesoDuenoGate({ children }) {
         return;
       }
       login({
-        ...duenoUser,
+        ...duenoLimpio,
         // Dispositivo de dueño: sin sucursal fija. El dueño elige en memoria.
         sucursal_id: null,
         sucursal_nombre: null,

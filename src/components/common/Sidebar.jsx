@@ -99,17 +99,20 @@ export default function Sidebar({ collapsed, onToggle }) {
   //    (hereda su sucursal). Solo eleva la UI. Debe ser de ESTA sucursal.
   const handleAdminSuccess = async (adminUser) => {
     try {
-      const esDuenoLogin = adminUser?.adminRole === 'dueno';
+      // _pin solo se usa para abrir la sesión; NUNCA debe persistir en posUser
+      // (sessionStorage). Se separa aquí y se descarta.
+      const { _pin, ...adminLimpio } = adminUser || {};
+      const esDuenoLogin = adminLimpio?.adminRole === 'dueno';
 
       if (esDuenoLogin) {
         // Sesión global del dueño (ModalPinAdmin ya validó el PIN; loginConPin
         // lo revalida y hace signInWithPassword).
-        const op = await loginConPin(adminUser._pin, adminUser.id);
+        const op = await loginConPin(_pin, adminLimpio.id);
         if (!op) {
           toast.error('No se pudo iniciar la sesión de dueño.');
           return;
         }
-      } else if (terminal?.sucursal_id && adminUser?.sucursal_id !== terminal.sucursal_id) {
+      } else if (terminal?.sucursal_id && adminLimpio?.sucursal_id !== terminal.sucursal_id) {
         // Administrador de OTRA sucursal: no eleva en esta terminal (la RLS lo
         // confinaría a la sucursal de la terminal de todos modos; esto da UX clara).
         toast.error('Este administrador es de otra sucursal y no puede entrar en esta terminal.');
@@ -118,7 +121,7 @@ export default function Sidebar({ collapsed, onToggle }) {
       // (Administrador de esta sucursal: NO se toca la sesión Supabase; opera
       //  sobre la sesión terminal scoped.)
 
-      const res = await activarAdmin(adminUser);
+      const res = await activarAdmin(adminLimpio);
       if (res && res.ok === false) {
         toast.error(res.error || 'No se pudo activar el modo administrador.');
         return;
@@ -127,9 +130,9 @@ export default function Sidebar({ collapsed, onToggle }) {
       // Sin fallback a la terminal: si el usuario no tiene sucursal, queda null
       // (el administrador sin sucursal ya fue bloqueado en activarAdmin).
       login({
-        ...adminUser,
-        sucursal_id: adminUser?.sucursal_id ?? null,
-        sucursal_nombre: adminUser?.sucursal_nombre ?? null,
+        ...adminLimpio,
+        sucursal_id: adminLimpio?.sucursal_id ?? null,
+        sucursal_nombre: adminLimpio?.sucursal_nombre ?? null,
       });
       // PARTE C — al SUBIR de empleado a admin/dueño, llevar al Dashboard.
       // El Dashboard vive en la ruta "/" (ver App.jsx), no en "/Dashboard".

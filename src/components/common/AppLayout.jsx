@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import { usePOSAuth } from '@/lib/POSAuthContext';
 import Sidebar from './Sidebar';
 import BrandedBackground from './BrandedBackground';
@@ -11,15 +11,12 @@ import { useRouteCleanup } from '@/lib/useRouteCleanup';
 export default function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const { posUser, isLoading } = usePOSAuth();
-  const navigate = useNavigate();
   // Libera body locks (overflow/pointer-events) si quedó algún portal pegado al cambiar de ruta.
   useRouteCleanup();
 
-  React.useEffect(() => {
-    if (!isLoading && !posUser) {
-      navigate('/login-pos');
-    }
-  }, [posUser, isLoading, navigate]);
+  // Sin login standalone: TerminalGate es el único gate de sesión (empleado/dueño).
+  // Si no hay posUser aquí, TerminalGate ya está mostrando su propia pantalla
+  // (config terminal / acceso dueño / spinner), así que solo no renderizamos.
 
   if (isLoading) {
     return (

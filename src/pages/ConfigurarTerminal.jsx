@@ -29,8 +29,10 @@ export default function ConfigurarTerminal({ onConfigurado }) {
   // marca el dispositivo como de dueño (no terminal fija) y entra.
   const handleDuenoSuccess = async (duenoUser) => {
     try {
+      // _pin solo para abrir la sesión; no debe persistir en posUser.
+      const { _pin, ...duenoLimpio } = duenoUser || {};
       // Fase 4: sesión Supabase REAL del dueño (global, pos_is_admin).
-      const op = await loginConPin(duenoUser._pin, duenoUser.id);
+      const op = await loginConPin(_pin, duenoLimpio.id);
       if (!op) {
         toast.error('No se pudo iniciar la sesión de dueño.');
         return;
@@ -39,12 +41,12 @@ export default function ConfigurarTerminal({ onConfigurado }) {
       // FIX: activarAdmin espera el UsuarioPOS COMPLETO (lee usuario.rol).
       // Antes recibía el string 'dueno' → rol undefined → adminMode quedaba en
       // false y el dispositivo de dueño no dejaba entrar.
-      const res = await activarAdmin(duenoUser);
+      const res = await activarAdmin(duenoLimpio);
       if (res && res.ok === false) {
         console.error('[ConfigurarTerminal] activarAdmin:', res.error);
         return;
       }
-      login({ ...duenoUser, sucursal_id: null, sucursal_nombre: null });
+      login({ ...duenoLimpio, sucursal_id: null, sucursal_nombre: null });
     } catch (err) {
       console.error('[ConfigurarTerminal] handleDuenoSuccess:', err);
       toast.error('No se pudo iniciar el modo dueño');
