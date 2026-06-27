@@ -40,12 +40,12 @@ El POS migrado es FIEL a Base44 (solo-lectura MCP). Detalle en `CHANGELOG.md` (c
 ## 🔵 PRÓXIMO PASO: WEB-2 — port de la capa de datos de la web (NO iniciado)
 Se hace **en el repo web** (`M1gu3hb/Pasteleria-Confetti-web-`, rama `migracion/supabase`); ver su `docs/NEXT_STEPS.md` para los pasos exactos. **NO se toca el esquema POS** (0017/0018 ya cubren los GAPs; el esquema vive solo aquí).
 - ⚠️ **PUNTO DE FIDELIDAD CRÍTICO (cambio de LÓGICA, no plomería):** la web Base44 filtra/bloquea la sucursal por **`sucursales_disponibles` (NOMBRES)**; el esquema compartido usa **`sucursal_ids` (IDs)** y `catalogo_publico` expone `sucursal_ids`. Reescribir la disponibilidad para matchear por **ID** (vacío/null = global). **Un find-replace lo rompe en silencio** — verificar con un producto limitado a 1 sucursal.
-- ⚠️ **Folio en pantalla Gracias (gap nuevo, decisión de Miguel):** anon hace INSERT pero **no puede leer de vuelta** el folio (sin SELECT en `pedidos`; probado 42501). El pedido SÍ queda con `PP-<prefijo>-####` (trigger). Para mostrarlo en Gracias hace falta una de: (1) RPC `crear_pedido_web(...)` SECURITY DEFINER que devuelva el folio (migración 0019 en repo POS — recomendada), (2) Gracias sin folio (confirmación por WhatsApp), (3) policy anon SELECT (descartada, filtraría pedidos ajenos). **Decisión pendiente de Miguel.**
+- ✅ **Folio en pantalla Gracias — RESUELTO (migración 0019, en ESTE repo POS).** RPC `crear_pedido_web(payload jsonb) → text` SECURITY DEFINER que inserta el pedido y **devuelve el folio**; el web usa `rpc('crear_pedido_web', {payload})` en vez de `insert`. Reaplica los candados del WITH CHECK anon, whitelist de columnas, valida requeridos + sucursal activa, reutiliza el trigger 0017 (un solo generador). anon: solo EXECUTE, sin SELECT. Verificado (folio real devuelto, web/pendiente, 42501 en SELECT directo, inválidos rechazados). Ver DECISIONS #22.
 
 ## PENDIENTES HUMANOS DE MIGUEL
 - Import **Vercel** del **repo web** (`Pasteleria-Confetti-web-`, rama `migracion/supabase`, env `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` = mismo Supabase) y del POS.
 - Rotar api_key Base44 `847df…`.
-- Decidir el mecanismo de folio para Gracias (ver WEB-2 arriba).
+- ~~Decidir el mecanismo de folio para Gracias~~ → **RESUELTO** (0019 RPC `crear_pedido_web`).
 
 ## CUTOVER (futuro, no ahora)
 - Sembrar `folio_contador.ultimo_numero` por (tipo, sucursal) con el MÁXIMO folio existente (evitar colisión con históricos).

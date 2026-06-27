@@ -20,9 +20,9 @@
 - **Qué fue:** la UI de auth no consumía las sesiones reales. **Resuelto:** Opción A (cuentas terminal), admin=desbloqueo de UI sobre la sesión terminal, dueño=sesión global; `/login-pos` retirado (era hueco de aislamiento).
 - **Estado:** build verde, smoke UI 4/4, **adversarial 31/31**, Fase 5 fidelidad (maestros 0 diffs, corte 14/14). **POS Fases 0-5 completas y firmadas.** Ver CHANGELOG.
 
-## (f) Folio en pantalla Gracias del web — DECISIÓN PENDIENTE (WEB-2)
-- **Qué:** anon hace INSERT en `pedidos` pero **no puede leer de vuelta el folio** (sin SELECT; 42501). La fila SÍ queda con `PP-<prefijo>-####` (trigger 0017). La pantalla Gracias quiere mostrarlo.
-- **Acción:** decidir con Miguel — (1, recomendada) RPC `crear_pedido_web` SECURITY DEFINER (migración 0019) que devuelva el folio; (2) Gracias sin folio; (3) policy anon SELECT (descartada). Ver `DECISIONS.md` #22 y NEXT_STEPS.
+## (f) Folio en pantalla Gracias del web — ✅ RESUELTO (migración 0019)
+- **Qué fue:** anon hace INSERT en `pedidos` pero **no puede leer de vuelta el folio** (sin SELECT; 42501). La fila SÍ queda con `PP-<prefijo>-####` (trigger 0017). La pantalla Gracias quiere mostrarlo.
+- **Resolución (Miguel, opción 1):** migración **0019 `web_crear_pedido_rpc`** — RPC `crear_pedido_web(payload jsonb) → text` SECURITY DEFINER que inserta y **devuelve el folio**; el web usa `rpc` en vez de `insert`. Candados del WITH CHECK anon reaplicados, whitelist de columnas, reutiliza el trigger 0017. anon: solo EXECUTE, sin SELECT. Verificado y aplicado a la Supabase compartida. Ver `DECISIONS.md` #22, `DATABASE.md` y `CHANGELOG.md`.
 
 ## (e) `uploads` bucket permite listar (advisor WARN)
 - Política SELECT pública amplia → clientes pueden listar archivos. Bajo riesgo (imágenes de catálogo públicas). Opcional: restringir a acceso por URL en hardening posterior.

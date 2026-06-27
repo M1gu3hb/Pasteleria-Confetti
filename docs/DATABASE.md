@@ -27,10 +27,11 @@ snake_case en todo. IDs `uuid` (`gen_random_uuid()`). `created_at timestamptz de
 - **siguiente_folio(tipo, sucursal_id)** SECURITY DEFINER — folio atómico (UPDATE...RETURNING + lock de fila). Formatos: venta `CONF-A-V#`, corte `CONF-A-C###`, pedido `PP-A-####`. (El código del POS aún genera folios vía `pedidoPastelUtils` leyendo folio_contador; cambiarlo a este RPC es opcional/Fase 4+.)
 - **pos_sucursal()/pos_is_admin()** SECURITY DEFINER — mapean auth.uid()→usuarios_pos para la RLS.
 - **login_pos(p_pin, p_user_id?)** SECURITY DEFINER (anon) — valida PIN vs pin_hash (bcrypt crypt), devuelve operador (sin hash). El cliente luego hace signInWithPassword.
+- **crear_pedido_web(payload jsonb) → text** SECURITY DEFINER (anon, owner postgres, `search_path=public`) — **única superficie de escritura de la web** (WEB-2 / 0019). Inserta el pedido web y **devuelve el folio** (pantalla Gracias) en una sola llamada. Reaplica los candados del `WITH CHECK` de `anon_insert_pedidos` (fuerza `origen='web'`/`estado='pendiente'`), whitelist explícita de columnas, valida requeridos + sucursal activa, y reutiliza el trigger 0017 para el folio (insert con `folio` NULL + `RETURNING`). anon: solo EXECUTE, **sin SELECT** en `pedidos`. La web usa `rpc('crear_pedido_web', {payload})` en vez de `insert`.
 - **rls_auto_enable()** — event trigger pre-existente (no creado por nosotros) que auto-activa RLS en tablas nuevas de public.
 
 ## RLS
-- **anon (web futura):** SELECT en vistas + sucursales(activa)/categorias(activo); INSERT en pedidos con WITH CHECK(origen='web' AND estado='pendiente'); CERO en ventas/cortes/abonos/detalle/usuarios/productos/config (RLS deny + REVOKE).
+- **anon (web):** SELECT en vistas + sucursales(activa)/categorias(activo); escribe pedidos vía **RPC `crear_pedido_web`** (0019), que enforce el mismo WITH CHECK(origen='web' AND estado='pendiente') de la policy `anon_insert_pedidos` (anon conserva INSERT directo en `pedidos` pero el web ya no lo usa); **sin SELECT** en pedidos; CERO en ventas/cortes/abonos/detalle/usuarios/productos/config (RLS deny + REVOKE).
 - **authenticated POS (Fase 4 scoped):** tablas de dinero (ventas/cortes_caja/abonos/pedidos/gastos_operativos/detalle_venta) → `pos_is_admin() OR sucursal_id = pos_sucursal()` (detalle vía venta padre). Maestros (sucursales/categorias/productos/config/usuarios_pos/folio_contador) → broad authenticated (intencional; los WARN del advisor son esperados ahí).
 
 ## Cuentas TERMINAL (Fase 4 / 0015 — Opción A)
@@ -47,12 +48,13 @@ provision_auth_operadores** los provisiona idempotentemente por `nombre` con los
 (token-cols en ''), saltando filas con `auth_user_id` ya asignado → **NO-OP en staging**. Para
 **cutover** con datos reales (Fase 6): re-sembrar el mismo patrón con los PINs del export de Base44.
 
-## Soporte para la Web pública (WEB-1, migraciones 0017/0018 — la web usa ESTA Supabase con anon key)
+## Soporte para la Web pública (WEB-1/WEB-2, migraciones 0017/0018/0019 — la web usa ESTA Supabase con anon key)
 - **0017 trigger folio web:** `set_web_pedido_folio()` SECURITY DEFINER + trigger `BEFORE INSERT` en `pedidos` `WHEN (origen='web' AND folio IS NULL)` → asigna `siguiente_folio('pedido_pastel', sucursal_id)`. Permite que anon inserte pedidos web sin exponerle `siguiente_folio` ni hacer `folio` nullable. Mismo contador que el POS.
 - **0018 bucket `web-uploads`:** público (lectura por URL, no listable), 5MB, solo imágenes; policy `web_uploads_anon_insert` (anon INSERT solo ahí). El bucket `uploads` del POS sigue authenticated-only.
+- **0019 RPC `crear_pedido_web`:** función SECURITY DEFINER que inserta el pedido web y **devuelve el folio** (resuelve el folio-Gracias; ver Funciones arriba y DECISIONS #22). La web pasa de `insert` a `rpc`. anon recibe EXECUTE, **sin** SELECT en `pedidos`.
 
 ## Migraciones (repo `supabase/migrations/`)
-0001 esquema_unificado · 0002 hardening_anon_grants · 0003 harden_siguiente_folio_execute · 0004 harden_rls_auto_enable_execute · 0005 ajustes_schema_datos_vivos · 0006 seed_datos_maestros · 0007 config_campos_json_string (jsonb→text) · 0008 storage_bucket_uploads · 0009 actor_ids_a_text · 0010 config_propinas_activas · 0011 config_sonidos_activos · 0012 fase4_rls_por_rol_sucursal · 0013 fase4_drop_pin_plano · 0014 fase4_login_pos_rpc · 0015 fase4_cuentas_terminal · 0016 provision_auth_operadores · **0017 web_pedido_folio_trigger** · **0018 web_uploads_bucket**.
+0001 esquema_unificado · 0002 hardening_anon_grants · 0003 harden_siguiente_folio_execute · 0004 harden_rls_auto_enable_execute · 0005 ajustes_schema_datos_vivos · 0006 seed_datos_maestros · 0007 config_campos_json_string (jsonb→text) · 0008 storage_bucket_uploads · 0009 actor_ids_a_text · 0010 config_propinas_activas · 0011 config_sonidos_activos · 0012 fase4_rls_por_rol_sucursal · 0013 fase4_drop_pin_plano · 0014 fase4_login_pos_rpc · 0015 fase4_cuentas_terminal · 0016 provision_auth_operadores · **0017 web_pedido_folio_trigger** · **0018 web_uploads_bucket** · **0019 web_crear_pedido_rpc**.
 
 ## Quirk de doble conteo (ver BUGS_PENDING)
 `efectivo_esperado = total_efectivo + abonosEfectivo`, pero la venta paralela del abono ya está en total_efectivo → cuenta el abono efectivo dos veces. **Verificado = comportamiento de Base44 (18/20 cortes reales). CANDADO: idéntico.**
