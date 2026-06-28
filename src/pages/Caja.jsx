@@ -13,7 +13,7 @@ import {
   DoorOpen, Lock, AlertTriangle, ShoppingBag, Pencil, Cake, RefreshCw
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import PreCuentaTicket, { parseProductosDesdeNotas } from '@/components/tickets/PreCuentaTicket';
+import PreCuentaTicket from '@/components/tickets/PreCuentaTicket';
 import PropinaDialog from '@/components/propinas/PropinaDialog';
 import CorteViewerDialog from '@/components/cortes/CorteViewerDialog';
 import CorteAutoDownloader from '@/components/cortes/CorteAutoDownloader';
@@ -33,7 +33,6 @@ import { useCajaAbierta } from '@/lib/useCajaAbierta';
 import { useCorteAtrasado } from '@/lib/useCorteAtrasado';
 import PedidoWebCajaCard from '@/components/caja/PedidoWebCajaCard';
 import PedidoWebBeep from '@/components/caja/PedidoWebBeep';
-import CobrarPedidoWebDialog from '@/components/caja/CobrarPedidoWebDialog';
 import CorteAtrasadoBanner from '@/components/caja/CorteAtrasadoBanner';
 import BuscarVentaFolioCard from '@/components/caja/BuscarVentaFolioCard';
 import CancelarVentaDialog from '@/components/ventas/CancelarVentaDialog';
@@ -164,8 +163,6 @@ export default function Caja() {
   // modo: null | 'cancelacion' | 'devolucion' — abre CancelarVentaDialog del 5a.
   const [modoCancelarVenta, setModoCancelarVenta] = useState(null);
   // PARTE B — modal de cobro del pedido web (método de pago + ticket).
-  const [pedidoWebACobrar, setPedidoWebACobrar] = useState(null);
-  const [cobrandoPedidoWeb, setCobrandoPedidoWeb] = useState(false);
   // Prompt 6 — pedido de catálogo abierto en el diálogo detallado (mismo flujo
   // del pastel: ticket + anticipo + entregar, SIN editar).
   const [pedidoWebDetalle, setPedidoWebDetalle] = useState(null);
@@ -552,137 +549,6 @@ export default function Caja() {
     } catch (e) {
       console.error('Error al cancelar pedido web:', e);
       toast.error('No se pudo cancelar el pedido.');
-    }
-  };
-
-  // PARTE B — abre el modal de cobro (método de pago + ticket) en vez de cobrar
-  // directo a efectivo. Valida caja y corte atrasado antes de abrir.
-  const abrirCobroPedidoWeb = (pedido) => {
-    if (!pedido?.id) return;
-    if (!hayCaja || !cajaAbierta) {
-      toast.error('Debes tener una caja abierta para cobrar.');
-      return;
-    }
-    if (hayCorteAtrasado) {
-      toast.error('Cierra el corte del día anterior antes de cobrar pedidos de hoy.');
-      return;
-    }
-    setPedidoWebACobrar(pedido);
-  };
-
-  // PARTE B — ejecuta el cobro con los montos elegidos en el modal y muestra el
-  // ticket final (mismo PreCuentaTicket que las ventas normales).
-  const handleCobrarPedidoWeb = async (pago) => {
-    const pedido = pedidoWebACobrar;
-    if (!pedido?.id) return;
-    // PARTE F — detección de internet antes de cobrar.
-    if (!navigator.onLine) {
-      toast.error('Sin conexión a internet. No se puede procesar el cobro. Verifica tu conexión.');
-      return;
-    }
-    if (!hayCaja || !cajaAbierta) {
-      toast.error('Debes tener una caja abierta para cobrar.');
-      return;
-    }
-    if (hayCorteAtrasado) {
-      toast.error('Cierra el corte del día anterior antes de cobrar pedidos de hoy.');
-      return;
-    }
-    if (cobrandoPedidoWeb) return;
-    setCobrandoPedidoWeb(true);
-    try {
-      const folioVenta = await generarFolioVenta(
-        sucursalEfectiva?.sucursal_id,
-        sucursalEfectiva?.folio_prefijo
-      );
-      const totalCobrado = Number(pedido.total_final) || 0;
-      // PARTE B — montos por método según lo elegido en el modal.
-      const metodo = pago?.metodo_pago || 'efectivo';
-      const mEfec = Number(pago?.monto_efectivo) || 0;
-      const mTar = Number(pago?.monto_tarjeta) || 0;
-      const mTrans = Number(pago?.monto_transferencia) || 0;
-      const notasVenta = `Pedido web ${pedido.folio}\n${pedido.notas_generales || ''}`.trim();
-      const ventaCreada = await base44.entities.Venta.create({
-        folio: folioVenta,
-        tipo_venta: 'mostrador',
-        sucursal_id: sucursalEfectiva?.sucursal_id,
-        sucursal_nombre: sucursalEfectiva?.sucursal_nombre,
-        cliente_nombre: pedido.cliente_nombre,
-        estado: 'pagada',
-        metodo_pago: metodo,
-        total: totalCobrado,
-        subtotal: totalCobrado,
-        monto_efectivo: mEfec,
-        monto_tarjeta: mTar,
-        monto_transferencia: mTrans,
-        cambio: Number(pago?.cambio) || 0,
-        total_cobrado_con_propina: totalCobrado,
-        notas: notasVenta,
-        corte_caja_id: cajaAbierta.id,
-        fecha_cierre: new Date().toISOString(),
-        usuario_cajero_id: posUser?.id,
-        usuario_cajero_nombre: posUser?.nombre,
-      });
-      // PARTE G — crear DetalleVenta a partir de las notas para que el PDF del
-      // corte (y el ticket) muestre los productos.
-      let detallesTicket = [];
-      try {
-        const itemsWeb = parseProductosDesdeNotas(notasVenta);
-        if (ventaCreada?.id && Array.isArray(itemsWeb) && itemsWeb.length > 0) {
-          detallesTicket = await Promise.all(itemsWeb.map(item => {
-            const cant = Number(item.cantidad) || 1;
-            const sub = Number(item.subtotal) || 0;
-            return base44.entities.DetalleVenta.create({
-              venta_id: ventaCreada.id,
-              producto_id: null,   // FASE 3 A — item de pedido web parseado de notas, sin id de catálogo (columna nullable, migr 0023)
-              producto_nombre: item.producto_nombre,
-              cantidad: cant,
-              precio_unitario_snapshot: cant > 0 ? sub / cant : sub,
-              subtotal: sub,
-              costo_unitario_snapshot: 0,
-              costo_total_linea_snapshot: 0,
-              utilidad_linea_snapshot: sub,
-              margen_linea_snapshot: 100,
-            }).catch(() => null);
-          }));
-          detallesTicket = detallesTicket.filter(Boolean);
-        }
-      } catch (errDet) {
-        console.warn('[Caja] DetalleVenta pedido web:', errDet);
-      }
-      await base44.entities.PedidoPastel.update(pedido.id, {
-        estado: 'entregado',
-        fecha_entrega_real: new Date().toISOString(),
-      });
-      // Refrescar caja/ventas para que la venta entre al corte del día.
-      queryClient.invalidateQueries({ queryKey: ['ventas_pagadas_caja'] });
-      queryClient.invalidateQueries({ queryKey: ['ventas_hoy'] });
-      refetchPedidosWeb();
-      if (pedidoWebBuscado?.id === pedido.id) {
-        setPedidoWebBuscado(null);
-        setBusquedaFolioWeb('');
-      }
-      setPedidoWebACobrar(null);
-      // PARTE B — mostrar ticket final imprimible (mismo que ventas normales).
-      try {
-        setTicketFinalData({
-          venta: ventaCreada || {
-            folio: folioVenta, total: totalCobrado, metodo_pago: metodo,
-            monto_efectivo: mEfec, monto_tarjeta: mTar, monto_transferencia: mTrans,
-            cliente_nombre: pedido.cliente_nombre, estado: 'pagada',
-          },
-          detalles: detallesTicket,
-        });
-        setShowTicketFinal(true);
-      } catch (errTicket) {
-        console.error('[Caja] ticket pedido web:', errTicket);
-      }
-      toast.success(`✓ Cobrado. Folio de venta: ${folioVenta}`);
-    } catch (e) {
-      console.error('Error al cobrar pedido web:', e);
-      toast.error('Error al cobrar. Intenta de nuevo.');
-    } finally {
-      setCobrandoPedidoWeb(false);
     }
   };
 
@@ -2349,15 +2215,6 @@ export default function Caja() {
         open={Array.isArray(mesasPendientes) && mesasPendientes.length > 0}
         mesas={mesasPendientes || []}
         onClose={() => setMesasPendientes(null)}
-      />
-
-      {/* PARTE B — Modal de cobro de pedido web de catálogo (método + ticket) */}
-      <CobrarPedidoWebDialog
-        pedido={pedidoWebACobrar}
-        open={!!pedidoWebACobrar}
-        onOpenChange={(o) => { if (!o) setPedidoWebACobrar(null); }}
-        loading={cobrandoPedidoWeb}
-        onConfirm={handleCobrarPedidoWeb}
       />
 
       {/* Prompt 6 — Pedido de catálogo web: mismo diálogo del pastel (ticket +

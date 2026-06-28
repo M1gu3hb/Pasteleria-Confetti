@@ -5,6 +5,7 @@ import { formatCurrency, formatPercent } from '@/utils/financialUtils';
 import { desgloseMetodosPagoConPropinas } from '@/utils/tipsUtils';
 import { formatearCantidadVariable } from '@/utils/tipoVentaUtils';
 import { desgloseIvaDesdeConfig } from '@/utils/ivaUtils';
+import { etiquetaMetodoPago } from '@/utils/metodoPago';
 
 /**
  * Internal printable corte de caja PDF/document.
@@ -314,7 +315,7 @@ const CorteTicket = React.forwardRef(function CorteTicket({ corte, ventas = [], 
                     {dets.length === 0 && <span className="text-gray-400">—</span>}
                   </td>
                   <td className="border px-2 py-1 text-right font-bold">{formatCurrency(v.total)}</td>
-                  <td className="border px-2 py-1 capitalize">{v.metodo_pago || '—'}</td>
+                  <td className="border px-2 py-1">{etiquetaMetodoPago(v)}</td>
                 </tr>
               );
             })}

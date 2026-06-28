@@ -4,26 +4,27 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { formatCurrency } from '@/utils/financialUtils';
-import { Banknote, CreditCard, Smartphone, CheckCircle } from 'lucide-react';
-
-const METHODS = [
-  { key: 'efectivo', label: 'Efectivo', icon: Banknote },
-  { key: 'tarjeta', label: 'Tarjeta', icon: CreditCard },
-  { key: 'transferencia', label: 'Transferencia', icon: Smartphone },
-];
+import { CheckCircle } from 'lucide-react';
+import MetodoPagoSelector from './MetodoPagoSelector';
 
 export default function PaymentModal({ open, onClose, total, propinaMonto = 0, onConfirm, loading }) {
-  const [method, setMethod] = useState('efectivo');
+  // FASE 3 #3 — el método + reparto del mixto vive en MetodoPagoSelector (reusable).
+  const [pago, setPago] = useState({ metodo_pago: 'efectivo', monto_efectivo: 0, monto_tarjeta: 0, monto_transferencia: 0 });
+  const [pagoValido, setPagoValido] = useState(false);
   const [montoRecibido, setMontoRecibido] = useState('');
   const efectivoRef = useRef(null);
 
-  // FIX BUG PC: el focus-trap de Radix + autoFocus compiten en desktop y a
-  // veces bloquean la escritura en los primeros taps/clicks. Hacemos focus
-  // diferido y reseteamos al abrir.
+  // Total que efectivamente se cobra al cliente = venta + propina.
+  const propinaSafe = Number.isFinite(Number(propinaMonto)) ? Number(propinaMonto) : 0;
+  const totalACobrar = (Number(total) || 0) + propinaSafe;
+
+  const esEfectivo = pago.metodo_pago === 'efectivo';
+
+  // FIX BUG PC: el focus-trap de Radix + autoFocus compiten en desktop. Focus
+  // diferido y reset del monto recibido al abrir.
   useEffect(() => {
     if (open) {
       setMontoRecibido('');
-      setMethod('efectivo');
       const t = setTimeout(() => {
         try { efectivoRef.current?.focus(); } catch (_) {}
       }, 140);
@@ -31,22 +32,20 @@ export default function PaymentModal({ open, onClose, total, propinaMonto = 0, o
     }
   }, [open]);
 
-  // Total que efectivamente se cobra al cliente = venta + propina.
-  const propinaSafe = Number.isFinite(Number(propinaMonto)) ? Number(propinaMonto) : 0;
-  const totalACobrar = (Number(total) || 0) + propinaSafe;
-
-  const cambio = method === 'efectivo' ? Math.max(0, (parseFloat(montoRecibido) || 0) - totalACobrar) : 0;
-  const canPay = method !== 'efectivo' || (parseFloat(montoRecibido) || 0) >= totalACobrar;
+  // Cambio SOLO para efectivo único (el mixto y los demás métodos son exactos).
+  const cambio = esEfectivo ? Math.max(0, (parseFloat(montoRecibido) || 0) - totalACobrar) : 0;
+  // canPay: el selector valida método/cuadre del mixto; efectivo único exige
+  // además que el monto recibido alcance el total.
+  const canPay = pagoValido && (!esEfectivo || (parseFloat(montoRecibido) || 0) >= totalACobrar) && !loading;
 
   const handleConfirm = () => {
-    // Importante: `total` (venta real) NO cambia. La propina se cobra aparte
-    // y se distribuye en el mismo método de pago.
+    // `total` (venta real) NO cambia. La propina se distribuye en el mismo cobro.
     onConfirm({
-      metodo_pago: method,
-      monto_efectivo: method === 'efectivo' ? totalACobrar : 0,
-      monto_tarjeta: method === 'tarjeta' ? totalACobrar : 0,
-      monto_transferencia: method === 'transferencia' ? totalACobrar : 0,
-      cambio: method === 'efectivo' ? cambio : 0,
+      metodo_pago: pago.metodo_pago,
+      monto_efectivo: pago.monto_efectivo,
+      monto_tarjeta: pago.monto_tarjeta,
+      monto_transferencia: pago.monto_transferencia,
+      cambio: esEfectivo ? cambio : 0,
     });
   };
 
@@ -77,21 +76,15 @@ export default function PaymentModal({ open, onClose, total, propinaMonto = 0, o
 
           <div>
             <Label className="text-xs text-muted-foreground mb-2 block">Método de pago</Label>
-            <div className="grid grid-cols-3 gap-2">
-              {METHODS.map(m => {
-                const Icon = m.icon;
-                return (
-                  <Button key={m.key} variant={method === m.key ? 'default' : 'outline'}
-                    onClick={() => setMethod(m.key)} className="flex flex-col h-auto py-3 gap-1">
-                    <Icon className="w-5 h-5" />
-                    <span className="text-xs">{m.label}</span>
-                  </Button>
-                );
-              })}
-            </div>
+            <MetodoPagoSelector
+              total={totalACobrar}
+              resetKey={open}
+              disabled={loading}
+              onChange={(p, v) => { setPago(p); setPagoValido(v); }}
+            />
           </div>
 
-          {method === 'efectivo' && (
+          {esEfectivo && (
             <div className="space-y-2">
               <Label className="text-xs">Monto recibido</Label>
               <Input
@@ -119,7 +112,7 @@ export default function PaymentModal({ open, onClose, total, propinaMonto = 0, o
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={loading}>Cancelar</Button>
-          <Button onClick={handleConfirm} disabled={!canPay || loading} className="gap-2">
+          <Button onClick={handleConfirm} disabled={!canPay} className="gap-2">
             <CheckCircle className="w-4 h-4" /> {loading ? 'Procesando...' : 'Confirmar cobro'}
           </Button>
         </DialogFooter>

@@ -1,5 +1,28 @@
 # CHANGELOG
 
+## Sesión 2026-06-27 (cont. 9) — FASE 3 #3: PAGO MIXTO en todos los puntos (construido + verificado en vivo)
+
+### Componente/lógica reutilizable (sin duplicar)
+- **`src/utils/metodoPago.js`** — `construirPago(total, metodo, montos)` (método único o mixto, valida que la suma cuadre exacto + ≥2 métodos), `etiquetaMetodoPago(v)` ("Mixto (E+T)" con iniciales E=efectivo, T=tarjeta, TR=transferencia), `INICIAL_METODO`, `metodosUsadosDe`.
+- **`src/components/pos/MetodoPagoSelector.jsx`** — selector reutilizable: 4 métodos (efectivo/tarjeta/transferencia/mixto); en mixto, 3 inputs + feedback de cuadre (✓ Cuadra / Falta / Sobra) y bloqueo si no cuadra. Emite `onChange(pago, valido)`.
+
+### Integración en TODOS los puntos de cobro
+- **Mostrador** (`PaymentModal.jsx`): usa el selector; conserva "recibido/cambio" solo para efectivo único; confirma solo si el pago es válido. `...paymentData` ya fluía a la Venta (`metodo_pago='mixto'` + montos).
+- **Anticipo de pastel y de pedido web** (`RegistrarPagoDialog.jsx`): usa el selector; el Abono y su Venta paralela quedan con `metodo_pago` + montos por método; la línea (fix A, `producto_id` null) intacta.
+- **CobrarPedidoWebDialog ELIMINADO** (decisión): era HUÉRFANO (`abrirCobroPedidoWeb` nunca se invocaba) y habría DUPLICADO la lógica que ya cubre `RegistrarPagoDialog` (con mixto + saldo completo, gracias a #1). Borrados el componente + `handleCobrarPedidoWeb`/`abrirCobroPedidoWeb`/estado en `Caja.jsx` + el import `parseProductosDesdeNotas` que quedó sin uso (sigue definido/usado dentro de `PreCuentaTicket`). Sin referencias residuales. El cobro del pedido web va por el flujo único de la cola → `PedidoPastelDetalleDialog` → `RegistrarPagoDialog`.
+
+### Esquema — `abonos` no permitía 'mixto' (migración 0024)
+- **`supabase/migrations/0024_abonos_metodo_pago_mixto.sql`** (aplicada): `ventas_metodo_pago_check` YA incluía 'mixto', pero `abonos_metodo_pago_check` no → el abono mixto fallaba con `violates check constraint`. Se recrea el check de abonos incluyendo 'mixto' (espejo de ventas; solo amplía el conjunto, filas existentes intactas).
+
+### Presentación en el corte/PDF
+- **`CorteTicket.jsx`**: la columna "Pago" usa `etiquetaMetodoPago` → método único capitalizado o **"Mixto (E+T)"** (solo qué métodos por iniciales, NO el monto). El desglose de TOTALES por método del corte no cambia (ya sumaba por `monto_efectivo/tarjeta/transferencia` vía `desgloseMetodosPagoExacto`).
+
+### Verificado en vivo (vía real, BD + corte/PDF)
+- **Mostrador mixto:** venta `metodo_pago='mixto'`, efectivo $200 + tarjeta $100, en el corte. **Método único (efectivo) intacto** (venta single + cambio $60). Resumen del día: Efectivo $340 (200+140) + Tarjeta $100 = $440, cuadra.
+- **Anticipo de catálogo mixto:** abono `mixto` $150 + venta paralela `mixto` (efectivo $90 + tarjeta $60) + línea (`producto_id` null), saldo baja.
+- **Corte cerrado:** totales Efectivo $430 + Tarjeta $160 = $590 (cuadra). **PDF:** las 2 ventas mixtas muestran "Mixto (E+T)", la single muestra "Efectivo".
+- Staging limpiado a pristino tras las pruebas.
+
 ## Sesión 2026-06-27 (cont. 8) — FASE 3: cierre de #2 (findability del catálogo) — `BUGS_PENDING (j)` RESUELTO
 
 ### Findability del pedido de catálogo (gap j) — solo frontend, sin migración
