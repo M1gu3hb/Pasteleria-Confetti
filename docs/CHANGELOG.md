@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## Run nocturno 2026-06-28 — Cierre de cabos de limpieza (Fase 5)
+- **Configuracion.jsx:** eliminado el código muerto de mesas (color-sync de `saveUser`
+  —mesero-only, Confetti no tiene meseros—, query `mesas`, handlers `handleSaveMesa/
+  handleDeleteMesa/handlePositionChange/handleReorder/openNew/eliminarMesasDemo/
+  mesasFiltradas`, estado y imports muertos). `saveUser` (crear/editar usuario) verificado
+  en vivo. Conservados los switches de config `usa_mesas`/asignación.
+- **EstacionesAyuda.jsx** borrado (huérfano, autorizado).
+- **ResumenDelDia.jsx:** quitadas las variables muertas (utilidad, margen, costoTotal,
+  utilidadNeta, totalGeneral/Propinas/Cobrado, ticketProm, propinasPorMesero, colorMoney/
+  colorTip) y props muertas; sin tocar lo que se muestra (efectivo/tickets/métodos/abonos/
+  entregas). Verificado en vivo (idéntico).
+- **Migración 0028** (`notas_voz_auth_delete`): policy DELETE faltante en `notas-voz`;
+  borrado el blob de prueba (bucket vacío).
+- Build OK; **regresión de dinero idéntica** ($140 → efectivo_esperado $140); 0 errores de
+  consola. FLAGS (mesas, estaciones, blob) cerrados en BUGS_PENDING.
+
 ## Run nocturno 2026-06-28 — FASE 5: limpieza de fantasmas + visual
 - **F1** Corte de turno QUITADO (Caja). **F2** Resumen de Caja recortado a SOLO efectivo +
   métodos + tickets (fuera utilidad/margen/costos/gastos/propinas/mesero/mesas).

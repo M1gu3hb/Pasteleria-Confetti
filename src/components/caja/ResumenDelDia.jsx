@@ -1,38 +1,24 @@
 import React from 'react';
-import { formatCurrency, formatPercent } from '@/utils/financialUtils';
-import { Banknote, CreditCard, Smartphone, TrendingUp, Receipt, DollarSign, Users, Coins, Wallet, PiggyBank, BarChart3 } from 'lucide-react';
+import { formatCurrency } from '@/utils/financialUtils';
+import { Banknote, CreditCard, Smartphone, Receipt } from 'lucide-react';
 import StatCard from '@/components/common/StatCard';
 
 /**
  * Resumen del día — vista unificada para la pestaña "Resumen" de Caja.
  *
- * Separación contable estricta:
- *  - Ventas reales (`resumen.totalGeneral`): base de utilidad/margen.
- *  - Propinas (`resumen.totalPropinas`): NO suman a ventas ni utilidad.
- *  - Total cobrado = Ventas + Propinas (sólo informativo para cuadre).
+ * F2 (limpieza Confetti): muestra SOLO efectivo, métodos de pago y número de
+ * tickets, más las cards de pagos de pedidos (abonos) y entregas. Sin utilidad,
+ * margen, costos, gastos ni propinas (el POS no maneja costos).
  *
  * Defensivo: todos los accesos protegidos contra null/undefined.
  */
 export default function ResumenDelDia({
   resumen = {},
-  margenProm = 0,
-  verCostos = false,
-  ventasHoy = [],
   cajaAbierta = null,
-  ventasPendientes = [],
   entregas = [],
-  colorearImportes = true,
 }) {
   const safeResumen = resumen || {};
-  const totalGeneral = Number(safeResumen.totalGeneral) || 0;
-  const totalPropinas = Number(safeResumen.totalPropinas) || 0;
-  const totalCobrado = totalGeneral + totalPropinas;
-  const utilidad = Number(safeResumen.utilidadBruta) || 0;
-  const costoTotal = Number(safeResumen.costoTotal) || 0;
-  const totalGastos = Number(safeResumen.totalGastos) || 0;
-  const utilidadNeta = utilidad - totalGastos;
   const numVentas = Number(safeResumen.numVentas) || 0;
-  const ticketProm = Number(safeResumen.ticketPromedio) || 0;
 
   // metodosPagoConPropinas viene como OBJETO desde desgloseMetodosPagoExacto:
   // { efectivo: {ventas, propinas, total}, tarjeta: {...}, transferencia: {...} }
@@ -52,27 +38,17 @@ export default function ResumenDelDia({
           key: r.key,
           label: r.label,
           ventas: Number(r.data?.ventas) || 0,
-          propinas: Number(r.data?.propinas) || 0,
-          total: Number(r.data?.total) || 0,
         }))
         // Mostrar solo filas con movimiento real
-        .filter(r => r.ventas > 0 || r.propinas > 0 || r.total > 0);
+        .filter(r => r.ventas > 0);
     }
     return [];
   })();
 
   const totalesMetodos = metodosConPropinas.reduce(
-    (acc, r) => ({
-      ventas: acc.ventas + (Number(r?.ventas) || 0),
-      propinas: acc.propinas + (Number(r?.propinas) || 0),
-      total: acc.total + (Number(r?.total) || 0),
-    }),
-    { ventas: 0, propinas: 0, total: 0 }
+    (acc, r) => ({ ventas: acc.ventas + (Number(r?.ventas) || 0) }),
+    { ventas: 0 }
   );
-
-  const propinasPorMesero = Array.isArray(safeResumen.propinasPorMesero)
-    ? safeResumen.propinasPorMesero
-    : [];
 
   if (!cajaAbierta) {
     return (
@@ -84,8 +60,6 @@ export default function ResumenDelDia({
     );
   }
 
-  const colorMoney = colorearImportes ? 'text-emerald-600 dark:text-emerald-300' : 'text-foreground';
-  const colorTip = colorearImportes ? 'text-rose-600 dark:text-rose-300' : 'text-foreground';
 
   return (
     <div className="space-y-4">

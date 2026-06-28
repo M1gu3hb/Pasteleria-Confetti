@@ -1,0 +1,19 @@
+Eres Claude Code en el POS Confetti (C:\Pasteleria Confetti\pos, rama migracion/supabase). El run nocturno quedó BIEN y verificado; esto es solo CERRAR cabos sueltos de limpieza (Fase 5) que quedaron como código muerto. NO toques la lógica de dinero (#4/#5/#6/A-FIX) ni efectivo_esperado/buckets/el mecanismo de devolución — ya está aprobado. Candados intactos; build limpio; staging pristino; reporta todo en pos/docs/NOCHE/REPORTES/ + bitácora; commit por bloque.
+
+Contexto: estos FLAGS están en pos/docs/BUGS_PENDING.md (sección "FLAGS del run nocturno"). Resuélvelos así:
+
+1) CÓDIGO MUERTO DE MESAS en Configuracion.jsx (F10 quedó incompleto). Los componentes mesas/ ya se borraron, pero quedó estado/handlers muertos (query `mesas`, handleSaveMesa, openNew, eliminarMesasDemo, showMesasTab, etc.) porque el color-sync de `saveUser` referencia `mesas`. DIAGNOSTICA saveUser primero: si el color-sync NO necesita realmente la data de mesas (o se puede derivar sin ella), elimina el estado/handlers muertos. Si SÍ la necesita, déjalo y documenta EXACTAMENTE por qué (cita la línea de saveUser) en el reporte. No rompas saveUser ni el alta/edición de usuarios: verifícalo en vivo (eleva dueño PIN 1234 por el sidebar → Usuarios → crear/editar un usuario con color).
+
+2) EstacionesAyuda.jsx — huérfano tras borrar EstacionesPreparacionSection. Miguel AUTORIZA su borrado. Confirma 0 referencias (grep) y elimínalo.
+
+3) ResumenDelDia.jsx — variables muertas: utilidad, margen, costoTotal, utilidadNeta, propinasPorMesero y afines ya NO se renderizan (F2 quedó solo efectivo/tickets/métodos/abonos/entregas). Quítalas del cómputo, SIN tocar lo que sí se muestra. Verifica que el Resumen se ve idéntico.
+
+4) Completitud de Fase 5: confirma que pages/CorteCaja.jsx (F7) esté ELIMINADO (si sigue, bórralo y confirma que /corte-caja redirige a /caja); y que F4/F5/F6 muestren "desactivado por el momento" (no error) al pulsarlos.
+
+5) notas-voz: borra el blob de prueba de 9 bytes del bucket si puedes (no hay policy DELETE; si no, déjalo y anótalo — es trivial).
+
+NO TOQUES: CantidadVariableDialog; la matemática del dinero; efectivo_esperado/buckets; el util devolucionAnticipo.
+
+VERIFICACIÓN OBLIGATORIA antes de cerrar: `vite build` limpio; la app arranca sin errores (carga /caja, Configuración elevada, Usuarios, POS, Productos); REGRESIÓN DE DINERO idéntica (un corte de método único da el MISMO efectivo_esperado que el baseline — el quirk se mantiene). Auto-audítate (VEREDICTO 🟢/🟡/🔴; no cierres con 🟡/🔴; arregla hasta 🟢). Reporta cada cambio + una línea en la bitácora + marca en BUGS_PENDING los flags que cierres + CHANGELOG. Commit y push.
+
+Si algo no se puede cerrar sin riesgo (p. ej. el color-sync depende de mesas), DÉJALO como está, documenta por qué, y sigue — no rompas nada operativo.

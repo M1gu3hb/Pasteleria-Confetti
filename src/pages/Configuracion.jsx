@@ -11,47 +11,28 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Settings, Users, UtensilsCrossed, Plus, Trash2, AlertTriangle, Save, Palette, Cloud, Sparkles, ShieldAlert, Database, Cake } from 'lucide-react';
+import { Settings, Users, Plus, Trash2, Palette, Sparkles, ShieldAlert, Database, Cake } from 'lucide-react';
 import PastelesConfigSection from '@/components/configuracion/PastelesConfigSection';
 import DatosSection from '@/components/datos/DatosSection';
 import ModoPresentacion from '@/components/configuracion/ModoPresentacion';
 import ReiniciarSistemaSection from '@/components/configuracion/ReiniciarSistemaSection';
 import CategoriasProductoSection from '@/components/configuracion/CategoriasProductoSection';
-import { ROLE_LABELS, ZONAS_MESA } from '@/lib/constants';
+import { ROLE_LABELS } from '@/lib/constants';
 import { usePOSAuth } from '@/lib/POSAuthContext';
-import { hasPermission } from '@/lib/permissions';
 import IdentidadNegocio from '@/components/configuracion/IdentidadNegocio';
 import UsuarioPOSDialog from '@/components/configuracion/UsuarioPOSDialog';
 import { useConfig } from '@/lib/ConfigContext';
 import { Pencil, Phone, Mail } from 'lucide-react';
 
-const useIsMobile = () => {
-  const [m, setM] = useState(typeof window !== 'undefined' && window.innerWidth < 768);
-  useEffect(() => {
-    const fn = () => setM(window.innerWidth < 768);
-    window.addEventListener('resize', fn);
-    return () => window.removeEventListener('resize', fn);
-  }, []);
-  return m;
-};
-
 export default function Configuracion() {
   const queryClient = useQueryClient();
   const { posUser } = usePOSAuth();
   const { paquete_modo } = useConfig();
-  const showMesasTab = paquete_modo === 'restaurante_pro';
   // Dueño y administrador ven las pestañas avanzadas. Acepta 'dueño' (legacy
   // con tilde) y 'dueno' (valor de código) además de 'administrador'.
   const esAdminODueno = ['dueño', 'dueno', 'administrador'].includes(posUser?.rol);
-  const puedeEliminarMesas = hasPermission(posUser?.rol, 'eliminar_mesas');
-  const isMobile = useIsMobile();
   const [showUserForm, setShowUserForm] = useState(false);
   const [editingUser, setEditingUser] = useState(null); // usuario en edición (null = crear nuevo)
-  const [showEliminarMesas, setShowEliminarMesas] = useState(false);
-  const [eliminando, setEliminando] = useState(false);
-  const [zonaFiltro, setZonaFiltro] = useState('Interior');
-  const [editingMesa, setEditingMesa] = useState(null);
-  const [showMesaDialog, setShowMesaDialog] = useState(false);
 
   // HOTFIX persistencia: sin initialData:[] para distinguir "primer fetch"
   // de "vacío real". placeholderData mantiene el valor previo durante el
@@ -66,12 +47,6 @@ export default function Configuracion() {
   const { data: usuarios = [] } = useQuery({
     queryKey: ['usuarios_pos'],
     queryFn: () => base44.entities.UsuarioPOS.filter({ activo: true }),
-    initialData: [],
-  });
-
-  const { data: mesas = [] } = useQuery({
-    queryKey: ['mesas'],
-    queryFn: () => base44.entities.Mesa.list('-created_date', 500),
     initialData: [],
   });
 
@@ -180,9 +155,6 @@ export default function Configuracion() {
   };
 
   // Crea o actualiza un UsuarioPOS desde el diálogo unificado.
-  // Si cambia el color de un mesero, sincroniza los snapshots de color
-  // en las mesas que tiene asignadas o que está atendiendo, para que la
-  // estética se refleje inmediatamente en el mapa de mesas.
   const handleSaveUser = async (payload, prevUser) => {
     try {
       // F3 — Segunda barrera de validación (server-side defensiva).
@@ -206,32 +178,8 @@ export default function Configuracion() {
         saved = await base44.entities.UsuarioPOS.create({ ...payload, activo: true });
       }
 
-      // Sincronizar color en mesas (solo si es mesero y cambió el color).
-      const colorAntes = prevUser?.color || '';
-      const colorDespues = payload?.color || '';
-      const esMesero = payload?.rol === 'mesero';
-      if (esMesero && prevUser?.id && colorAntes !== colorDespues) {
-        try {
-          const mesasArr = Array.isArray(mesas) ? mesas : [];
-          const afectadas = mesasArr.filter(m =>
-            m?.mesero_asignado_id === prevUser.id ||
-            m?.atendido_por_id === prevUser.id
-          );
-          await Promise.all(afectadas.map(m => {
-            const upd = {};
-            if (m.mesero_asignado_id === prevUser.id) upd.mesero_asignado_color = colorDespues;
-            if (m.atendido_por_id === prevUser.id) upd.atendido_por_color = colorDespues;
-            if (Object.keys(upd).length === 0) return null;
-            return base44.entities.Mesa.update(m.id, upd).catch(() => {});
-          }));
-        } catch (e) {
-          console.warn('[Configuracion] sync color mesas:', e);
-        }
-      }
-
       queryClient.invalidateQueries({ queryKey: ['usuarios_pos'] });
       queryClient.invalidateQueries({ queryKey: ['usuarios_pos_all'] });
-      queryClient.invalidateQueries({ queryKey: ['mesas'] });
       setShowUserForm(false);
       setEditingUser(null);
       toast.success(prevUser?.id ? 'Usuario actualizado' : 'Usuario creado');
@@ -244,89 +192,6 @@ export default function Configuracion() {
     await base44.entities.UsuarioPOS.update(id, { activo: false });
     queryClient.invalidateQueries({ queryKey: ['usuarios_pos'] });
     toast.success('Usuario desactivado');
-  };
-
-  const handleSaveMesa = async (data) => {
-    if (!data?.numero) { toast.error('El número de mesa es obligatorio'); return; }
-    try {
-      if (data.id) {
-        const { id, ...rest } = data;
-        await base44.entities.Mesa.update(id, rest);
-        toast.success(`Mesa ${data.numero} actualizada`);
-      } else {
-        await base44.entities.Mesa.create({ ...data, estado: data.estado || 'libre' });
-        toast.success(`Mesa ${data.numero} creada`);
-      }
-      queryClient.invalidateQueries({ queryKey: ['mesas'] });
-      setShowMesaDialog(false);
-      setEditingMesa(null);
-    } catch (e) {
-      toast.error('No se pudo guardar la mesa: ' + (e?.message || ''));
-    }
-  };
-
-  const handleDeleteMesa = async (id) => {
-    try {
-      // Validación defensiva en backend: revisar si tiene venta activa
-      const mesa = mesas.find(m => m.id === id);
-      const ESTADOS_OCUPADA = [
-        'esperando_orden', 'pedido_enviado', 'en_preparacion',
-        'en_espera_entrega', 'ocupada', 'cuenta_solicitada',
-      ];
-      if (mesa && (mesa.venta_activa_id || ESTADOS_OCUPADA.includes(mesa.estado))) {
-        toast.error('No se puede eliminar una mesa con venta o pedido activo. Libera la mesa primero.');
-        return;
-      }
-      await base44.entities.Mesa.delete(id);
-      queryClient.invalidateQueries({ queryKey: ['mesas'] });
-      toast.success('Mesa eliminada');
-      setShowMesaDialog(false);
-      setEditingMesa(null);
-    } catch (e) {
-      toast.error('Error al eliminar la mesa: ' + (e?.message || ''));
-    }
-  };
-
-  const handlePositionChange = async (id, x, y) => {
-    await base44.entities.Mesa.update(id, { posicion_x: x, posicion_y: y });
-    queryClient.invalidateQueries({ queryKey: ['mesas'] });
-  };
-
-  const handleReorder = async (id, nuevoOrden) => {
-    await base44.entities.Mesa.update(id, { orden: nuevoOrden });
-    queryClient.invalidateQueries({ queryKey: ['mesas'] });
-  };
-
-  const openNew = () => {
-    const maxNum = mesas.reduce((m, x) => Math.max(m, x.numero || 0), 0);
-    // Crear mesa en la zona activa (no mezclar zonas).
-    const mesasZona = mesas.filter(m => (m.zona || 'Interior') === zonaFiltro);
-    setEditingMesa({
-      numero: maxNum + 1, nombre: '', zona: zonaFiltro,
-      capacidad: 4, forma: 'redonda', tamano: 'mediana',
-      posicion_x: 60 + (mesasZona.length % 8) * 90, posicion_y: 60 + Math.floor(mesasZona.length / 8) * 100,
-      activo: true, estado: 'libre',
-    });
-    setShowMesaDialog(true);
-  };
-
-  const mesasFiltradas = mesas.filter(m => (m.zona || 'Interior') === zonaFiltro);
-
-  const eliminarMesasDemo = async () => {
-    setEliminando(true);
-    try {
-      const res = await base44.functions.invoke('eliminarMesasDemo', { rol: posUser?.rol });
-      if (res?.data?.ok) {
-        queryClient.invalidateQueries({ queryKey: ['mesas'] });
-        toast.success('Mesas eliminadas correctamente. Ahora puedes crear tu mapa desde cero.');
-        setShowEliminarMesas(false);
-      } else {
-        toast.error(res?.data?.error || 'Error al eliminar mesas');
-      }
-    } catch (e) {
-      toast.error('Error: ' + (e.message || ''));
-    }
-    setEliminando(false);
   };
 
   // HOTFIX: skeleton durante la primera carga de cfg para evitar que el usuario

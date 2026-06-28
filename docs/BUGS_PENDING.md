@@ -11,14 +11,16 @@
   negativo (p. ej. −$100). Es matemáticamente correcto (la fórmula no incluye el fondo de
   apertura), pero si Miguel prefiere ver `fondo − devuelto`, es otra decisión (no se tocó
   la fórmula del candado). Ver REPORTES/02.
-- **(mesas) Código muerto en `Configuracion.jsx` — FASE 5 F10.** Los COMPONENTES `mesas/`
-  y todas sus referencias se eliminaron (residual=0), pero el estado/handlers locales
-  (query `mesas`, `handleSaveMesa`, `openNew`, `eliminarMesasDemo`, etc.) se dejaron como
-  código muerto gated (`showMesasTab`=solo restaurante_pro) porque removerlos arriesga el
-  `saveUser` color-sync que referencia `mesas`. Candidato a limpieza enfocada.
-- **(estaciones) `EstacionesAyuda.jsx` huérfano — FASE 5 F10.** Quedó sin uso al eliminar
-  `EstacionesPreparacionSection`. NO se borró (no estaba en la lista de disposiciones).
-  Candidato a borrado si Miguel aprueba.
+- **(mesas) ✅ RESUELTO (cierre de cabos, REPORTES/07).** Diagnóstico: el color-sync de
+  `saveUser` era mesero-only (`if (esMesero && …)`) y Confetti no tiene meseros → nunca
+  corría. Se eliminó el color-sync + la query `mesas` + todos los handlers/estado muertos
+  + imports muertos. `saveUser` (crear/editar usuario) verificado EN VIVO. 0 referencias
+  residuales. (Los switches de config `usa_mesas`/asignación se conservaron: no son el
+  mapa muerto.)
+- **(estaciones) ✅ RESUELTO (cierre de cabos).** `EstacionesAyuda.jsx` borrado (Miguel
+  autorizó; 0 referencias).
+- **(notas-voz blob) ✅ RESUELTO (cierre de cabos).** Migración **0028** añadió la policy
+  DELETE faltante en `notas-voz`; el objeto de prueba de 9 bytes se borró. Bucket vacío.
 - **(web) WF1/WI2/I5 no tocados.** El run fue del repo POS; la limpieza menor de la web e
   I5 (URL Base44 en "Ver web pública", espera dominio) siguen pendientes (post-cutover).
 
