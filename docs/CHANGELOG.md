@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## Sesión 2026-06-27 (cont. 5) — Bot de pruebas largas (60 días) COMPLETO + apertura de fase MEJORAS
+
+### Validación a volumen (bot de paridad, `Bot pruebas/bot-pruebas/`)
+- **60 días simulados, 3 sucursales en paralelo**, operación real de Abel por UI, con **libro mayor + oráculo independientes** confrontando cada corte. Semilla fija `20260620` (reproducible). Corrido por chunks de 15 días bajo modelo vigilante; pausado tras el día 17 (cambio de máquina) y reanudado desde `estado.json` sin re-correr.
+- **Resultado IMPECABLE:** 60/60 días limpios · cuadres corte↔libro **180/180** (incl. doble conteo de 60 abonos) · folios **180/180** sin colisión bajo concurrencia (ráfaga 2 cajeros en Topilejo) · pedidos web **30/30** a la sucursal correcta · RLS **18/18** sin fugas · **0 bugs reales · 0 fallos de automatización**. Volumen: 180 cortes, 589 ventas, 60 abonos, 30 pedidos web, **180 PDFs** generados. Evidencia: `reportes/run60/RESUMEN_EJECUTIVO_60_DIAS.md`.
+- **PDF del corte verificado** (`bot-pdf.mjs`): el cierre auto-descarga un PDF válido que refleja el corte y lista las cancelaciones en el desglose (PDF es imagen html2canvas → contenido validado en el render del CorteTicket).
+- **Hallazgos reclasificados por Miguel:** corte de turno = **botón fantasma** (Abel no lo usa) → `BUGS_PENDING.md` (g); cobro mixto/catálogo huérfano = **fiel a Base44** (no bug) → ahora es flujo a construir.
+
+### Apertura de la fase MEJORAS
+- Nuevo doc **`docs/MEJORAS_POST_VALIDACION.md`** con la **lista ordenada** de mejoras (lo pendiente en Base44 por falta de créditos): #1 Vercel (POS+Web), #2 no-cutover, #3 fantasmas (corte turno=quitar; mini-dashboard Caja=arreglar a efectivo/métodos/tickets; mixto=construir), #4 notas de voz, #5 pagos mixtos en todos los puntos, #6 cancelación-con-anticipo→devolución negativa en corte, #7 tipo de cancelación, #8 mejora visual de cards + verificaciones pendientes.
+- **Estado del import Vercel (confirmado vía API):** POS ✅ importado (`pasteleria-confetti`, auto-deploy de `migracion/supabase` → preview READY, `live:false`); Web ❌ sin proyecto Vercel (crear aparte). Falta confirmar env vars Supabase en ambos.
+- **Cutover de Base44: PENDIENTE** (Abel se instala el lunes). **Imágenes `media.base44.com`: se mantienen** (al independizar, recrear/descargar idénticas; nunca quitarlas).
+- `NEXT_STEPS.md` y `PROJECT_CONTEXT.md` actualizados con este estado.
+
 ## Sesión 2026-06-26 — Fases 0–4 (núcleo)
 
 ### Fase 0 — Reconocimiento + andamiaje (COMPLETA, auditada)
