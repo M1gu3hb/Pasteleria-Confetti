@@ -64,6 +64,15 @@ máximo cuidado; Miguel confirma cada parte.
    (nunca se invoca); conectarlo. En el CORTE, un pago mixto debe mostrar
    "mixto" + los métodos por iniciales (E=efectivo, C/T=tarjeta,
    T=transferencia) — no el monto de cada uno, solo qué métodos se usaron.
+   ESTADO: HECHO y verificado (componente reutilizable MetodoPagoSelector +
+   util metodoPago.js; integrado en mostrador y anticipos; CobrarPedidoWebDialog
+   ELIMINADO en vez de conectarse para no duplicar; migración 0024 = abonos
+   acepta 'mixto'; corte/PDF muestra "Mixto (E+T)" con E/T/TR). PENDIENTE DE
+   DECISIÓN DE MIGUEL (no implementado): el abono MIXTO no entra a los buckets
+   de método → su porción efectivo no se doble-cuenta en efectivo_esperado
+   (inconsistente con el candado) y no sale en ResumenDelDia. Ver BUGS_PENDING (k),
+   opciones A (consistencia, recomendada) / B. Tocar efectivo_esperado/buckets
+   solo tras visto bueno.
 
 4. CANCELACIÓN DE PEDIDO CON ANTICIPO: si se cancela un pedido (web o pastel)
    que YA tuvo anticipo (registrado en un corte previo), debe AVISAR del dinero

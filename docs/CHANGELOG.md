@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## Sesión 2026-06-28 — Auditoría post-#3 (BLOQUE A): verificaciones + hallazgo del abono mixto/quirk
+
+Auditoría de la entrega de #3 contra el código real. Mixto bien construido; 2 puntos de dinero que el reporte de #3 no cubrió.
+
+### A1 — Hallazgo (decisión de Miguel PENDIENTE; NO se tocó `efectivo_esperado`/buckets)
+- El abono `metodo_pago='mixto'` no cae en `abonosEfectivo/Tarjeta/Transferencia` (filtran por método exacto, `Caja.jsx:266-271`) → (a) su porción efectivo NO se doble-cuenta en `efectivo_esperado` (un abono efectivo único SÍ → inconsistente con el candado); (b) no sale en la card "Pagos de pedidos de pastel" de ResumenDelDia. **Verificado en vivo:** corte con efectivo único $50 + 3 mixtos (ef 120) → `total_efectivo=170`, `efectivo_esperado=220` (solo el $50 single dobló). Documentado en `BUGS_PENDING (k)` con opciones A (recomendada: consistencia) / B. **Detenido para decisión de Miguel.**
+
+### A2–A7 — Verificado en vivo (BD/PDF/consola); sin correcciones de código necesarias
+- **A2** anticipo MIXTO sobre **pastel personalizado**: abono `mixto` $150 + venta paralela `mixto` (ef $90/tar $60) + línea `producto_id` null + saldo $420→$270. ✓
+- **A3** método ÚNICO en RegistrarPagoDialog intacto: anticipo solo-efectivo $50 (V0002) y solo-tarjeta $50 (V0003), montos por método correctos, al corte. ✓
+- **A4** etiquetas con TRANSFERENCIA en el PDF del corte: "Mixto (E+T)", "Mixto (E+TR)", "Mixto (T+TR)", "Efectivo", "Tarjeta" — sin ambigüedad (E/T/TR). ✓
+- **A5** redondeo de centavos en `construirPago`: $100.10+$200.20=$300.30 **cuadra** y deja confirmar; off por 1¢ ($300.29) → "Falta $0.01" + bloquea. `toFixed(2)` maneja los flotantes — **sin fix**. ✓
+- **A6** `construirPago` exige ≥2 métodos POSITIVOS: "mixto" con todo en un método → suma cuadra pero sale aviso "al menos 2 métodos" + confirm bloqueado — **sin fix**. ✓
+- **A7** build de producción limpio (`vite build` exit 0, `dist/` regenerado) tras el borrado de 131 líneas; **dev server reiniciado** + carga en frío de `/caja` **sin errores de consola** (los errores previos eran churn de HMR del archivo borrado). ✓
+- Staging limpiado a pristino.
+
 ## Sesión 2026-06-27 (cont. 9) — FASE 3 #3: PAGO MIXTO en todos los puntos (construido + verificado en vivo)
 
 ### Componente/lógica reutilizable (sin duplicar)
