@@ -8,8 +8,8 @@ import React from 'react';
  *
  * - Los pedidos NUEVOS en cocina los maneja CocinaNuevoPedidoWatcher (montado
  *   solo en /cocina) con su propio control "Voz: ON/OFF".
- * - Los pedidos LISTOS los maneja PedidoListoWatcher (global, ruteo por mesero).
- * - Las solicitudes QR las maneja SolicitudesQRWatcher (global, ruteo por mesero).
+ * - Los watchers de ruteo por mesero (pedidos listos / solicitudes QR) se
+ *   eliminaron en la limpieza de fantasmas (Confetti no usa meseros).
  *
  * Se deja este componente vacío para no romper imports existentes en AppLayout.
  */

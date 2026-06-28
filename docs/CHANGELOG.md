@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## Run nocturno 2026-06-28 — FASE 5: limpieza de fantasmas + visual
+- **F1** Corte de turno QUITADO (Caja). **F2** Resumen de Caja recortado a SOLO efectivo +
+  métodos + tickets (fuera utilidad/margen/costos/gastos/propinas/mesero/mesas).
+- **F4/F5/F6** botones muertos (Mantenimiento/Ventas/Registros) NEUTRALIZADOS → "Función
+  desactivada por el momento" (antes lanzaban por `functions.invoke`).
+- **F7** `pages/CorteCaja.jsx`, **F8** (FinancialChart, PrimerosPasosCard,
+  PedidoListoWatcher, SolicitudesQRWatcher, SoundUnlockButton), **F9** PropinaDialog,
+  **F12** ModificadoresDialog, **F10** (mesas/, IntegracionesRespaldos,
+  EstacionesPreparacion, UnidadesMedida, Proveedores) ELIMINADOS + sus referencias
+  (incluida cirugía de pestañas en Configuracion). `CantidadVariableDialog` intacto.
+- **Visual:** cards del pastel de-saturadas y mejor distribuidas (info/íconos/colores
+  conservados).
+- Build OK; runtime sin errores (Caja/Configuracion/Ventas/POS); **regresión de dinero
+  idéntica** (mostrador $140 → efectivo_esperado $140). FLAGS: estado mesas muerto dejado
+  en Configuracion (gated, acoplado al color-sync) + EstacionesAyuda huérfano (no listado).
+
 ## Run nocturno 2026-06-28 — FASE 4: nota de voz en pastel personalizado
 - **Migración 0027**: bucket `notas-voz` (público, RLS espejo de `uploads`) + `pedidos` +=
   `nota_voz_url`, `nota_voz_transcripcion`. `UploadFile` ahora acepta `bucket`.

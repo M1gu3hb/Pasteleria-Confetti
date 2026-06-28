@@ -113,24 +113,10 @@ export default function Ventas() {
   const colorSucursal = (nombre) =>
     COLORES_SUCURSAL[nombre] || 'bg-slate-100 text-slate-700 border-slate-300';
 
+  // FASE 5 (F5) — botón muerto NEUTRALIZADO: la función de limpieza de Base44 no
+  // está migrada. En vez de fallar, avisa que está desactivada.
   const handleLimpiar = async () => {
-    setLimpiando(true);
-    try {
-      const res = await base44.functions.invoke('limpiarVentas', { rol: posUser?.rol, revertirInventario });
-      if (res?.data?.ok) {
-        toast.success('Ventas de prueba limpiadas correctamente');
-        ['ventas_all', 'ventas_pendientes_caja', 'ventas_pagadas_caja', 'pedidos_cocina',
-         'mesas', 'cortes', 'cortes_historial', 'gastos_hoy', 'detalles_venta',
-         'ingredientes_all', 'descuentos_hoy', 'movimientos_inv',
-         'registros_ventas', 'registros_cortes', 'registros_movimientos',
-        ].forEach(k => queryClient.invalidateQueries({ queryKey: [k] }));
-      } else {
-        toast.error(res?.data?.error || 'Error al limpiar');
-      }
-    } catch (e) {
-      toast.error('Error: ' + (e.message || ''));
-    }
-    setLimpiando(false);
+    toast.info('Función desactivada por el momento.');
     setShowLimpiar(false);
     setConfirmText('');
   };

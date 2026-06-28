@@ -89,108 +89,60 @@ export default function ResumenDelDia({
 
   return (
     <div className="space-y-4">
-      {/* ===== KPIs principales: todas las cards con TÍTULO claro arriba y MONTO grande abajo ===== */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+      {/* ===== KPIs (F2 limpieza): SOLO efectivo y tickets. Fuera utilidad,
+           margen, costos, gastos y propinas — Confetti no los usa. ===== */}
+      <div className="grid grid-cols-2 gap-3">
         <StatCard
-          icon={DollarSign}
-          title="Ventas reales"
-          value={formatCurrency(totalGeneral)}
-          subtitle={`${numVentas} ${numVentas === 1 ? 'venta' : 'ventas'}`}
+          icon={Banknote}
+          title="Efectivo"
+          value={formatCurrency(Number(safeResumen.totalEfectivo) || 0)}
+          subtitle="Ventas en efectivo del día"
         />
-        <StatCard
-          icon={Coins}
-          title="Propinas"
-          value={formatCurrency(totalPropinas)}
-          subtitle="No suman a ventas"
-        />
-        <StatCard
-          icon={Receipt}
-          title="Total cobrado"
-          value={formatCurrency(totalCobrado)}
-          subtitle="Ventas + propinas"
-        />
-        {verCostos && (
-          <>
-            <StatCard
-              icon={TrendingUp}
-              title="Utilidad bruta"
-              value={formatCurrency(utilidad)}
-              subtitle={`Margen ${formatPercent(margenProm)}`}
-            />
-            <StatCard
-              icon={BarChart3}
-              title="Costo de ventas"
-              value={formatCurrency(costoTotal)}
-              subtitle="Insumos consumidos"
-            />
-            <StatCard
-              icon={Wallet}
-              title="Gastos"
-              value={formatCurrency(totalGastos)}
-              subtitle="Operativos del periodo"
-            />
-            <StatCard
-              icon={PiggyBank}
-              title="Utilidad neta"
-              value={formatCurrency(utilidadNeta)}
-              subtitle="Bruta − Gastos"
-            />
-          </>
-        )}
         <StatCard
           icon={Receipt}
           title="Tickets"
           value={String(numVentas)}
-          subtitle={`Promedio ${formatCurrency(ticketProm)}`}
+          subtitle={`${numVentas} ${numVentas === 1 ? 'venta' : 'ventas'} en esta caja`}
         />
       </div>
 
-      {/* ===== Métodos de pago (ventas + propinas) — scroll horizontal interno solo en la tabla ===== */}
+      {/* ===== Métodos de pago (F2: solo Método / Monto, sin propinas) ===== */}
       <div className="rounded-xl border bg-card overflow-hidden">
         <div className="px-4 py-3 border-b bg-muted/30">
           <p className="font-heading font-semibold text-sm">Métodos de pago</p>
-          <p className="text-[10px] text-muted-foreground">Ventas y propinas exactas por método (no proporcional).</p>
+          <p className="text-[10px] text-muted-foreground">Ventas por método en esta caja.</p>
         </div>
-        <div className="overflow-x-auto">
-          <div className="min-w-[480px] divide-y">
-            <div className="grid grid-cols-4 px-4 py-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
-              <span>Método</span>
-              <span className="text-right">Ventas</span>
-              <span className="text-right">Propinas</span>
-              <span className="text-right">Total cobrado</span>
-            </div>
-            {metodosConPropinas.length === 0 ? (
-              <div className="px-4 py-6 text-center text-xs text-muted-foreground">
-                Aún no hay cobros registrados en esta caja.
-              </div>
-            ) : (
-              <>
-                {metodosConPropinas.map((m, i) => {
-                  const Icon = m?.key === 'efectivo' ? Banknote
-                    : m?.key === 'tarjeta' ? CreditCard
-                    : Smartphone;
-                  return (
-                    <div key={m?.key || i} className="grid grid-cols-4 px-4 py-2.5 text-sm items-center">
-                      <span className="flex items-center gap-2 font-medium">
-                        <Icon className="w-4 h-4 text-muted-foreground" />
-                        {m?.label || m?.key || '—'}
-                      </span>
-                      <span className="text-right font-mono">{formatCurrency(Number(m?.ventas) || 0)}</span>
-                      <span className={`text-right font-mono ${colorTip}`}>{formatCurrency(Number(m?.propinas) || 0)}</span>
-                      <span className="text-right font-mono font-semibold">{formatCurrency(Number(m?.total) || 0)}</span>
-                    </div>
-                  );
-                })}
-                {/* Fila de totales */}
-                <div className="grid grid-cols-4 px-4 py-2.5 text-sm items-center bg-muted/20 font-semibold">
-                  <span>Total</span>
-                  <span className="text-right font-mono">{formatCurrency(totalesMetodos.ventas)}</span>
-                  <span className={`text-right font-mono ${colorTip}`}>{formatCurrency(totalesMetodos.propinas)}</span>
-                  <span className="text-right font-mono">{formatCurrency(totalesMetodos.total)}</span>
-                </div>
-              </>
-            )}
+        <div className="divide-y">
+          <div className="grid grid-cols-2 px-4 py-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+            <span>Método</span>
+            <span className="text-right">Monto</span>
           </div>
+          {metodosConPropinas.length === 0 ? (
+            <div className="px-4 py-6 text-center text-xs text-muted-foreground">
+              Aún no hay cobros registrados en esta caja.
+            </div>
+          ) : (
+            <>
+              {metodosConPropinas.map((m, i) => {
+                const Icon = m?.key === 'efectivo' ? Banknote
+                  : m?.key === 'tarjeta' ? CreditCard
+                  : Smartphone;
+                return (
+                  <div key={m?.key || i} className="grid grid-cols-2 px-4 py-2.5 text-sm items-center">
+                    <span className="flex items-center gap-2 font-medium">
+                      <Icon className="w-4 h-4 text-muted-foreground" />
+                      {m?.label || m?.key || '—'}
+                    </span>
+                    <span className="text-right font-mono">{formatCurrency(Number(m?.ventas) || 0)}</span>
+                  </div>
+                );
+              })}
+              <div className="grid grid-cols-2 px-4 py-2.5 text-sm items-center bg-muted/20 font-semibold">
+                <span>Total</span>
+                <span className="text-right font-mono">{formatCurrency(totalesMetodos.ventas)}</span>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -248,35 +200,6 @@ export default function ResumenDelDia({
         </div>
       )}
 
-      {/* ===== Propinas por mesero (solo si hay) ===== */}
-      {propinasPorMesero.length > 0 && (
-        <div className="rounded-xl border bg-card overflow-hidden">
-          <div className="px-4 py-3 border-b bg-muted/30 flex items-center gap-2">
-            <Users className="w-4 h-4 text-muted-foreground" />
-            <p className="font-heading font-semibold text-sm">Propinas por mesero</p>
-          </div>
-          <div className="divide-y">
-            {propinasPorMesero.map((m, i) => (
-              <div key={(m?.mesero_id || 'sin') + i} className="px-4 py-2.5 flex items-center justify-between text-sm">
-                <span className="font-medium truncate">{m?.mesero_nombre || 'Sin mesero'}</span>
-                <span className={`font-mono font-semibold ${colorTip}`}>{formatCurrency(Number(m?.total) || 0)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ===== Métricas operativas extra ===== */}
-      {Array.isArray(ventasPendientes) && ventasPendientes.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <StatCard
-            icon={Receipt}
-            title="Pendientes por cobrar"
-            value={String(ventasPendientes.length)}
-            subtitle="Cuentas abiertas en mesa"
-          />
-        </div>
-      )}
     </div>
   );
 }

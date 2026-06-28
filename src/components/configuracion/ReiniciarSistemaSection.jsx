@@ -69,44 +69,13 @@ export default function ReiniciarSistemaSection() {
     try { queryClient.invalidateQueries(); } catch {}
   };
 
+  // FASE 5 (F4) — botón muerto NEUTRALIZADO: la función de mantenimiento
+  // "reiniciar/borrar datos" (de Base44) no está migrada. Avisa que está
+  // desactivada en vez de fallar.
   const handleConfirm = async () => {
-    if (!esAdmin) { toast.error('Solo el administrador puede ejecutar esta acción.'); return; }
-    if (!isConfirmValid) { toast.error(`Debes escribir exactamente "${expectedText}".`); return; }
-    setLoading(true);
-    try {
-      const res = await base44.functions.invoke('reiniciarSistema', {
-        mode,
-        confirm: confirmText.trim(),
-        posRol: posUser?.rol,
-        posUserId: posUser?.id,
-      });
-      const data = res?.data || {};
-      if (data?.ok) {
-        invalidateAllQueries();
-        // limpiamos algunos caches visuales no críticos (NO tocamos auth Base44)
-        try {
-          const keysToClear = [
-            'filtros_ventas', 'filtros_compras', 'filtros_inventario',
-            'ultimo_corte_descargado',
-            // Guía de primeros pasos: vuelve a aparecer en Dashboard para el nuevo cliente.
-            'mh_primeros_pasos_dismissed',
-            'mh_primeros_pasos_completed',
-          ];
-          keysToClear.forEach(k => { try { localStorage.removeItem(k); } catch {} });
-        } catch {}
-        toast.success('Sistema reiniciado correctamente. Ya puedes configurarlo para un nuevo cliente.');
-        setMode(null);
-        setConfirmText('');
-        // Redirección suave al Dashboard
-        setTimeout(() => { navigate('/'); }, 600);
-      } else {
-        toast.error(data?.error || 'No se pudo reiniciar el sistema.');
-      }
-    } catch (e) {
-      toast.error('Error al reiniciar: ' + (e?.message || ''));
-    } finally {
-      setLoading(false);
-    }
+    toast.info('Función desactivada por el momento.');
+    setMode(null);
+    setConfirmText('');
   };
 
   if (!esAdmin) {

@@ -160,6 +160,13 @@ VISUAL:
   Limpiar — menos saturación, más orden — MANTENIENDO toda la información y los
   íconos/colores, solo mejor distribuidos.
 
+✅ HECHO (run nocturno): TODAS las disposiciones ejecutadas (F1 quitar, F2 slim,
+F4/F5/F6 neutralizar, F7/F8/F9/F10/F12 eliminar + cirugía Configuracion, visual
+cards de-saturadas). CantidadVariableDialog intacto. Build OK, runtime sin
+errores, regresión de dinero idéntica ($140). FLAGS (ver REPORTES/05): estado de
+mesas muerto dejado en Configuracion (gated, acoplado al color-sync de usuarios) +
+EstacionesAyuda huérfano (no listado, no tocado). **FASE 5 COMPLETA.**
+
 ## MENORES / POST-CUTOVER (no ahora)
 - I5 URL Base44 hardcodeada en "Ver web pública" (WebPublica.jsx) → cambiar
   hasta el cutover, cuando Miguel tenga el dominio.

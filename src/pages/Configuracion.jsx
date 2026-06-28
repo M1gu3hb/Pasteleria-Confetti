@@ -13,21 +13,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { Settings, Users, UtensilsCrossed, Plus, Trash2, AlertTriangle, Save, Palette, Cloud, Sparkles, ShieldAlert, Database, Cake } from 'lucide-react';
 import PastelesConfigSection from '@/components/configuracion/PastelesConfigSection';
-import IntegracionesRespaldos from '@/components/configuracion/IntegracionesRespaldos';
 import DatosSection from '@/components/datos/DatosSection';
 import ModoPresentacion from '@/components/configuracion/ModoPresentacion';
 import ReiniciarSistemaSection from '@/components/configuracion/ReiniciarSistemaSection';
 import CategoriasProductoSection from '@/components/configuracion/CategoriasProductoSection';
-import EstacionesPreparacionSection from '@/components/configuracion/EstacionesPreparacionSection';
-import EstacionesAyuda from '@/components/configuracion/EstacionesAyuda';
-import UnidadesMedidaSection from '@/components/configuracion/UnidadesMedidaSection';
-import ProveedoresSection from '@/components/configuracion/ProveedoresSection';
 import { ROLE_LABELS, ZONAS_MESA } from '@/lib/constants';
 import { usePOSAuth } from '@/lib/POSAuthContext';
 import { hasPermission } from '@/lib/permissions';
-import MesaMapEditor from '@/components/mesas/MesaMapEditor';
-import MesaListMobile from '@/components/mesas/MesaListMobile';
-import MesaEditDialog from '@/components/mesas/MesaEditDialog';
 import IdentidadNegocio from '@/components/configuracion/IdentidadNegocio';
 import UsuarioPOSDialog from '@/components/configuracion/UsuarioPOSDialog';
 import { useConfig } from '@/lib/ConfigContext';
@@ -365,15 +357,9 @@ export default function Configuracion() {
           <TabsTrigger value="negocio"><Settings className="w-3 h-3 mr-1" />Operación</TabsTrigger>
           <TabsTrigger value="usuarios"><Users className="w-3 h-3 mr-1" />Usuarios POS</TabsTrigger>
           <TabsTrigger value="pasteles"><Cake className="w-3 h-3 mr-1" />Pasteles</TabsTrigger>
-          {showMesasTab && (
-            <TabsTrigger value="mesas"><UtensilsCrossed className="w-3 h-3 mr-1" />Mesas</TabsTrigger>
-          )}
           {/* Fase 6 — pestañas ocultas para Confetti (código conservado) */}
           {false && (
             <TabsTrigger value="datos"><Database className="w-3 h-3 mr-1" />Datos</TabsTrigger>
-          )}
-          {false && (
-            <TabsTrigger value="integraciones"><Cloud className="w-3 h-3 mr-1" />Integraciones</TabsTrigger>
           )}
           {false && (
             <TabsTrigger value="presentacion"><Sparkles className="w-3 h-3 mr-1" />Presentación</TabsTrigger>
@@ -539,77 +525,11 @@ export default function Configuracion() {
             </CardContent>
           </Card>
 
-          {/* === ESTACIONES DE PREPARACIÓN (6A) ===
-              UNA sola card que contiene:
-              - switch para activar
-              - explicación corta
-              - ayuda expandible
-              - CRUD de estaciones (solo si está activo)
-              No se duplica el título ni el card.
-              Fase 6 — oculto para Confetti (código conservado). */}
-          {false && (
-          <Card className="mt-4">
-            <CardHeader>
-              <CardTitle className="text-base font-heading flex items-center gap-2">
-                <UtensilsCrossed className="w-4 h-4 text-primary" />
-                Estaciones de preparación
-              </CardTitle>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Permite separar pedidos por áreas como cocina, barra, postres, bebidas, etc.
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1">
-                  <Label className="text-sm font-medium">Activar estaciones de preparación</Label>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
-                    Si está apagado, la cocina funciona como flujo normal. Si está encendido,
-                    cada categoría puede asignarse a una estación y cada usuario de cocina puede
-                    ver solo su estación.
-                  </p>
-                </div>
-                <Switch
-                  checked={bizForm.estaciones_preparacion_activas === true}
-                  onCheckedChange={v => {
-                    setBizForm({ ...bizForm, estaciones_preparacion_activas: v });
-                  }}
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={saveBiz} disabled={savingBiz}>
-                  {savingBiz ? 'Guardando…' : 'Guardar'}
-                </Button>
-              </div>
-
-              {/* Contenido expandible — solo se ve si el switch está encendido */}
-              {bizForm.estaciones_preparacion_activas === true && (
-                <div className="pt-3 border-t space-y-3">
-                  <EstacionesAyuda />
-                  <EstacionesPreparacionSection embedded />
-                </div>
-              )}
-            </CardContent>
-          </Card>
-          )}
-
           {/* Categorías de productos — fuente única para Recetas, Productos, Mesero y Portal QR */}
           <div className="mt-4">
             <CategoriasProductoSection />
           </div>
 
-          {/* Fase 6 — Unidades de medida oculto para Confetti (código conservado) */}
-          {false && (
-            <div className="mt-4">
-              <UnidadesMedidaSection />
-            </div>
-          )}
-
-          {/* Fase 6 — Proveedores oculto para Confetti (código conservado) */}
-          {false && (
-            <div className="mt-4">
-              <ProveedoresSection />
-            </div>
-          )}
         </TabsContent>
 
         <TabsContent value="usuarios">
@@ -723,11 +643,6 @@ export default function Configuracion() {
           </TabsContent>
         )}
 
-        {false && (
-          <TabsContent value="integraciones">
-            <IntegracionesRespaldos />
-          </TabsContent>
-        )}
 
         {false && (
           <TabsContent value="presentacion">
@@ -741,65 +656,6 @@ export default function Configuracion() {
           </TabsContent>
         )}
 
-        {showMesasTab && (
-        <TabsContent value="mesas">
-          <Card>
-            <CardHeader className="flex flex-col gap-3">
-              <div className="flex flex-row items-center justify-between flex-wrap gap-2">
-                <div>
-                  <CardTitle className="text-base font-heading">Mapa de mesas</CardTitle>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Arrastra cada mesa para colocarla. Click para editar.
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  {puedeEliminarMesas && mesas.length > 0 && (
-                    <Button size="sm" variant="destructive" onClick={() => setShowEliminarMesas(true)}>
-                      <Trash2 className="w-4 h-4 mr-1" />Eliminar todas
-                    </Button>
-                  )}
-                  <Button size="sm" onClick={openNew}><Plus className="w-4 h-4 mr-1" />Nueva mesa</Button>
-                </div>
-              </div>
-              <div className="flex gap-1.5 overflow-x-auto pb-1">
-                {ZONAS_MESA.map(z => (
-                  <button key={z} onClick={() => setZonaFiltro(z)}
-                    className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium ${zonaFiltro === z ? 'bg-primary text-white' : 'bg-white border text-muted-foreground'}`}>
-                    {z} <span className="opacity-60">({mesas.filter(m => (m.zona || 'Interior') === z).length})</span>
-                  </button>
-                ))}
-              </div>
-            </CardHeader>
-            <CardContent>
-              {isMobile ? (
-                <>
-                  <MesaListMobile
-                    mesas={mesasFiltradas}
-                    onEdit={(m) => { setEditingMesa(m); setShowMesaDialog(true); }}
-                    onReorder={handleReorder}
-                  />
-                  <p className="text-xs text-muted-foreground mt-3">
-                    En móvil puedes editar y reordenar las mesas. Para usar el mapa libre con drag & drop, abre la app en computadora o tablet.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <MesaMapEditor
-                    mesas={mesasFiltradas}
-                    selectedId={editingMesa?.id}
-                    onMesaClick={(m) => { setEditingMesa(m); setShowMesaDialog(true); }}
-                    onPositionChange={handlePositionChange}
-                    onCreateFirst={openNew}
-                  />
-                  <p className="text-xs text-muted-foreground mt-3 flex items-center gap-1">
-                    <Save className="w-3 h-3" />Las posiciones se guardan automáticamente al soltar.
-                  </p>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-        )}
       </Tabs>
 
       {/* User Form Dialog — crear/editar usuario POS (con NIP, contacto, color) */}
@@ -810,36 +666,6 @@ export default function Configuracion() {
         onSave={handleSaveUser}
       />
 
-      {/* Eliminar mesas demo Dialog */}
-      <Dialog open={showEliminarMesas} onOpenChange={setShowEliminarMesas}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="font-heading flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-destructive" />
-              Eliminar mesas demo
-            </DialogTitle>
-          </DialogHeader>
-          <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-sm">
-            <p className="font-semibold mb-2">Esto eliminará las mesas actuales para que puedas crear el mapa desde cero. ¿Seguro?</p>
-            <p className="text-xs text-muted-foreground">No se borrarán: ventas, productos, recetas, inventario, usuarios ni configuración. Solo las mesas.</p>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEliminarMesas(false)}>Cancelar</Button>
-            <Button variant="destructive" disabled={eliminando} onClick={eliminarMesasDemo}>
-              {eliminando ? 'Eliminando...' : 'Sí, eliminar todas'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Mesa Edit Dialog (crear/editar) */}
-      <MesaEditDialog
-        open={showMesaDialog}
-        mesa={editingMesa}
-        onClose={() => { setShowMesaDialog(false); setEditingMesa(null); }}
-        onSave={handleSaveMesa}
-        onDelete={handleDeleteMesa}
-      />
     </div>
   );
 }

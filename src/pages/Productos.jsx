@@ -17,7 +17,6 @@ import { useConfig } from '@/lib/ConfigContext';
 import { useTerminal } from '@/lib/TerminalContext';
 import ProductoDesglose from '@/components/productos/ProductoDesglose';
 import ProductoSimpleDialog from '@/components/productos/ProductoSimpleDialog';
-import ModificadoresDialog from '@/components/productos/ModificadoresDialog';
 import FichaResumenVariable from '@/components/productos/FichaResumenVariable';
 import { esProductoVariable, TIPO_VENTA } from '@/utils/tipoVentaUtils';
 import { useIsDark } from '@/lib/ThemeContext';
@@ -37,7 +36,6 @@ export default function Productos() {
   const [fichaLineas, setFichaLineas] = useState([]);
   const [showSimple, setShowSimple] = useState(false);
   const [editandoProducto, setEditandoProducto] = useState(null);
-  const [modificadoresProducto, setModificadoresProducto] = useState(null);
   const [productoAEliminar, setProductoAEliminar] = useState(null);
   const queryClient = useQueryClient();
 
@@ -240,8 +238,7 @@ export default function Productos() {
                       ? <Badge variant="secondary" className="text-[10px]">Oculto en POS</Badge>
                       : <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200">En POS</Badge>}
                     <div className="flex items-center gap-0.5 ml-auto">
-                      {/* Botón "Opciones" / Modificadores OCULTO en Confetti (no se usa).
-                          La lógica subyacente (ModificadoresDialog) se conserva intacta. */}
+                      {/* Botón "Opciones" / Modificadores eliminado en Confetti (no se usa). */}
                       {!isEsencial && (
                         <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1"
                           onClick={(e) => { e.stopPropagation(); verFicha(p); }}>
@@ -284,13 +281,6 @@ export default function Productos() {
           queryClient.invalidateQueries({ queryKey: ['productos_all'] });
           setProductoAEliminar(null);
         }}
-      />
-
-      {/* MODIFICADORES / OPCIONES DE PREPARACIÓN — disponible en todos los paquetes */}
-      <ModificadoresDialog
-        open={!!modificadoresProducto}
-        onClose={() => setModificadoresProducto(null)}
-        producto={modificadoresProducto}
       />
 
       {/* FICHA DIALOG */}

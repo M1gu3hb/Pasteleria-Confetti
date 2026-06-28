@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import PreCuentaTicket from '@/components/tickets/PreCuentaTicket';
-import PropinaDialog from '@/components/propinas/PropinaDialog';
 import CorteViewerDialog from '@/components/cortes/CorteViewerDialog';
 import CorteAutoDownloader from '@/components/cortes/CorteAutoDownloader';
 import { printDocument } from '@/lib/print';
@@ -23,7 +22,6 @@ import ResumenDelDia from '@/components/caja/ResumenDelDia';
 import { desgloseMetodosPagoExacto } from '@/utils/tipsUtils';
 import SafeBoundary from '@/components/common/SafeBoundary';
 import AbrirCajaDialog from '@/components/caja/AbrirCajaDialog';
-import CorteTurnoDialog from '@/components/caja/CorteTurnoDialog';
 import CierreDiarioDialog from '@/components/caja/CierreDiarioDialog';
 import MesasPendientesCierreDialog from '@/components/caja/MesasPendientesCierreDialog';
 import AjustarCuentaDialog from '@/components/caja/AjustarCuentaDialog';
@@ -100,7 +98,6 @@ export default function Caja() {
 
   // === Estados de los 3 modales nuevos ===
   const [showAbrirCaja, setShowAbrirCaja] = useState(false);
-  const [showCorteTurno, setShowCorteTurno] = useState(false);
   const [showCierreDiario, setShowCierreDiario] = useState(false);
   const [accionLoading, setAccionLoading] = useState(false);
   // 6A: bloqueo de cierre si hay mesas abiertas
@@ -1248,47 +1245,6 @@ export default function Caja() {
     }
   };
 
-  // 2) CORTE DE TURNO — crea registro independiente, NO cierra la caja.
-  const handleCorteTurno = async (form) => {
-    if (accionLoading) return;
-    if (!cajaAbierta?.id) { toast.error('No hay caja abierta'); return; }
-    setAccionLoading(true);
-    try {
-      await base44.entities.CorteCaja.create({
-        folio: generateFolio('CT'),
-        tipo_corte: 'turno',
-        estado: 'registrado',
-        corte_padre_id: cajaAbierta.id,
-        fecha_inicio: cajaAbierta.fecha_apertura || cajaAbierta.fecha_inicio || new Date().toISOString(),
-        fecha_cierre: new Date().toISOString(),
-        usuario_cajero_id: posUser?.id,
-        usuario_cajero_nombre: posUser?.nombre,
-        total_efectivo: resumen.totalEfectivo,
-        total_tarjeta: resumen.totalTarjeta,
-        total_transferencia: resumen.totalTransferencia,
-        total_general: resumen.totalGeneral,
-        total_propinas: resumen.totalPropinas || 0,
-        propinas_por_mesero: JSON.stringify(resumen.propinasPorMesero || []),
-        numero_ventas: resumen.numVentas,
-        ticket_promedio: resumen.ticketPromedio,
-        total_gastos: resumen.totalGastos,
-        // Fase 4 — el efectivo esperado incluye abonos de pedidos en efectivo
-        efectivo_esperado: resumen.totalEfectivo + (resumen.abonosEfectivo || 0),
-        efectivo_contado: form.efectivo_contado,
-        diferencia_efectivo: form.diferencia_efectivo,
-        dinero_dejado_en_caja: form.dinero_dejado_en_caja,
-        notas: form.notas,
-      });
-      invalidarCajaQueries();
-      setShowCorteTurno(false);
-      toast.success('Corte de turno registrado');
-    } catch (err) {
-      console.error('[Caja] handleCorteTurno:', err);
-      toast.error('No se pudo registrar el corte de turno');
-    } finally {
-      setAccionLoading(false);
-    }
-  };
 
   // 6A: Verificar mesas pendientes ANTES de abrir el dialog de cierre.
   // Si todas están libres, abre el dialog. Si hay alguna ocupada, muestra el
@@ -1504,18 +1460,6 @@ export default function Caja() {
             <DoorOpen className="w-4 h-4 sm:mr-1" />
             <span className="hidden sm:inline">Abrir caja</span>
             <span className="sm:hidden text-[10px]">Abrir</span>
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setShowCorteTurno(true)}
-            disabled={!hayCaja}
-            title={!hayCaja ? 'Necesitas una caja abierta' : 'Corte parcial de turno'}
-            className="px-2"
-          >
-            <Scissors className="w-4 h-4 sm:mr-1" />
-            <span className="hidden sm:inline">Corte de turno</span>
-            <span className="sm:hidden text-[10px]">Turno</span>
           </Button>
           <Button
             size="sm"
@@ -2166,16 +2110,6 @@ export default function Caja() {
         </DialogContent>
       </Dialog>
 
-      {/* === MODAL DE PROPINA EN CAJA === */}
-      <PropinaDialog
-        open={showPropinaCaja}
-        onOpenChange={setShowPropinaCaja}
-        subtotal={Number(ventaSeleccionada?.total) || 0}
-        loading={procesando}
-        origen="caja"
-        porcentajesSugeridos={getPorcentajesSugeridos(config)}
-        onConfirm={aplicarPropinaCaja}
-      />
 
       {/* === PROMPT B — AJUSTAR CUENTA === */}
       <AjustarCuentaDialog
@@ -2199,14 +2133,6 @@ export default function Caja() {
         fondoEsperado={fondoEsperado}
         loading={accionLoading}
         onConfirm={handleAbrirCaja}
-      />
-      <CorteTurnoDialog
-        open={showCorteTurno}
-        onOpenChange={setShowCorteTurno}
-        posUser={posUser}
-        resumen={resumen}
-        loading={accionLoading}
-        onConfirm={handleCorteTurno}
       />
       <CierreDiarioDialog
         open={showCierreDiario}

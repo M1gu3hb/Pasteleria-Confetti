@@ -10,7 +10,6 @@ import ProductCard from '@/components/pos/ProductCard';
 import CartPanel from '@/components/pos/CartPanel';
 import PaymentModal from '@/components/pos/PaymentModal';
 import PreCuentaTicket from '@/components/tickets/PreCuentaTicket';
-import PropinaDialog from '@/components/propinas/PropinaDialog';
 import SafeBoundary from '@/components/common/SafeBoundary';
 import CantidadVariableDialog from '@/components/mesero/CantidadVariableDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -703,20 +702,6 @@ export default function POS() {
         producto={productoVariable}
         onClose={() => setProductoVariable(null)}
         onConfirm={handleConfirmVariable}
-      />
-
-      {/* Antes del cobro, preguntar propina. Si propinas están desactivadas, este modal nunca abre. */}
-      <PropinaDialog
-        open={showPropina}
-        onOpenChange={setShowPropina}
-        subtotal={total}
-        origen="tradicional"
-        porcentajesSugeridos={getPorcentajesSugeridos(config)}
-        onConfirm={(data) => {
-          setPropina(data);
-          setShowPropina(false);
-          setShowPayment(true);
-        }}
       />
 
       <PaymentModal

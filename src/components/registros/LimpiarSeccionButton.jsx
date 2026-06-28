@@ -39,29 +39,12 @@ export default function LimpiarSeccionButton({ seccion, onCleared }) {
 
   if (posUser?.rol !== 'administrador') return null;
 
+  // FASE 5 (F6) — botón muerto NEUTRALIZADO: la limpieza de historial por sección
+  // (función de Base44) no está migrada. Avisa que está desactivada en vez de fallar.
   const handle = async () => {
-    if (confirmText.trim().toUpperCase() !== 'ELIMINAR') {
-      toast.error('Escribe ELIMINAR para confirmar');
-      return;
-    }
-    setWorking(true);
-    try {
-      const res = await base44.functions.invoke('limpiarHistorialSeccion', { seccion });
-      const data = res?.data || res;
-      toast.success(`Se eliminaron ${data?.deleted || 0} registros de ${LABELS[seccion]}`);
-      // Invalida caches relevantes
-      ['registros_cortes','registros_ventas','registros_compras','registros_movimientos','registros_gastos',
-       'cortes','ventas_pendientes_caja','ventas_pagadas_caja','ventas_corte','gastos_hoy',
-       'compras_all','movimientos_inv'].forEach(k =>
-        queryClient.invalidateQueries({ queryKey: [k] })
-      );
-      onCleared?.();
-      setConfirmText('');
-      setOpen(false);
-    } catch (e) {
-      toast.error('Error: ' + (e?.message || ''));
-    }
-    setWorking(false);
+    toast.info('Función desactivada por el momento.');
+    setConfirmText('');
+    setOpen(false);
   };
 
   return (

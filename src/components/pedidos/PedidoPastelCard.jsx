@@ -19,30 +19,36 @@ export default function PedidoPastelCard({ pedido, onVer, mostrarSucursal }) {
       className="skeu-card w-full p-4 rounded-2xl text-left transition-all active:scale-[0.99]"
       style={{ touchAction: 'manipulation', minHeight: 44 }}
     >
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-          <span className="text-base" title="Pastel personalizado">🎂</span>
-          <p className="font-mono font-black text-lg text-[#E8579A]">{pedido.folio}</p>
+      {/* Encabezado: folio + estado en una línea limpia; chips (web/sucursal)
+          debajo, de-saturados, para no competir con el estado. */}
+      <div className="flex items-center justify-between gap-2 mb-1.5">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="text-base shrink-0" title="Pastel personalizado">🎂</span>
+          <p className="font-mono font-bold text-base text-[#E8579A] truncate">{pedido.folio}</p>
+        </div>
+        <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold border shrink-0 ${est.badge}`}>
+          {est.label}
+        </span>
+      </div>
+      {(pedido.origen === 'web' || (mostrarSucursal && pedido.sucursal_nombre)) && (
+        <div className="flex items-center gap-1.5 flex-wrap mb-2">
           {pedido.origen === 'web' && (
-            <span className="px-1.5 py-0.5 rounded text-[10px] font-black border bg-pink-100 text-pink-800 border-pink-300">
+            <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold border bg-pink-50 text-pink-700 border-pink-200">
               🌐 WEB
             </span>
           )}
           {mostrarSucursal && pedido.sucursal_nombre && (
-            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${
-              pedido.sucursal_nombre.includes('Xochimilco') ? 'bg-blue-100 text-blue-800 border-blue-300' :
-              pedido.sucursal_nombre.includes('Topilejo')   ? 'bg-green-100 text-green-800 border-green-300' :
-              pedido.sucursal_nombre.includes('Gregorio')   ? 'bg-amber-100 text-amber-800 border-amber-300' :
-              'bg-slate-100 text-slate-700 border-slate-300'
+            <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${
+              pedido.sucursal_nombre.includes('Xochimilco') ? 'bg-blue-50 text-blue-700 border-blue-200' :
+              pedido.sucursal_nombre.includes('Topilejo')   ? 'bg-green-50 text-green-700 border-green-200' :
+              pedido.sucursal_nombre.includes('Gregorio')   ? 'bg-amber-50 text-amber-700 border-amber-200' :
+              'bg-slate-50 text-slate-600 border-slate-200'
             }`}>
               {pedido.sucursal_nombre}
             </span>
           )}
         </div>
-        <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold border ${est.badge}`}>
-          {est.label}
-        </span>
-      </div>
+      )}
       <div className="flex gap-3">
         {pedido.imagen_referencia_url && (
           <img src={pedido.imagen_referencia_url} alt="ref"
@@ -69,7 +75,7 @@ export default function PedidoPastelCard({ pedido, onVer, mostrarSucursal }) {
       <div className="flex justify-between items-center mt-2 pt-2 border-t border-dashed">
         <p className="font-heading font-black text-base">{fmt(pedido.total_final)}</p>
         {Number(pedido.a_cuenta) > 0 && (
-          <p className="text-xs font-semibold text-orange-600">Resta: {fmt(resta)}</p>
+          <p className="text-xs font-semibold text-amber-600 dark:text-amber-400">Resta: {fmt(resta)}</p>
         )}
       </div>
     </button>
