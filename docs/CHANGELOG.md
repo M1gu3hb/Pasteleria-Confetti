@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## Sesión 2026-06-27 (cont. 7) — FASE 3 A (fix DetalleVenta) + B (línea en ticket) + C (#2 anticipo catálogo→corte+dashboard)
+
+### A — Fix del bug `producto_id: ''` (Opción A de Miguel) → `BUGS_PENDING (i)` RESUELTO
+- **Migración 0023** `detalle_venta_producto_id_nullable` (aplicada a la Supabase compartida): `detalle_venta.producto_id` de `uuid NOT NULL` → `uuid NULL`. Auditoría previa: sin FK en producto_id (solo en venta_id); todas las filas existentes con uuid válido; consumidores toleran null (CorteTicket key `producto_id||producto_nombre` + render por snapshot; joins de receta no machean→costo 0; DescuentoInventarioVenta no mapeado). Las ventas de mostrador normales no se tocan.
+- **Código:** `RegistrarPagoDialog.jsx` (línea de anticipo: `producto_id: null`, `producto_nombre: 'Anticipo pedido <folio>'`) y `Caja.jsx` handleCobrarPedidoWeb (items de pedido web: `producto_id: null`, concepto = nombre parseado).
+
+### B — Anticipo como línea en el ticket/PDF (verificado en vivo)
+- Pedido web → anticipo en POS → **sin** el toast de error de uuid; `DetalleVenta` creado con `producto_id=null`; la **línea aparece en el PDF del corte**: `CONF-B-V0001 · 21:31 · "Anticipo pedido PP-B-0001 ×1" · $150.00 · Efectivo`. El dinero sigue entrando al corte (no se rompió el #1).
+
+### C — #2 Anticipo de pedido de CATÁLOGO → corte + dashboard (verificado en vivo)
+- Catálogo web nace cobrable (saldo=total, #1) → "Registrar pago" (mismo `RegistrarPagoDialog` que el pastel) registra el anticipo (saldo baja), crea su venta paralela ligada al **corte abierto** + su línea de detalle (fix A). **Corte:** Resumen del día muestra Ventas $150 / Efectivo $150. **Dashboard:** con el corte ABIERTO, "Ventas hoy" = $50 (2º anticipo de prueba) — el Dashboard filtra por `corte_caja_id` de cortes abiertos ([Dashboard.jsx:80,109-111]); por eso "se reinicia" al cierre (esperado).
+- ⚠️ **Gap encontrado (`BUGS_PENDING (j)`):** el pedido de catálogo `con_anticipo` SALE de la cola Caja→Pedidos (que filtra `pendiente`) y no vive en "Pedidos de Pastel" → difícil de re-encontrar para 2º anticipo/liquidación/entrega. El pastel NO tiene este problema → aún no es "igual que pastel". Pendiente decisión de Miguel (alcance de #2).
+- Staging limpiado a pristino (transaccional=0, folios reseteados) tras las pruebas.
+
 ## Sesión 2026-06-27 (cont. 6) — Vercel en producción + FASE 2 confirmada en vivo + FASE 3 #1 (saldo web)
 
 ### Plan maestro
