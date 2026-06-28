@@ -14,7 +14,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Cake, Save, MessageCircle, Printer, Upload, Eye, ListChecks, Camera, X } from 'lucide-react';
+import { Cake, Save, MessageCircle, Printer, Upload, Eye, ListChecks, Camera, X, Mic } from 'lucide-react';
+import NotaVozRecorder from '@/components/pedidos/NotaVozRecorder';
 import {
   getPrecioKilo, getRatioPersonas, generarFolioPedido, buildWhatsAppLink,
 } from '@/utils/pedidoPastelUtils';
@@ -85,6 +86,7 @@ export default function NuevoPedidoPastel() {
     total_final: '',
     decorado: '', concepto: '', rellenos: '', leyenda_pastel: '',
     nota_interna: '', imagen_referencia_url: '', notas_generales: '',
+    nota_voz_url: '', nota_voz_transcripcion: '',
     a_cuenta: '0', devolver_base: true,
   });
   // FIX 2 — Detecta relleno de texto libre (pedidos viejos) que no coincide
@@ -147,6 +149,7 @@ export default function NuevoPedidoPastel() {
           decorado: p.decorado || '', concepto: p.concepto || '', rellenos: p.rellenos || '',
           leyenda_pastel: p.leyenda_pastel || '', nota_interna: p.nota_interna || '',
           imagen_referencia_url: p.imagen_referencia_url || '', notas_generales: p.notas_generales || '',
+          nota_voz_url: p.nota_voz_url || '', nota_voz_transcripcion: p.nota_voz_transcripcion || '',
           a_cuenta: String(p.a_cuenta ?? 0), devolver_base: p.devolver_base !== false,
         });
         setPedidoGuardado(p);
@@ -267,6 +270,8 @@ export default function NuevoPedidoPastel() {
         nota_interna: form.nota_interna,
         imagen_referencia_url: form.imagen_referencia_url,
         notas_generales: form.notas_generales,
+        nota_voz_url: form.nota_voz_url,
+        nota_voz_transcripcion: form.nota_voz_transcripcion,
       };
 
       let saved;
@@ -321,6 +326,7 @@ export default function NuevoPedidoPastel() {
       total_final: '',
       decorado: '', concepto: '', rellenos: '', leyenda_pastel: '',
       nota_interna: '', imagen_referencia_url: '', notas_generales: '',
+      nota_voz_url: '', nota_voz_transcripcion: '',
       a_cuenta: '0', devolver_base: true,
     });
     navigate('/pedidos-pastel/nuevo', { replace: true });
@@ -562,6 +568,31 @@ export default function NuevoPedidoPastel() {
             <Label className="text-xs">Nota interna (para búsqueda rápida)</Label>
             <Input value={form.nota_interna} onChange={e => set('nota_interna', e.target.value)}
               placeholder="Ej: pastel para Lupita, cliente especial..." className="skeu-input h-11 mt-1" />
+          </div>
+
+          {/* FASE 4 — Nota de voz: graba audio + transcripción (dictado es-MX) */}
+          <div className="rounded-lg border bg-muted/20 p-3 space-y-2">
+            <Label className="text-xs flex items-center gap-1.5">
+              <Mic className="w-3.5 h-3.5" /> Nota de voz (se graba y se transcribe)
+            </Label>
+            <NotaVozRecorder
+              audioUrl={form.nota_voz_url}
+              transcript={form.nota_voz_transcripcion}
+              onChange={({ audioUrl, transcript }) => setForm(f => ({ ...f, nota_voz_url: audioUrl, nota_voz_transcripcion: transcript }))}
+              disabled={guardando}
+            />
+            {(form.nota_voz_url || form.nota_voz_transcripcion) && (
+              <div>
+                <Label className="text-[11px] text-muted-foreground">Transcripción (editable como nota interna)</Label>
+                <Textarea
+                  value={form.nota_voz_transcripcion}
+                  onChange={e => set('nota_voz_transcripcion', e.target.value)}
+                  rows={2}
+                  placeholder="Lo dictado aparece aquí; puedes corregirlo."
+                  className="mt-1"
+                />
+              </div>
+            )}
           </div>
           <div>
             <Label className="text-xs">Imagen de referencia</Label>

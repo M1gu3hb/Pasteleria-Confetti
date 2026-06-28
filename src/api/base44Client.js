@@ -14,16 +14,16 @@ import { entities } from './entitiesAdapter';
 
 const STORAGE_BUCKET = 'uploads';
 
-async function UploadFile({ file }) {
+async function UploadFile({ file, bucket = STORAGE_BUCKET }) {
   if (!file) throw new Error('UploadFile: archivo vacío');
   await ensureSession();
   const safeExt = (file.name && file.name.includes('.')) ? file.name.split('.').pop() : 'bin';
   const path = `${Date.now()}_${Math.random().toString(36).slice(2)}.${safeExt}`;
   const { error } = await supabase.storage
-    .from(STORAGE_BUCKET)
+    .from(bucket)
     .upload(path, file, { cacheControl: '3600', upsert: false, contentType: file.type || undefined });
   if (error) throw new Error(`Storage: ${error.message}`);
-  const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
+  const { data } = supabase.storage.from(bucket).getPublicUrl(path);
   // Contrato idéntico al de Base44 Core.UploadFile.
   return { file_url: data.publicUrl };
 }

@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## Run nocturno 2026-06-28 — FASE 4: nota de voz en pastel personalizado
+- **Migración 0027**: bucket `notas-voz` (público, RLS espejo de `uploads`) + `pedidos` +=
+  `nota_voz_url`, `nota_voz_transcripcion`. `UploadFile` ahora acepta `bucket`.
+- **`NotaVozRecorder`** (nuevo): `MediaRecorder` + `SpeechRecognition` (es-MX) en paralelo;
+  sube el audio a `notas-voz` y emite URL+transcript. Integrado en `NuevoPedidoPastel`
+  (grabar) y `PedidoPastelDetalleDialog` (reproductor + transcripción editable, sustituye
+  el placeholder "próximamente"). Degradación si no hay reconocimiento/grabación.
+- **Verificado headless:** bucket+RLS, subida de blob (200) + lectura pública (200),
+  persistencia de campos, reproductor renderiza, transcripción editable guarda, recorder
+  presente. **FLAG:** la grabación con micrófono real necesita verificación manual de
+  Miguel (no ejercitable headless).
+
 ## Run nocturno 2026-06-28 — FASE 3 #6: entregas de pastel en el corte
 - **`src/utils/entregasCorte.js`** (nuevo): `obtenerEntregasDelCorte` lista los pedidos
   `entregado` (con `fecha_entrega_real`) del rango+sucursal del corte. Informativo, sin

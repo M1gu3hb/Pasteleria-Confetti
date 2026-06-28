@@ -11,6 +11,7 @@ import { registrarDevolucionAnticipo } from '@/utils/devolucionAnticipo';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { CheckCircle2, PackageCheck, XCircle, Pencil, Printer, MessageCircle, Banknote, Mail, ImageIcon, StickyNote, Mic } from 'lucide-react';
 import { ESTADOS_PEDIDO, buildWhatsAppLink, buildMailtoLink } from '@/utils/pedidoPastelUtils';
@@ -40,6 +41,56 @@ function AbonosHistorial({ pedidoId }) {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+// FASE 4 — Nota de voz en el detalle: reproductor del audio + transcripción
+// editable (se guarda como nota interna del pedido). Sustituye el placeholder.
+function NotaVozEnDetalle({ pedido }) {
+  const queryClient = useQueryClient();
+  const original = pedido?.nota_voz_transcripcion || '';
+  const [texto, setTexto] = useState(original);
+  const [guardando, setGuardando] = useState(false);
+
+  if (!pedido?.nota_voz_url && !original) return null;
+  const dirty = texto !== original;
+
+  const guardar = async () => {
+    if (!dirty || guardando || !pedido?.id) return;
+    setGuardando(true);
+    try {
+      await base44.entities.PedidoPastel.update(pedido.id, { nota_voz_transcripcion: texto });
+      queryClient.invalidateQueries({ queryKey: ['pedidos_pastel'] });
+      toast.success('Transcripción actualizada');
+    } catch (e) {
+      console.error('[NotaVozEnDetalle] guardar:', e);
+      toast.error('No se pudo guardar la transcripción');
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  return (
+    <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+      <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+        <Mic className="w-3.5 h-3.5" /> Nota de voz
+      </p>
+      {pedido?.nota_voz_url && (
+        <audio controls src={pedido.nota_voz_url} className="w-full h-9" />
+      )}
+      <Textarea
+        value={texto}
+        onChange={(e) => setTexto(e.target.value)}
+        rows={2}
+        placeholder="Transcripción de la nota de voz (editable)"
+        className="text-sm"
+      />
+      {dirty && (
+        <Button size="sm" onClick={guardar} disabled={guardando} className="h-8">
+          {guardando ? 'Guardando…' : 'Guardar transcripción'}
+        </Button>
+      )}
     </div>
   );
 }
@@ -169,25 +220,20 @@ export default function PedidoPastelDetalleDialog({ pedido, open, onClose }) {
         {/* ════════ BLOQUE 3 — NOTA INTERNA (card propia) ════════
             Solo pastel personalizado y solo si hay nota — sin huecos.
             Debajo: espacio reservado para el reproductor de nota de voz. */}
-        {!esCatalogo && pedido.nota_interna && (
+        {!esCatalogo && (pedido.nota_interna || pedido.nota_voz_url || pedido.nota_voz_transcripcion) && (
           <div className="rounded-xl border bg-card p-3 no-print space-y-3">
-            <div>
-              <p className="text-xs font-semibold mb-1.5 text-muted-foreground flex items-center gap-1.5">
-                <StickyNote className="w-3.5 h-3.5" /> Nota interna
-              </p>
-              <p className="text-sm whitespace-pre-wrap break-words">{pedido.nota_interna}</p>
-            </div>
+            {pedido.nota_interna && (
+              <div>
+                <p className="text-xs font-semibold mb-1.5 text-muted-foreground flex items-center gap-1.5">
+                  <StickyNote className="w-3.5 h-3.5" /> Nota interna
+                </p>
+                <p className="text-sm whitespace-pre-wrap break-words">{pedido.nota_interna}</p>
+              </div>
+            )}
 
-            {/* ───── Espacio reservado para reproductor de nota de voz ─────
-                Placeholder visual. NO implementa grabación ni reproducción
-                todavía; cuando exista el audio se montará el <audio> aquí.
-                No rompe si aún no hay audio. */}
-            <div className="rounded-lg border border-dashed bg-muted/40 px-3 py-2.5 flex items-center gap-2 text-muted-foreground">
-              <Mic className="w-4 h-4 shrink-0 opacity-60" />
-              <span className="text-[11px] leading-tight">
-                Nota de voz — próximamente. (Espacio reservado para el reproductor de audio.)
-              </span>
-            </div>
+            {/* FASE 4 — reproductor del audio + transcripción editable (sustituye
+                el placeholder "próximamente"). */}
+            <NotaVozEnDetalle pedido={pedido} />
           </div>
         )}
 

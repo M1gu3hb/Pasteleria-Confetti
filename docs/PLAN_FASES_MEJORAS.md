@@ -120,6 +120,12 @@ personalizado) se puede ESCRIBIR o GRABAR AUDIO.
 - Las notas internas ESCRITAS ya se muestran aparte (parte 1 ya hecha); esto
   agrega la voz. Audio vía Supabase Storage; transcripción vía API/navegador.
 - Hay un placeholder "Nota de voz — próximamente" reservado para esto.
+✅ HECHO (run nocturno): migración 0027 (bucket `notas-voz` + `nota_voz_url`/
+`nota_voz_transcripcion`); `NotaVozRecorder` (MediaRecorder + Web Speech API es-MX)
+en el form; reproductor + transcripción editable en el detalle (placeholder
+sustituido). Verificado headless (bucket+RLS, subida de blob 200, persistencia,
+reproductor). **FLAG: grabación con micrófono real = verificación manual de Miguel.**
+**FASE 4 COMPLETA** (salvo la verificación manual del micrófono).
 
 ## FASE 5 — Limpieza de fantasmas + visual
 OBJETIVO: quitar/neutralizar fantasmas y dejar la presentación limpia. Cada
