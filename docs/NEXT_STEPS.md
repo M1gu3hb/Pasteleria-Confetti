@@ -1,6 +1,20 @@
 # NEXT_STEPS
 
-Última actualización: 2026-06-27 (POS Fases 0-5 COMPLETAS+aprobadas; WEB-0/1/2/3 hechas; migraciones web 0017-0021; pendiente humano = import Vercel + bot al final).
+Última actualización: 2026-06-27 (POS+Web migrados y VALIDADOS; **bot 60 días COMPLETO e impecable**; próxima fase = **Vercel + MEJORAS**; cutover pendiente = lunes).
+
+## 🟢 ESTADO ACTUAL (lee esto primero)
+- **POS y Web migrados, independientes y VALIDADOS al 100% como estaban en Base44.** Fases 0-5 del POS firmadas + WEB-0..3 + flujo cruzado.
+- **Bot de pruebas largas (60 días) COMPLETO:** 60/60 días limpios · cuadres corte↔libro **180/180** (con doble conteo) · folios **180/180** sin colisión bajo concurrencia · pedidos web **30/30** a sucursal correcta · RLS **18/18** sin fugas · **0 bugs reales · 0 fallos de automatización**. Evidencia: `Bot pruebas/bot-pruebas/reportes/run60/RESUMEN_EJECUTIVO_60_DIAS.md`.
+- **Listo para producción EN LO QUE ABEL YA USABA.** El **CUTOVER NO se ha hecho** — Abel se instala el **LUNES**; hasta entonces sigue en **Base44**.
+- **Imágenes `media.base44.com`: NO tocar.** Se mantienen para la demo; al independizar, recrear/descargar las MISMAS (Base44 o Gemini), nunca quitarlas. Cutover de imágenes = después.
+
+## ▶️ PRÓXIMA FASE = MEJORAS (en orden) → ver `docs/MEJORAS_POST_VALIDACION.md`
+La próxima sesión arranca por **#1: subir a Vercel** para que Miguel revise con sus ojos.
+- **Vercel POS:** ✅ ya importado (`pasteleria-confetti`, auto-deploy de `migracion/supabase` → preview READY, `live:false` = no producción). Falta: confirmar env vars `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` + (opcional) promover a producción.
+- **Vercel Web:** ❌ **falta** — el repo `Pasteleria-Confetti-web-` no tiene proyecto Vercel; crear uno APARTE + env vars.
+- Luego: fantasmas (corte turno=quitar; mini-dashboard Caja=arreglar; mixto=construir), notas de voz, pagos mixtos en todos los puntos, cancelación-con-anticipo→devolución en corte, tipo de cancelación, mejora visual de cards. **Detalle y orden completo en `docs/MEJORAS_POST_VALIDACION.md`.**
+
+---
 
 > Nota de terminología: Miguel redefinió **Fase 5 = Validación de FIDELIDAD** (POS migrado vs Base44 vivo).
 > El **bot de paridad** pasa a ser "al final" (con la Web ya migrada), no Fase 5.
