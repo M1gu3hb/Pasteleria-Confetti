@@ -127,7 +127,11 @@ export default function Caja() {
     queryFn: () => base44.entities.PedidoPastel.filter({
       tipo_pedido: 'productos_catalogo',
       origen: 'web',
-      estado: 'pendiente',
+      // FASE 3 (#2 findability): traer TODOS los estados activos (no solo
+      // 'pendiente') para que el catálogo se pueda SEGUIR hasta entregar
+      // (2º anticipo, liquidar, entregar), igual que el pastel. Excluye
+      // terminados. Por exclusión = a prueba de estados futuros.
+      estado: { $nin: ['entregado', 'cancelado'] },
       sucursal_id: sucursalEfectiva?.sucursal_id,
     }, '-created_date', 50),
     enabled: !!(sucursalEfectiva?.sucursal_id) && !!hayCaja,
@@ -135,11 +139,17 @@ export default function Caja() {
     staleTime: 5000,
   });
   const pedidosWebList = Array.isArray(pedidosWebCaja) ? pedidosWebCaja : [];
-  // PARTE D — badge notorio: parpadea solo mientras haya pedidos NO vistos.
-  // Al hacer clic en la pestaña "Pedidos" se marca el conteo como visto y deja
-  // de parpadear hasta que llegue otro nuevo.
+  // FASE 3 (#2 findability): la cola ahora trae TODOS los estados activos del
+  // catálogo. Se separan en PENDIENTES (cobro inicial; manejan la notificación
+  // de "nuevo") y EN PROCESO (con_anticipo/pagado/confirmado → 2º anticipo,
+  // liquidar, entregar). Así el pedido no se "pierde" tras el primer anticipo.
+  const pedidosWebPendientes = pedidosWebList.filter(p => p?.estado === 'pendiente');
+  const pedidosWebEnProceso = pedidosWebList.filter(p => p?.estado !== 'pendiente');
+  // PARTE D — badge notorio: parpadea solo mientras haya pedidos PENDIENTES NO
+  // vistos (los nuevos por cobrar). Al hacer clic en la pestaña "Pedidos" se
+  // marca como visto y deja de parpadear hasta que llegue otro nuevo.
   const [pedidosWebVistos, setPedidosWebVistos] = useState(0);
-  const hayPedidosWebNuevos = pedidosWebList.length > pedidosWebVistos;
+  const hayPedidosWebNuevos = pedidosWebPendientes.length > pedidosWebVistos;
 
   // Fase 7 — búsqueda de pedido web por folio (tab Buscar).
   const [busquedaFolioWeb, setBusquedaFolioWeb] = useState('');
@@ -1510,7 +1520,7 @@ export default function Caja() {
   return (
     <div className="space-y-4 px-1 sm:px-0 max-w-full overflow-x-hidden">
       {/* PARTE D — beep suave al llegar un nuevo pedido web (respeta sonidos_activos) */}
-      <PedidoWebBeep count={pedidosWebList.length} sonidosActivos={config?.sonidos_activos !== false} />
+      <PedidoWebBeep count={pedidosWebPendientes.length} sonidosActivos={config?.sonidos_activos !== false} />
       {/* Header — responsive: stack en móvil, botones en grid 3-col */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
@@ -1701,7 +1711,7 @@ export default function Caja() {
           <TabsTrigger
             value="pedidos"
             className="shrink-0 relative"
-            onClick={() => setPedidosWebVistos(pedidosWebList.length)}
+            onClick={() => setPedidosWebVistos(pedidosWebPendientes.length)}
           >
             Pedidos
             {pedidosWebList.length > 0 && (
@@ -1835,20 +1845,43 @@ export default function Caja() {
               )}
             </div>
 
-            {/* Lista de pedidos web pendientes de cobro */}
+            {/* Lista de pedidos web de catálogo ACTIVOS (FASE 3 #2 findability):
+                PENDIENTES de cobro + EN PROCESO (con anticipo / por entregar),
+                para seguir el pedido hasta entregarlo, igual que el pastel. */}
             {pedidosWebList.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
-                <p>No hay pedidos web pendientes.</p>
+                <p>No hay pedidos web de catálogo activos.</p>
               </div>
             ) : (
-              <div className="space-y-2">
-                {pedidosWebList.map(pedido => (
-                  <PedidoWebCajaCard
-                    key={pedido.id}
-                    pedido={pedido}
-                    onVer={() => setPedidoWebDetalle(pedido)}
-                  />
-                ))}
+              <div className="space-y-5">
+                {pedidosWebPendientes.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      Pendientes de cobro ({pedidosWebPendientes.length})
+                    </p>
+                    {pedidosWebPendientes.map(pedido => (
+                      <PedidoWebCajaCard
+                        key={pedido.id}
+                        pedido={pedido}
+                        onVer={() => setPedidoWebDetalle(pedido)}
+                      />
+                    ))}
+                  </div>
+                )}
+                {pedidosWebEnProceso.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      En proceso — con anticipo / por entregar ({pedidosWebEnProceso.length})
+                    </p>
+                    {pedidosWebEnProceso.map(pedido => (
+                      <PedidoWebCajaCard
+                        key={pedido.id}
+                        pedido={pedido}
+                        onVer={() => setPedidoWebDetalle(pedido)}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>

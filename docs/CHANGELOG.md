@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## Sesión 2026-06-27 (cont. 8) — FASE 3: cierre de #2 (findability del catálogo) — `BUGS_PENDING (j)` RESUELTO
+
+### Findability del pedido de catálogo (gap j) — solo frontend, sin migración
+- **`Caja.jsx`:** la cola Caja→Pedidos pasa de `estado:'pendiente'` a `estado:{$nin:['entregado','cancelado']}` (todos los activos). Lista en **dos grupos**: "Pendientes de cobro" (manejan beep + badge pulsante, vía nuevo `pedidosWebPendientes`) y "En proceso — con anticipo / por entregar" (nuevo `pedidosWebEnProceso`). El badge de la pestaña muestra el total activo; el parpadeo/beep de "nuevo" sigue SOLO sobre `pendiente` (no molesta con los en proceso). El buscador por folio ya encontraba cualquier estado (sin cambio). El flujo del **pastel NO se tocó**.
+- **Verificado en vivo (ciclo completo de un catálogo, vía real):** pendiente (grupo "Pendientes de cobro") → 1er anticipo $100 → **se mueve a "En proceso"**, saldo $300→$200, no se pierde → 2º anticipo $100 (saldo $100) → liquidación $100 → **pagado**, saldo 0, sigue visible "por entregar" → **"Entregado"** habilitado → marcado → **sale de la lista** ("No hay pedidos web de catálogo activos"). BD: pedido `entregado`, 3 abonos / 3 ventas / 3 líneas (todas `producto_id` null = "Anticipo pedido PP-B-0001") = $300, todo al corte. Sin errores. **#2 (anticipos de catálogo, igual que el pastel) CERRADO COMPLETO.**
+- Staging limpiado a pristino tras las pruebas.
+
 ## Sesión 2026-06-27 (cont. 7) — FASE 3 A (fix DetalleVenta) + B (línea en ticket) + C (#2 anticipo catálogo→corte+dashboard)
 
 ### A — Fix del bug `producto_id: ''` (Opción A de Miguel) → `BUGS_PENDING (i)` RESUELTO
