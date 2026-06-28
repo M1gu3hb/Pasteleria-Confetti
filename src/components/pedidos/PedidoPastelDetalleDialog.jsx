@@ -7,6 +7,7 @@ import { useTerminal } from '@/lib/TerminalContext';
 import { usePOSAuth } from '@/lib/POSAuthContext';
 import RegistrarPagoDialog from './RegistrarPagoDialog';
 import CancelarPedidoDialog from './CancelarPedidoDialog';
+import { registrarDevolucionAnticipo } from '@/utils/devolucionAnticipo';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -82,6 +83,29 @@ export default function PedidoPastelDetalleDialog({ pedido, open, onClose }) {
       toast.error('No se pudo actualizar el pedido');
     } finally {
       setAccion(false);
+    }
+  };
+
+  // FASE 3 #4 — gancho de devolución de anticipo (DINERO). Exige caja abierta y
+  // corte al día; registra la salida en el corte ABIERTO (abono compensatorio
+  // negativo) sin tocar cortes viejos, y sella el pedido como devolución.
+  const handleDevolverAnticipo = async ({ pedido: p, motivo }) => {
+    if (!cajaAbierta?.id) { toast.error('Abre caja antes de registrar una devolución.'); throw new Error('SIN_CAJA'); }
+    if (hayCorteAtrasado) { toast.error('Cierra el corte del día anterior antes de registrar devoluciones.'); throw new Error('CORTE_ATRASADO'); }
+    try {
+      const res = await registrarDevolucionAnticipo({ pedido: p, motivo, cajaAbierta, posUser, sucursalEfectiva });
+      queryClient.invalidateQueries({ queryKey: ['pedidos_pastel'] });
+      queryClient.invalidateQueries({ queryKey: ['abonos_pedido', p?.id] });
+      queryClient.invalidateQueries({ queryKey: ['abonos_corte', cajaAbierta.id] });
+      queryClient.invalidateQueries({ queryKey: ['ventas_pagadas_caja'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard_data'] });
+      toast.success(res.montoDevuelto > 0
+        ? `Devolución registrada: $${res.montoDevuelto.toFixed(2)}`
+        : 'Pedido cancelado (sin anticipo que devolver).');
+    } catch (e) {
+      console.error('[PedidoPastel] devolverAnticipo:', e);
+      toast.error('No se pudo registrar la devolución.');
+      throw e;
     }
   };
 
@@ -258,6 +282,7 @@ export default function PedidoPastelDetalleDialog({ pedido, open, onClose }) {
           posUser={posUser}
           open={showCancelar}
           onClose={() => setShowCancelar(false)}
+          onDevolverAnticipo={handleDevolverAnticipo}
           onDone={() => {
             queryClient.invalidateQueries({ queryKey: ['pedidos_pastel'] });
             onClose?.();

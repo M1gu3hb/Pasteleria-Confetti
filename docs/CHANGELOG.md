@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## Run nocturno 2026-06-28 — FASE 3 #4: devolución de anticipo (DINERO) ⚠️
+- **Mecanismo (decisión propia, FLAG):** la devolución de un pedido con anticipo se
+  registra como **UN abono COMPENSATORIO negativo en el corte ABIERTO** (con desglose por
+  método en negativo), no como venta negativa: el desglose de ventas ignora `total<=0` y
+  clampa métodos a `>=0`, mientras `abonosEfectivo` suma en crudo. Así `efectivo_esperado`
+  baja exactamente el efectivo devuelto, UNA vez (consistente con la venta-devolución),
+  sin tocar cortes viejos (candado 9). El quirk del doble conteo se MANTIENE.
+- **`src/utils/devolucionAnticipo.js`** (nuevo): `registrarDevolucionAnticipo`. Exige caja
+  abierta. Cableado en `PedidoPastelDetalleDialog` y en la cola web de `Caja` (gancho
+  `onDevolverAnticipo` del `CancelarPedidoDialog` de #5).
+- **Verificado en vivo (BD):** cross-corte efectivo (Corte viejo intacto $200; Corte
+  nuevo `efectivo_esperado=-100`), mixto (abono -150 ef-90/ta-60), regresión método único
+  ($200), sin anticipo (cancela sin abono), sin caja (bloquea). Build OK.
+- **FLAGS:** `efectivo_esperado` puede quedar negativo en un corte solo-devolución
+  (correcto, sin fondo); mismo-día conserva el sesgo del quirk; la devolución no baja
+  `total_efectivo`/`total_general` (ventas-only), igual que devolver una venta pasada.
+
 ## Run nocturno 2026-06-28 — FASE 3 #5: tipo/motivo de cancelación de pedido
 - **Migración 0026** `pedidos_cancelacion` (aplicada): `pedidos` += `tipo_cancelacion,
   motivo_cancelacion, cancelado_por_id/nombre, fecha_cancelacion` + `monto_devuelto

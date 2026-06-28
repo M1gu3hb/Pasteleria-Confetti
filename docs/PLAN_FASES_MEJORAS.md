@@ -80,6 +80,13 @@ máximo cuidado; Miguel confirma cada parte.
    devuelto, RESTARLO del dashboard, y EXPLICAR que fue devolución, con NOTA de
    por qué. No es un asiento contable complejo — es transparencia: que no quede
    "se canceló pero el dinero no se movió". Igual que al devolver una venta.
+   ✅ HECHO (run nocturno, DINERO): util `registrarDevolucionAnticipo` registra
+   un ABONO COMPENSATORIO NEGATIVO en el corte ABIERTO (desglose por método en
+   negativo) → `efectivo_esperado` baja el efectivo devuelto UNA vez, sin tocar
+   cortes viejos (candado 9), exige caja abierta. Cableado en detalle y cola web
+   (gancho del CancelarPedidoDialog de #5). Verificado en vivo (5 escenarios:
+   cross-corte, mixto, regresión, sin anticipo, sin caja). FLAGS en
+   REPORTES/02_fase3-4. **#4 COMPLETO.**
 
 5. TIPO/MOTIVO DE CANCELACIÓN DE PEDIDO (I3): los pedidos se cancelan con un
    confirm() nativo, sin tipo ni motivo. Las VENTAS sí distinguen

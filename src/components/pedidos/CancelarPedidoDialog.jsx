@@ -73,8 +73,10 @@ export default function CancelarPedidoDialog({ open, onClose, pedido, posUser, o
         onDone?.();
         onClose?.();
       } catch (e) {
-        console.error('[CancelarPedidoDialog] devolución:', e);
-        toast.error('No se pudo procesar la devolución.');
+        // El handler (caja) es dueño del mensaje al usuario (SIN_CAJA, etc.).
+        // Es un bloqueo esperado (no un error): se registra como warn y NO se
+        // cierra el diálogo para que el usuario corrija (p. ej. abrir caja).
+        console.warn('[CancelarPedidoDialog] devolución no aplicada:', e?.message || e);
       } finally {
         setGuardando(false);
       }

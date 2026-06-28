@@ -37,6 +37,7 @@ import CorteAtrasadoBanner from '@/components/caja/CorteAtrasadoBanner';
 import BuscarVentaFolioCard from '@/components/caja/BuscarVentaFolioCard';
 import CancelarVentaDialog from '@/components/ventas/CancelarVentaDialog';
 import CancelarPedidoDialog from '@/components/pedidos/CancelarPedidoDialog';
+import { registrarDevolucionAnticipo } from '@/utils/devolucionAnticipo';
 import PedidoPastelDetalleDialog from '@/components/pedidos/PedidoPastelDetalleDialog';
 import { tipsEnabled, getPorcentajesSugeridos } from '@/utils/tipsUtils';
 import { sumarSubtotalDetalles } from '@/utils/ventaTotales';
@@ -549,6 +550,28 @@ export default function Caja() {
   const handleCancelarPedidoWeb = (pedido) => {
     if (!pedido?.id) return;
     setPedidoWebACancelar(pedido);
+  };
+
+  // FASE 3 #4 — gancho de devolución de anticipo para la cola web de Caja.
+  // Registra la salida en el corte ABIERTO (abono compensatorio negativo), exige
+  // caja abierta y corte al día, y sella el pedido como devolución.
+  const handleDevolverAnticipoWeb = async ({ pedido: p, motivo }) => {
+    if (!cajaAbierta?.id) { toast.error('Abre caja antes de registrar una devolución.'); throw new Error('SIN_CAJA'); }
+    if (hayCorteAtrasado) { toast.error('Cierra el corte del día anterior antes de registrar devoluciones.'); throw new Error('CORTE_ATRASADO'); }
+    try {
+      const res = await registrarDevolucionAnticipo({ pedido: p, motivo, cajaAbierta, posUser, sucursalEfectiva });
+      refetchPedidosWeb();
+      queryClient.invalidateQueries({ queryKey: ['abonos_corte', cajaAbierta.id] });
+      queryClient.invalidateQueries({ queryKey: ['ventas_pagadas_caja'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard_data'] });
+      toast.success(res.montoDevuelto > 0
+        ? `Devolución registrada: $${res.montoDevuelto.toFixed(2)}`
+        : 'Pedido cancelado (sin anticipo que devolver).');
+    } catch (e) {
+      console.error('[Caja] devolverAnticipoWeb:', e);
+      toast.error('No se pudo registrar la devolución.');
+      throw e;
+    }
   };
 
   const handleBuscarFolioWeb = async () => {
@@ -2244,6 +2267,7 @@ export default function Caja() {
         open={!!pedidoWebACancelar}
         pedido={pedidoWebACancelar}
         posUser={posUser}
+        onDevolverAnticipo={handleDevolverAnticipoWeb}
         onClose={() => setPedidoWebACancelar(null)}
         onDone={() => { refetchPedidosWeb(); setPedidoWebACancelar(null); }}
       />
