@@ -1,0 +1,19 @@
+Eres Claude Code en el repo del POS Confetti (C:\Pasteleria Confetti\pos, rama migracion/supabase), con acceso a GitHub, Supabase (ref ivqcxdpqxwjxfohiswqb) y Vercel. Es un RUN NOCTURNO AUTÓNOMO: Miguel duerme y revisa en la mañana. Tu meta es TERMINAR todo el plan de noche, sin detenerte hasta completarlo.
+
+PRIMERO lee, al pie de la letra: pos/docs/NOCHE/00_LEEME_PRIMERO.md y TODOS los MDs de pos/docs/NOCHE/ (01 reglas+protocolo, 02 Fase3 #5/#6, 03 Fase3 #4 devolución, 04 Fase4 voz, 05 Fase5 limpieza). También pos/CLAUDE.md, pos/PROJECT_CONTEXT.md, pos/docs/PLAN_FASES_MEJORAS.md, pos/docs/BUGS_PENDING.md, pos/docs/CHANGELOG.md.
+
+OBJETIVO: completar EN ESTE ORDEN — Fase 3 #5 (tipo/motivo cancelación pedido) → Fase 3 #4 (devolución de anticipo, DINERO) → Fase 3 #6 (entrega en el corte) → Fase 4 (nota de voz) → Fase 5 (limpieza fantasmas + visual) → consolidación final. No te detengas hasta cumplir la "Definición de TERMINADO" del MD 00.
+
+ERES EJECUTOR Y AUDITOR. Tras CADA cambio grande y CADA fase, auto-audítate con el formato del MD 01 (VEREDICTO 🟢/🟡/🔴 + ¿cumple el objetivo/flujo completo? + evidencia en vivo + candados + riesgos). NO avances a la siguiente fase con 🟡/🔴: arregla y re-audita hasta 🟢.
+
+REGLA RECTORA: "mientras funcione como debería" — el flujo completo correcto de cada función debe existir y funcionar, conforme al objetivo de la fase. Ante error/ambigüedad: toma criterio propio, elige la mejor decisión REVERSIBLE que cumpla el objetivo, impleméntala y FLAGGÉALA fuerte en el reporte. Nunca te detengas ni saltes algo en silencio. Si algo SOLO lo puede dar Miguel (API key / micrófono / credencial real): implementa lo posible, flaggea y SIGUE.
+
+CANDADOS (no romper): el doble conteo en efectivo_esperado se MANTIENE (consistente, Opción A — NO lo "arregles"); día = medianoche CDMX; cobro por sucursal del terminal; cancelar = cambio de estado (nunca borrado físico); NUNCA reescribir cortes cerrados; snapshots en DetalleVenta; sucursal_id en todo registro; reusar diálogos. Detalle en el MD 01.
+
+DINERO (sobre todo #4): máximo cuidado, verifica en vivo (BD + PDF del corte). Regresión OBLIGATORIA tras cualquier cambio de caja/abonos/ventas: un corte de SOLO método único debe dar el MISMO efectivo_esperado que el baseline; si cambia, está roto → arréglalo antes de seguir. Sin PINs reales; staging pristino.
+
+REPORTA TODO (regla estricta): cada cambio, migración, bug, decisión y verificación va a un archivo en pos/docs/NOCHE/REPORTES/ (uno por cambio grande y uno por fase) + una línea en REPORTES/00_BITACORA.md. Formato en el MD 01. Actualiza BUGS_PENDING/CHANGELOG/PLAN_FASES_MEJORAS. Commit por bloque y push (cada fase reversible por separado). En la mañana Miguel revisa los reportes: deja todo trazable.
+
+FANTASMAS (Fase 5): ejecuta SOLO las disposiciones ya decididas en PLAN_FASES_MEJORAS.md; lo no listado se reporta, no se toca. CantidadVariableDialog NO se toca.
+
+EMPIEZA: commitea los MDs de NOCHE, crea la carpeta REPORTES/, y arranca con Fase 3 #5. No te detengas hasta terminar TODAS las fases, auto-auditado y reportado.
