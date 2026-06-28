@@ -1,5 +1,27 @@
 # BUGS_PENDING / riesgos conocidos
 
+## FLAGS del run nocturno 2026-06-28 (para revisión de Miguel)
+- **(voz) Verificación manual del micrófono — FASE 4.** La grabación (`getUserMedia`/
+  `MediaRecorder`) y la transcripción en vivo (`SpeechRecognition` es-MX) NO se pudieron
+  ejercitar headless. Probar manualmente: grabar hablando en el form de pastel, confirmar
+  transcripción + subida + reproducción en la card. (La subida a Storage YA está probada:
+  blob 200 + lectura pública 200.) Solo en navegadores Chromium/Edge hay transcripción.
+- **(devolución) `efectivo_esperado` puede quedar NEGATIVO — FASE 3 #4.** Un corte cuya
+  única actividad es una devolución de anticipo en efectivo cierra con `efectivo_esperado`
+  negativo (p. ej. −$100). Es matemáticamente correcto (la fórmula no incluye el fondo de
+  apertura), pero si Miguel prefiere ver `fondo − devuelto`, es otra decisión (no se tocó
+  la fórmula del candado). Ver REPORTES/02.
+- **(mesas) Código muerto en `Configuracion.jsx` — FASE 5 F10.** Los COMPONENTES `mesas/`
+  y todas sus referencias se eliminaron (residual=0), pero el estado/handlers locales
+  (query `mesas`, `handleSaveMesa`, `openNew`, `eliminarMesasDemo`, etc.) se dejaron como
+  código muerto gated (`showMesasTab`=solo restaurante_pro) porque removerlos arriesga el
+  `saveUser` color-sync que referencia `mesas`. Candidato a limpieza enfocada.
+- **(estaciones) `EstacionesAyuda.jsx` huérfano — FASE 5 F10.** Quedó sin uso al eliminar
+  `EstacionesPreparacionSection`. NO se borró (no estaba en la lista de disposiciones).
+  Candidato a borrado si Miguel aprueba.
+- **(web) WF1/WI2/I5 no tocados.** El run fue del repo POS; la limpieza menor de la web e
+  I5 (URL Base44 en "Ver web pública", espera dominio) siguen pendientes (post-cutover).
+
 ## (l) ✅ RESUELTO (FASE 3 A-FIX) — `pago` con rezago (useEffect) → desglose por método viejo al confirmar rápido
 - **Qué fue:** `MetodoPagoSelector` emitía el `pago` (metodo + montos por método) al padre vía `useEffect → onChange` (asíncrono). Si se cambiaba el monto/total y se confirmaba ANTES de que el efecto propagara, el padre usaba un `pago` VIEJO → la venta/abono quedaban con `monto_efectivo/tarjeta/transferencia` del total anterior. **Reproducido:** un abono de $50 con dialog pre-llenado a saldo $370 → `monto_efectivo=370` (en vez de 50). Money-crítico (desglose por método mal → corte mal).
 - **Resolución:** `MetodoPagoSelector` pasó a **CONTROLADO** (el padre es dueño de `metodo` y `montos`; computa `construirPago` SÍNCRONO cada render; sin useEffect/onChange de pago). `PaymentModal` y `RegistrarPagoDialog` adaptados. Verificado: confirm inmediato tras cambiar el monto → desglose correcto (abono $50 → monto_efectivo=50).
