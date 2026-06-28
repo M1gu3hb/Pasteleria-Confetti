@@ -1,7 +1,7 @@
 # PROJECT_CONTEXT — POS Pastelería Confetti (migración Base44 → Vercel + Supabase)
 
 > **Fuente principal de transferencia.** Léelo COMPLETO antes de tocar nada, junto con `CLAUDE.md` y `docs/`.
-> Última actualización: 2026-06-27 (POS Fases 0-5 completas+aprobadas; WEB-0/1/2/3 hechas; migraciones web 0017-0021; pendiente humano = import Vercel + bot al final).
+> Última actualización: 2026-06-27 (POS+Web migrados y VALIDADOS; **bot 60 días COMPLETO e impecable**; **próxima fase = Vercel + MEJORAS** → `docs/MEJORAS_POST_VALIDACION.md`; cutover pendiente = lunes, imágenes se mantienen).
 > **Working tree estable:** `C:\Pasteleria Confetti\pos` (clon de `M1gu3hb/Pasteleria-Confetti@migracion/supabase`).
 > **Repo Web (aparte):** `M1gu3hb/Pasteleria-Confetti-web-` (CON guion final) en `C:\Pasteleria Confetti\web`.
 
@@ -18,7 +18,8 @@ Independizar el **POS interno** de Pastelería Confetti de Base44, dejándolo **
 - **WEB-0 / WEB-1** (migración Web, repo aparte `M1gu3hb/Pasteleria-Confetti-web-`): **HECHAS.** Andamiaje web pusheado; GAP1 folio = **migración 0017** (trigger), GAP2 upload = **migración 0018** (bucket `web-uploads`) — ambas en ESTE repo POS (esquema = fuente única), verificadas (anon 11/11, regresión POS limpia). Ver `CHANGELOG.md` / `DATABASE.md` / `DECISIONS.md`.
 - **WEB-2** (port de la capa de datos de la web): **HECHA.** Migraciones **0019** (RPC `crear_pedido_web` devuelve folio → folio-Gracias resuelto), **0020** (RPC anon-only), **0021** (sella `creado_por_nombre='Web Confetti'`) en ESTE repo POS; el port (cliente anon, adaptador, puente muerto, NOMBRE→ID, web-uploads) en el repo web, build verde + smoke real. Ver repo web `docs/CHANGELOG.md`.
 - **WEB-3** (validación end-to-end POS↔web): **HECHA y aprobada por evidencia.** Pedido web visible y fiel en el POS (badge 🌐 WEB, "Creado por Web Confetti", imagen de referencia) + aislamiento por sucursal; edición de producto en el POS reflejada de inmediato en el catálogo web (misma fila, sin sync). Sin diffs vs Base44. Ver `CHANGELOG.md` (cont. 4). **Pendiente humano:** import Vercel del repo web.
-- **Bot de paridad** (concurrencia/PDFs): AL FINAL, después de WEB-3 (ya hecho). Vive en otro proyecto de Miguel.
+- **Bot de paridad / pruebas largas** (concurrencia/PDFs, otro proyecto de Miguel: `Bot pruebas/bot-pruebas/`): **COMPLETO.** 60 días simulados, 3 sucursales en paralelo, libro mayor + oráculo confrontando cada corte → **60/60 días limpios, cuadres 180/180 (con doble conteo), folios 180/180 sin colisión, web 30/30, RLS 18/18, 0 bugs reales**. Evidencia: `reportes/run60/RESUMEN_EJECUTIVO_60_DIAS.md`. Halló y reclasificó (decisión de Miguel): corte de turno = fantasma; cobro mixto/catálogo huérfano = fiel a Base44.
+- **➡️ PRÓXIMA FASE = MEJORAS** (lo pendiente en Base44 por créditos): **#1 subir a Vercel** (POS ya importado en preview `migracion/supabase`; Web FALTA proyecto Vercel aparte) para revisión visual de Miguel; luego fantasmas, notas de voz, pagos mixtos, cancelación-con-anticipo→devolución, etc. **Orden completo en `docs/MEJORAS_POST_VALIDACION.md`.** El **CUTOVER de Base44 sigue pendiente** (Abel se instala el lunes); las imágenes `media.base44.com` se mantienen hasta entonces.
 
 ## 3. Stack
 - Frontend: React 18 + Vite 6 + Tailwind 3 + React Router 6 + React Query 5 (export de Base44, migrado). Sin TS en el front.
