@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { base44 } from '@/api/base44Client';
 import { useConfig } from '@/lib/ConfigContext';
 import { getStockStatus } from '@/utils/inventoryUtils';
+import { obtenerEntregasDelCorte } from '@/utils/entregasCorte';
 import { downloadNodeAsPDF, safeFileName } from '@/lib/pdfDownload';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -96,8 +97,15 @@ export default function CorteAutoDownloader({ corte, onDone }) {
         .map(i => ({ ...i, status: getStockStatus(i) }))
         .filter(i => ['critico', 'agotado', 'bajo'].includes(i.status));
 
+      // Fase 3 #6 — entregas del rango del corte (informativo, no toca totales).
+      const entregas = await obtenerEntregasDelCorte({
+        sucursalId: corte.sucursal_id,
+        desde: corte.fecha_inicio,
+        hasta: corte.fecha_cierre,
+      }).catch(() => []);
+
       if (!cancelled) {
-        setData({ ventas: ventasCorte, detalles, gastos: gastosCorte, ingredientes: ingredientesConsumidos, cancelaciones, alertas });
+        setData({ ventas: ventasCorte, detalles, gastos: gastosCorte, ingredientes: ingredientesConsumidos, cancelaciones, alertas, entregas });
       }
     })();
     return () => { cancelled = true; };
@@ -161,6 +169,7 @@ export default function CorteAutoDownloader({ corte, onDone }) {
             ingredientes={data.ingredientes}
             cancelaciones={data.cancelaciones}
             alertas={data.alertas}
+            entregas={data.entregas}
             config={config}
             isEsencial={isEsencial}
             isRP={isRP}

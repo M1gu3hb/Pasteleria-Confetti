@@ -38,6 +38,7 @@ import BuscarVentaFolioCard from '@/components/caja/BuscarVentaFolioCard';
 import CancelarVentaDialog from '@/components/ventas/CancelarVentaDialog';
 import CancelarPedidoDialog from '@/components/pedidos/CancelarPedidoDialog';
 import { registrarDevolucionAnticipo } from '@/utils/devolucionAnticipo';
+import { obtenerEntregasDelCorte } from '@/utils/entregasCorte';
 import PedidoPastelDetalleDialog from '@/components/pedidos/PedidoPastelDetalleDialog';
 import { tipsEnabled, getPorcentajesSugeridos } from '@/utils/tipsUtils';
 import { sumarSubtotalDetalles } from '@/utils/ventaTotales';
@@ -198,6 +199,23 @@ export default function Caja() {
     placeholderData: (prev) => prev,
   });
   const safeAbonos = Array.isArray(abonosCorteRaw) ? abonosCorteRaw : [];
+
+  // Fase 3 #6 — entregas de pastel del corte abierto (informativo, NO toca dinero).
+  const { data: entregasCorteRaw } = useQuery({
+    queryKey: ['entregas_corte', cajaAbierta?.id],
+    queryFn: () => cajaAbierta?.id
+      ? obtenerEntregasDelCorte({
+          sucursalId: cajaAbierta.sucursal_id,
+          desde: cajaAbierta.fecha_apertura || cajaAbierta.fecha_inicio || cajaAbierta.created_date,
+          hasta: Date.now(),
+        })
+      : [],
+    enabled: !!cajaAbierta?.id,
+    refetchInterval: 15000,
+    staleTime: 8000,
+    placeholderData: (prev) => prev,
+  });
+  const entregasDelDia = Array.isArray(entregasCorteRaw) ? entregasCorteRaw : [];
 
   const { data: ventasHoyRaw } = useQuery({
     queryKey: ['ventas_pagadas_caja'],
@@ -1848,6 +1866,7 @@ export default function Caja() {
             ventasHoy={ventasHoy}
             cajaAbierta={cajaAbierta}
             ventasPendientes={ventasPendientes}
+            entregas={entregasDelDia}
             colorearImportes={config?.colorear_importes_monetarios !== false}
           />
         </TabsContent>

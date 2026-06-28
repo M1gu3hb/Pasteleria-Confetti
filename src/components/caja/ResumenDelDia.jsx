@@ -20,6 +20,7 @@ export default function ResumenDelDia({
   ventasHoy = [],
   cajaAbierta = null,
   ventasPendientes = [],
+  entregas = [],
   colorearImportes = true,
 }) {
   const safeResumen = resumen || {};
@@ -223,6 +224,26 @@ export default function ResumenDelDia({
               <span>Total pagos pedidos</span>
               <span className="font-mono">{formatCurrency(Number(safeResumen.abonosTotal) || 0)}</span>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== Fase 3 #6 — Entregas de pastel del día (informativo) ===== */}
+      {Array.isArray(entregas) && entregas.length > 0 && (
+        <div className="rounded-xl border bg-card overflow-hidden">
+          <div className="px-4 py-3 border-b bg-muted/30">
+            <p className="font-heading font-semibold text-sm">Entregas de pastel del día</p>
+            <p className="text-[10px] text-muted-foreground">Informativo — no suma a los totales ni al efectivo esperado.</p>
+          </div>
+          <div className="divide-y">
+            {entregas.map((e, i) => (
+              <div key={(e?.folio || '') + i} className="px-4 py-2.5 flex items-center justify-between text-sm gap-2">
+                <span className="truncate">
+                  Entregado <strong>{e?.nombre || 'Pastel'}</strong> — {e?.hora || '—'} — <span className="font-mono">{e?.folio || '—'}</span>
+                </span>
+                <span className="text-xs text-emerald-600 dark:text-emerald-300 font-medium shrink-0">entregado</span>
+              </div>
+            ))}
           </div>
         </div>
       )}

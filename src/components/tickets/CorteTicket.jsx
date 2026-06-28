@@ -11,7 +11,7 @@ import { etiquetaMetodoPago } from '@/utils/metodoPago';
  * Internal printable corte de caja PDF/document.
  * Wraps content in `.ticket-printable` so the existing print CSS only prints this.
  */
-const CorteTicket = React.forwardRef(function CorteTicket({ corte, ventas = [], detalles = [], ingredientes = [], gastos = [], cancelaciones = [], detallesCancel = [], alertas = [], config = {}, isEsencial = false, isRP = false }, ref) {
+const CorteTicket = React.forwardRef(function CorteTicket({ corte, ventas = [], detalles = [], ingredientes = [], gastos = [], cancelaciones = [], detallesCancel = [], alertas = [], entregas = [], config = {}, isEsencial = false, isRP = false }, ref) {
   // Parse desglose por mesero (guardado como JSON string). Tolerante a errores.
   let propinasPorMesero = [];
   try {
@@ -325,6 +325,37 @@ const CorteTicket = React.forwardRef(function CorteTicket({ corte, ventas = [], 
           </tbody>
         </table>
       </Section>
+
+      {/* Entregas de pastel del día — FASE 3 #6. Informativo: pagar y entregar
+          son momentos distintos; estas líneas muestran lo ENTREGADO en el rango
+          del corte y NO suman a totales ni a efectivo_esperado. */}
+      {Array.isArray(entregas) && entregas.length > 0 && (
+        <Section title="Entregas de pastel del día">
+          <table className="w-full text-xs border">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="border px-2 py-1 text-left">Pastel</th>
+                <th className="border px-2 py-1 text-left">Hora</th>
+                <th className="border px-2 py-1 text-left">Folio</th>
+                <th className="border px-2 py-1 text-left">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {entregas.map((e, i) => (
+                <tr key={(e?.folio || '') + i}>
+                  <td className="border px-2 py-1">Entregado {e?.nombre || 'Pastel'}</td>
+                  <td className="border px-2 py-1">{e?.hora || '—'}</td>
+                  <td className="border px-2 py-1 font-mono">{e?.folio || '—'}</td>
+                  <td className="border px-2 py-1">entregado</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="text-[10px] text-gray-600 mt-2">
+            * Informativo. Las entregas no suman a los totales del corte ni al efectivo esperado.
+          </p>
+        </Section>
+      )}
 
       {/* Productos vendidos — en Esencial sin columnas de costo/utilidad.
           6B / 1.I — Nueva columna "Cantidad real" muestra g/ml/shots para variables. */}

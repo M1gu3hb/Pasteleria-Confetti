@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## Run nocturno 2026-06-28 — FASE 3 #6: entregas de pastel en el corte
+- **`src/utils/entregasCorte.js`** (nuevo): `obtenerEntregasDelCorte` lista los pedidos
+  `entregado` (con `fecha_entrega_real`) del rango+sucursal del corte. Informativo, sin
+  dinero.
+- **CorteTicket** (PDF) y **ResumenDelDia** (vivo): nueva sección "Entregas de pastel del
+  día" con la línea `Entregado [nombre] — [hora] — [folio] — entregado`. Cableado en
+  `Caja` (vivo), `CorteViewerDialog` (histórico) y `CorteAutoDownloader` (cierre).
+- **Verificado en vivo:** entrega de "Lucia"/PP-B-0001 aparece en el Resumen y en el PDF;
+  el corte cerró con totales solo del pago (efectivo 420 / esperado 840), la entrega no
+  sumó nada. Build OK. **FASE 3 (dinero) COMPLETA.**
+
 ## Run nocturno 2026-06-28 — FASE 3 #4: devolución de anticipo (DINERO) ⚠️
 - **Mecanismo (decisión propia, FLAG):** la devolución de un pedido con anticipo se
   registra como **UN abono COMPENSATORIO negativo en el corte ABIERTO** (con desglose por

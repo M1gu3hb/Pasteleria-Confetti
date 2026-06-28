@@ -104,6 +104,10 @@ máximo cuidado; Miguel confirma cada parte.
    "Entregado [nombre interno] — [hora de entrega] — [folio] — entregado".
    Ej: "Entregado pastel Lucía — 15:00 — PP-A-0012 — entregado". Usa el nombre
    interno (que puede ser el nombre del cliente, ej. Lucía).
+   ✅ HECHO (run nocturno): util `obtenerEntregasDelCorte` + sección "Entregas de
+   pastel del día" en `ResumenDelDia` (vivo) y `CorteTicket` (PDF), cableada en
+   Caja/CorteViewerDialog/CorteAutoDownloader. Informativo, no toca totales.
+   Verificado en vivo (Resumen + PDF). **#6 COMPLETO → FASE 3 (dinero) COMPLETA.**
 
 ## FASE 4 — Notas de voz en pastel personalizado
 OBJETIVO: en la sección de notas internas (hasta abajo del formulario de pastel

@@ -6,6 +6,7 @@ import { Printer, X, Download, Loader2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useConfig } from '@/lib/ConfigContext';
 import { getStockStatus } from '@/utils/inventoryUtils';
+import { obtenerEntregasDelCorte } from '@/utils/entregasCorte';
 import { downloadNodeAsPDF, printNodeAsPDF, safeFileName } from '@/lib/pdfDownload';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -155,15 +156,22 @@ export default function CorteViewerDialog({ corte, open, onClose }) {
         .map(i => ({ ...i, status: getStockStatus(i) }))
         .filter(i => ['critico', 'agotado', 'bajo'].includes(i.status));
 
+      // Fase 3 #6 — entregas del rango del corte (informativo, no toca totales).
+      const entregas = await obtenerEntregasDelCorte({
+        sucursalId: corteSucId,
+        desde: corte.fecha_inicio,
+        hasta: corte.fecha_cierre,
+      }).catch(() => []);
+
       return {
         ventas: ventasCorte, detalles: detallesPagadas, gastos: gastosCorte,
-        ingredientes: ingredientesConsumidos, cancelaciones, detallesCancel, alertas,
+        ingredientes: ingredientesConsumidos, cancelaciones, detallesCancel, alertas, entregas,
       };
     },
   });
 
   // Estado hidratado único (preview Y descarga usan EXACTAMENTE esto).
-  const safeData = data || { ventas: [], detalles: [], gastos: [], ingredientes: [], cancelaciones: [], detallesCancel: [], alertas: [] };
+  const safeData = data || { ventas: [], detalles: [], gastos: [], ingredientes: [], cancelaciones: [], detallesCancel: [], alertas: [], entregas: [] };
   const loading = isPending && open && !!corteId;
 
   // === Imprimir — usa EL MISMO PDF que se descargaría.
@@ -250,6 +258,7 @@ export default function CorteViewerDialog({ corte, open, onClose }) {
               cancelaciones={safeData.cancelaciones}
               detallesCancel={safeData.detallesCancel}
               alertas={safeData.alertas}
+              entregas={safeData.entregas}
               config={config}
               isEsencial={isEsencial}
               isRP={isRP}
