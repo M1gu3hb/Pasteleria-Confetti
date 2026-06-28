@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## Run nocturno 2026-06-28 — FASE 3 #5: tipo/motivo de cancelación de pedido
+- **Migración 0026** `pedidos_cancelacion` (aplicada): `pedidos` += `tipo_cancelacion,
+  motivo_cancelacion, cancelado_por_id/nombre, fecha_cancelacion` + `monto_devuelto
+  numeric default 0` (gancho de #4). Idempotente.
+- **`CancelarPedidoDialog`** (nuevo, espejo de `CancelarVentaDialog`): selector de tipo
+  (cancelacion|devolucion) + motivo OBLIGATORIO + sello. Reemplaza los 2 `confirm()`
+  (`PedidoPastelDetalleDialog` para pastel/catálogo, y `Caja.handleCancelarPedidoWeb`
+  para la cola web). Adaptador: whitelist `pedidos` += 6 columnas.
+- Ruta SIN dinero verificada en vivo (BD: estado/tipo/motivo/sello; sale de la cola;
+  build OK). Devolución CON anticipo delega al gancho de #4 (bloqueada hasta entonces).
+
 ## Sesión 2026-06-28 — FASE 3 A-FIX (Opción A): abono mixto = suma de partes + fix del rezago del selector
 
 ### Opción A — abono mixto entra a los buckets (consistencia del doble conteo) — `BUGS_PENDING (k)` RESUELTO

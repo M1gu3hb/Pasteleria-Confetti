@@ -85,6 +85,11 @@ máximo cuidado; Miguel confirma cada parte.
    confirm() nativo, sin tipo ni motivo. Las VENTAS sí distinguen
    cancelación/devolución + motivo + monto_devuelto. Darle a los pedidos el
    mismo trato (tipo + nota obligatoria).
+   ✅ HECHO (run nocturno): migración 0026 (`pedidos` += set de cancelación);
+   `CancelarPedidoDialog` (espejo de CancelarVentaDialog, tipo selector + motivo
+   obligatorio + sello) reemplaza los 2 `confirm()` (detalle pastel/catálogo +
+   cola web de Caja). Ruta SIN dinero verificada en vivo. La devolución CON
+   anticipo se conecta en #4. **#5 COMPLETO.**
 
 6. ENTREGA DE PASTEL EN EL CORTE (función nueva): pagar y entregar son momentos
    distintos (se puede pagar un día y entregar otro). Cuando se ENTREGA un

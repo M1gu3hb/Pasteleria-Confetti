@@ -36,6 +36,7 @@ import PedidoWebBeep from '@/components/caja/PedidoWebBeep';
 import CorteAtrasadoBanner from '@/components/caja/CorteAtrasadoBanner';
 import BuscarVentaFolioCard from '@/components/caja/BuscarVentaFolioCard';
 import CancelarVentaDialog from '@/components/ventas/CancelarVentaDialog';
+import CancelarPedidoDialog from '@/components/pedidos/CancelarPedidoDialog';
 import PedidoPastelDetalleDialog from '@/components/pedidos/PedidoPastelDetalleDialog';
 import { tipsEnabled, getPorcentajesSugeridos } from '@/utils/tipsUtils';
 import { sumarSubtotalDetalles } from '@/utils/ventaTotales';
@@ -162,6 +163,8 @@ export default function Caja() {
   const [buscandoVentaFolio, setBuscandoVentaFolio] = useState(false);
   // modo: null | 'cancelacion' | 'devolucion' — abre CancelarVentaDialog del 5a.
   const [modoCancelarVenta, setModoCancelarVenta] = useState(null);
+  // FASE 3 #5 — pedido de catálogo web a cancelar (abre CancelarPedidoDialog).
+  const [pedidoWebACancelar, setPedidoWebACancelar] = useState(null);
   // PARTE B — modal de cobro del pedido web (método de pago + ticket).
   // Prompt 6 — pedido de catálogo abierto en el diálogo detallado (mismo flujo
   // del pastel: ticket + anticipo + entregar, SIN editar).
@@ -541,18 +544,11 @@ export default function Caja() {
   };
 
   // ===== Fase 7 — Pedidos de catálogo web en Caja =====
-  const handleCancelarPedidoWeb = async (pedido) => {
+  // FASE 3 #5 — antes era window.confirm() sin tipo/motivo/sello. Ahora abre el
+  // CancelarPedidoDialog (mismo trato que una venta: tipo + motivo + sello).
+  const handleCancelarPedidoWeb = (pedido) => {
     if (!pedido?.id) return;
-    if (!window.confirm(
-      `¿Cancelar el pedido ${pedido.folio} de ${pedido.cliente_nombre}?`
-    )) return;
-    try {
-      await base44.entities.PedidoPastel.update(pedido.id, { estado: 'cancelado' });
-      refetchPedidosWeb();
-    } catch (e) {
-      console.error('Error al cancelar pedido web:', e);
-      toast.error('No se pudo cancelar el pedido.');
-    }
+    setPedidoWebACancelar(pedido);
   };
 
   const handleBuscarFolioWeb = async () => {
@@ -2240,6 +2236,16 @@ export default function Caja() {
         posUser={posUser}
         onClose={() => setModoCancelarVenta(null)}
         onDone={recargarVentaFolio}
+      />
+
+      {/* FASE 3 #5 — Cancelar pedido de catálogo web desde la cola de Caja
+          (tipo/motivo/sello). La devolución de anticipo (#4) se conecta luego. */}
+      <CancelarPedidoDialog
+        open={!!pedidoWebACancelar}
+        pedido={pedidoWebACancelar}
+        posUser={posUser}
+        onClose={() => setPedidoWebACancelar(null)}
+        onDone={() => { refetchPedidosWeb(); setPedidoWebACancelar(null); }}
       />
 
       {/* PDF VIEWER (al cerrar caja o desde historial) */}

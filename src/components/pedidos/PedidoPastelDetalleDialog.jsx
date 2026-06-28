@@ -6,6 +6,7 @@ import { useCorteAtrasado } from '@/lib/useCorteAtrasado';
 import { useTerminal } from '@/lib/TerminalContext';
 import { usePOSAuth } from '@/lib/POSAuthContext';
 import RegistrarPagoDialog from './RegistrarPagoDialog';
+import CancelarPedidoDialog from './CancelarPedidoDialog';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -53,6 +54,7 @@ export default function PedidoPastelDetalleDialog({ pedido, open, onClose }) {
   const { sucursalEfectiva } = useTerminal();
   const { posUser } = usePOSAuth();
   const [showPago, setShowPago] = useState(false);
+  const [showCancelar, setShowCancelar] = useState(false);
 
   if (!pedido) return null;
   const est = ESTADOS_PEDIDO[pedido.estado] || ESTADOS_PEDIDO.pendiente;
@@ -207,11 +209,7 @@ export default function PedidoPastelDetalleDialog({ pedido, open, onClose }) {
           )}
           {!finalizado && (
             <Button variant="outline" disabled={accion} className="h-11 border-red-300 text-red-600 hover:bg-red-50"
-              onClick={() => {
-                if (confirm(`¿Cancelar el pedido ${pedido.folio}? Esta acción no se puede deshacer.`)) {
-                  cambiarEstado('cancelado');
-                }
-              }}>
+              onClick={() => setShowCancelar(true)}>
               <XCircle className="w-4 h-4 mr-1.5" />Cancelar pedido
             </Button>
           )}
@@ -251,6 +249,17 @@ export default function PedidoPastelDetalleDialog({ pedido, open, onClose }) {
             queryClient.invalidateQueries({ queryKey: ['ventas_all'] });
             queryClient.invalidateQueries({ queryKey: ['abonos_corte'] });
             queryClient.invalidateQueries({ queryKey: ['dashboard_data'] });
+            onClose?.();
+          }}
+        />
+
+        <CancelarPedidoDialog
+          pedido={pedido}
+          posUser={posUser}
+          open={showCancelar}
+          onClose={() => setShowCancelar(false)}
+          onDone={() => {
+            queryClient.invalidateQueries({ queryKey: ['pedidos_pastel'] });
             onClose?.();
           }}
         />
