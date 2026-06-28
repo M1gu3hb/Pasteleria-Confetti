@@ -18,11 +18,11 @@
 
 ## LISTA DE MEJORAS (EN ORDEN)
 
-### 1. PRIMERO: subir a Vercel (POS y Web) para que Miguel revise con sus ojos
-Estado del import (confirmado vía Vercel API, equipo *MH Astral Systems*):
-- **POS:** ✅ importado como proyecto **`pasteleria-confetti`**, ligado a `M1gu3hb/Pasteleria-Confetti`, **auto-deploy de la rama `migracion/supabase`** → último deploy **READY** (`pasteleria-confetti-git-migracion-supabase-mh-astral-systems.vercel.app`). **PERO** todos los deploys son **preview** (`target:null`, `live:false`) — **no promovido a producción**.
-- **Web:** ❌ **NO importada.** El repo `M1gu3hb/Pasteleria-Confetti-web-` **no tiene proyecto Vercel** todavía → crear un **proyecto Vercel APARTE** para la web.
-- **Pendiente para que ambos FUNCIONEN (no solo compilen):** confirmar **env vars** en cada proyecto: `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` (el MISMO Supabase del POS, `ivqcxdpqxwjxfohiswqb`). Opcional: promover a producción para una URL estable que Abel pueda abrir.
+### 1. ✅ HECHO — Vercel (POS y Web) en producción
+Completado por Miguel en su panel (equipo *MH Astral Systems* / `huertabautistamiguel62@gmail.com`):
+- **POS `pasteleria-confetti`:** env vars `VITE_SUPABASE_URL`+`VITE_SUPABASE_ANON_KEY` añadidas, **Production Branch → `migracion/supabase`**, producción promovida. Verificado en vivo: carga y conecta (muestra las 3 sucursales reales).
+- **Web:** proyecto **NUEVO** importado de `M1gu3hb/Pasteleria-Confetti-web-` (rama `migracion/supabase`, mismas env vars, **Vercel Authentication OFF** = catálogo público). Verificado en vivo: carga el catálogo con imágenes.
+- _Nota:_ las `VITE_SUPABASE_URL` habían quedado vacías al pegarlas (`createClient(undefined)`); corregidas y redeployadas. Ambos confirmados funcionando.
 
 ### 2. NO cutover de Base44 aún · mantener imágenes actuales
 Abel se instala el **lunes**; hasta entonces, Base44 es producción. Las imágenes `media.base44.com` se quedan tal cual (ver ESTADO ACTUAL). El cutover de imágenes (recrear idénticas) es un paso **posterior**, no ahora.

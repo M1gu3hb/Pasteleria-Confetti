@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## Sesión 2026-06-27 (cont. 6) — Vercel en producción + FASE 2 confirmada en vivo + FASE 3 #1 (saldo web)
+
+### Plan maestro
+- Nuevo **`docs/PLAN_FASES_MEJORAS.md`** = fuente de verdad de las 5 fases de mejoras (regla rectora: ya NO "idéntico a Base44"; arreglar lo incompleto). Cada fase futura lo lee.
+
+### FASE 2 — Vercel + confirmación en vivo (HECHA)
+- **Vercel HECHO (Miguel, panel, equipo MH Astral Systems / huertabautistamiguel62@gmail.com):** POS `pasteleria-confetti` con env vars `VITE_SUPABASE_URL`+`VITE_SUPABASE_ANON_KEY`, Production Branch → `migracion/supabase`, producción promovida; **Web** proyecto NUEVO importado de `Pasteleria-Confetti-web-` (mismas env vars, **Vercel Authentication OFF** = público). Ambos verificados funcionando en producción. (Claude detectó que las env vars habían quedado vacías → `createClient(undefined)`; corregido.)
+- **Confirmación en vivo (Claude, BD+DOM; los screenshots del preview fallan en este entorno):**
+  - **I1 SALDO WEB=0 CONFIRMADO y más amplio de lo documentado:** pedidos web **pastel Y catálogo** nacían con `saldo_pendiente=0` pese a `total_final>0` (PP-B-0001 pastel $420/$0; PP-B-0002 catálogo $300/$0). El anticipo se **bloqueaba** ("El monto excede el saldo pendiente ($0.00)") y **"Entregado" quedaba habilitado sin cobrar**. Resuelve la contradicción bot-vs-código (el bot validó ruteo, no cobro).
+  - **Productos Web Pública→web (c):** cambiar **precio** ($260→$275) y **descripción** (vacía→texto) en el POS se refleja **de inmediato** en el catálogo público (vista `catalogo_publico`, sin sync). Nombre = misma columna de la vista (mismo mecanismo). Imagen = mismo campo `imagen_url` (cambiarla exige subir archivo, no manejable en preview headless).
+- Staging limpiado a pristino tras las pruebas.
+
+### FASE 3 #1 — SALDO WEB = total_final (migración 0022) — CHECKPOINT para revisión de Miguel
+- **`supabase/migrations/0022_web_crear_pedido_saldo.sql`** (aplicada a la Supabase compartida): `create or replace function crear_pedido_web` ahora setea, server-side, `total_abonado=0, a_cuenta=0, saldo_pendiente=greatest(0, total_final)` (calculado desde el MISMO `total_final` que inserta, NO del payload → no inyectable). Cierra la asimetría: el POS (`NuevoPedidoPastel`) ya inicializaba el saldo; la web no. Candados/whitelist/sello `creado_por_nombre='Web Confetti'`/grants anon-only **idénticos** a 0021.
+- **Verificado en vivo (anon):** nuevo pedido web PP-B-0001 nace con `saldo_pendiente=$420` (=total_final); en el POS el diálogo muestra **"Saldo pendiente $420.00"** (ya no $0.00), un anticipo de **$200 se registra** (pedido→`con_anticipo`, saldo $420→$220, abono creado, **venta paralela CONF-B-V0001 ligada al corte**), y **"Entregado" queda deshabilitado** hasta liquidar. ✅
+- ⚠️ **Bug PRE-EXISTENTE destapado** (no causado por #1): al registrar el anticipo, la **venta paralela no genera su `DetalleVenta`** — `RegistrarPagoDialog.jsx:108` (y `CobrarPedidoWebDialog`/`Caja.handleCobrarPedidoWeb`) crean el detalle con `producto_id: ''` y la columna es **`uuid NOT NULL`** → `invalid input syntax for type uuid`. El **dinero entra bien al corte** (la venta sí), pero la **línea de la venta de anticipo NO sale en el ticket/PDF**. Afecta TODOS los anticipos (POS y web), latente hasta ahora porque la web no era cobrable. Ver `BUGS_PENDING (i)`. Pendiente de decisión de Miguel (no se arregló: toca esquema/money-path y es separable del #1).
+
 ## Sesión 2026-06-27 (cont. 5) — Bot de pruebas largas (60 días) COMPLETO + apertura de fase MEJORAS
 
 ### Validación a volumen (bot de paridad, `Bot pruebas/bot-pruebas/`)

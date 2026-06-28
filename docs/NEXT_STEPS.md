@@ -9,10 +9,10 @@
 - **Imágenes `media.base44.com`: NO tocar.** Se mantienen para la demo; al independizar, recrear/descargar las MISMAS (Base44 o Gemini), nunca quitarlas. Cutover de imágenes = después.
 
 ## ▶️ PRÓXIMA FASE = MEJORAS (en orden) → ver `docs/MEJORAS_POST_VALIDACION.md`
-La próxima sesión arranca por **#1: subir a Vercel** para que Miguel revise con sus ojos.
-- **Vercel POS:** ✅ ya importado (`pasteleria-confetti`, auto-deploy de `migracion/supabase` → preview READY, `live:false` = no producción). Falta: confirmar env vars `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` + (opcional) promover a producción.
-- **Vercel Web:** ❌ **falta** — el repo `Pasteleria-Confetti-web-` no tiene proyecto Vercel; crear uno APARTE + env vars.
-- Luego: fantasmas (corte turno=quitar; mini-dashboard Caja=arreglar; mixto=construir), notas de voz, pagos mixtos en todos los puntos, cancelación-con-anticipo→devolución en corte, tipo de cancelación, mejora visual de cards. **Detalle y orden completo en `docs/MEJORAS_POST_VALIDACION.md`.**
+El plan completo de las 5 fases vive en **`docs/PLAN_FASES_MEJORAS.md`** (fuente de verdad).
+- **#1 Vercel (FASE 2): ✅ HECHO** — POS `pasteleria-confetti` (env vars + Production Branch `migracion/supabase` + producción) y **Web** (proyecto nuevo, env vars, Vercel Authentication OFF) en producción, verificados. (Miguel, panel.)
+- **FASE 2 confirmaciones en vivo: HECHAS** — I1 saldo web=0 confirmado (pastel Y catálogo; anticipo bloqueado; "Entregado" libre); producto Web Pública→web (precio/descripción) reflejan de inmediato.
+- **▶️ FASE 3 (dinero) EN CURSO — sub-paso #1 HECHO (checkpoint):** migración **0022** = pedidos web nacen con `saldo_pendiente=total_final` (cobrables). Verificado en vivo (anticipo $200 registrado, saldo $420→$220, entra al corte). ⚠️ destapó bug pre-existente `DetalleVenta producto_id=''` (ver `BUGS_PENDING (i)`). **Pendiente: revisión de Miguel del #1 antes de seguir** con #2 (anticipos catálogo→corte), #3 (mixto), #4 (cancelación-con-anticipo→devolución), #5 (tipo/motivo cancelación pedido), #6 (entrega en corte). Orden y alcance en `docs/PLAN_FASES_MEJORAS.md`.
 
 ---
 
