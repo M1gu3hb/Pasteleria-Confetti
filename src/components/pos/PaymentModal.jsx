@@ -5,12 +5,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { formatCurrency } from '@/utils/financialUtils';
 import { CheckCircle } from 'lucide-react';
+import { construirPago } from '@/utils/metodoPago';
 import MetodoPagoSelector from './MetodoPagoSelector';
 
 export default function PaymentModal({ open, onClose, total, propinaMonto = 0, onConfirm, loading }) {
-  // FASE 3 #3 — el método + reparto del mixto vive en MetodoPagoSelector (reusable).
-  const [pago, setPago] = useState({ metodo_pago: 'efectivo', monto_efectivo: 0, monto_tarjeta: 0, monto_transferencia: 0 });
-  const [pagoValido, setPagoValido] = useState(false);
+  // FASE 3 #3 — el método + reparto del mixto se manejan CONTROLADOS aquí; el
+  // pago se computa SÍNCRONO con construirPago (sin rezago de useEffect → los
+  // montos por método nunca quedan viejos respecto al total).
+  const [metodo, setMetodo] = useState('efectivo');
+  const [montosMixto, setMontosMixto] = useState({ efectivo: '', tarjeta: '', transferencia: '' });
   const [montoRecibido, setMontoRecibido] = useState('');
   const efectivoRef = useRef(null);
 
@@ -18,12 +21,15 @@ export default function PaymentModal({ open, onClose, total, propinaMonto = 0, o
   const propinaSafe = Number.isFinite(Number(propinaMonto)) ? Number(propinaMonto) : 0;
   const totalACobrar = (Number(total) || 0) + propinaSafe;
 
-  const esEfectivo = pago.metodo_pago === 'efectivo';
+  const { pago, valido: pagoValido } = construirPago(totalACobrar, metodo, montosMixto);
+  const esEfectivo = metodo === 'efectivo';
 
   // FIX BUG PC: el focus-trap de Radix + autoFocus compiten en desktop. Focus
-  // diferido y reset del monto recibido al abrir.
+  // diferido y reset al abrir.
   useEffect(() => {
     if (open) {
+      setMetodo('efectivo');
+      setMontosMixto({ efectivo: '', tarjeta: '', transferencia: '' });
       setMontoRecibido('');
       const t = setTimeout(() => {
         try { efectivoRef.current?.focus(); } catch (_) {}
@@ -78,9 +84,11 @@ export default function PaymentModal({ open, onClose, total, propinaMonto = 0, o
             <Label className="text-xs text-muted-foreground mb-2 block">Método de pago</Label>
             <MetodoPagoSelector
               total={totalACobrar}
-              resetKey={open}
+              metodo={metodo}
+              montos={montosMixto}
+              onMetodoChange={setMetodo}
+              onMontosChange={setMontosMixto}
               disabled={loading}
-              onChange={(p, v) => { setPago(p); setPagoValido(v); }}
             />
           </div>
 

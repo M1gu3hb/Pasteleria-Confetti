@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { generarFolioVenta } from '@/utils/pedidoPastelUtils';
+import { construirPago } from '@/utils/metodoPago';
 import MetodoPagoSelector from '@/components/pos/MetodoPagoSelector';
 
 // Fase 4 — registra un abono con circuito financiero (Abono + PedidoPastel).
@@ -16,14 +17,18 @@ export default function RegistrarPagoDialog({ pedido, cajaAbierta, posUser, sucu
     ? Number(pedido.saldo_pendiente)
     : Math.max(0, (Number(pedido?.total_final) || 0) - (Number(pedido?.total_abonado) || 0));
   const [monto, setMonto] = useState('');
-  // FASE 3 #3 — método + reparto del mixto (componente reutilizable).
-  const [pago, setPago] = useState({ metodo_pago: 'efectivo', monto_efectivo: 0, monto_tarjeta: 0, monto_transferencia: 0 });
-  const [pagoValido, setPagoValido] = useState(false);
+  // FASE 3 #3 — método + reparto del mixto CONTROLADOS aquí; el pago se computa
+  // SÍNCRONO con construirPago (sin rezago: los montos por método nunca quedan
+  // viejos respecto al monto a abonar).
+  const [metodo, setMetodo] = useState('efectivo');
+  const [montosMixto, setMontosMixto] = useState({ efectivo: '', tarjeta: '', transferencia: '' });
   const [notas, setNotas] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const { pago, valido: pagoValido } = construirPago(parseFloat(monto) || 0, metodo, montosMixto);
+
   useEffect(() => {
-    if (open) { setMonto(saldoActual > 0 ? String(saldoActual) : ''); setNotas(''); }
+    if (open) { setMonto(saldoActual > 0 ? String(saldoActual) : ''); setMetodo('efectivo'); setMontosMixto({ efectivo: '', tarjeta: '', transferencia: '' }); setNotas(''); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -52,6 +57,12 @@ export default function RegistrarPagoDialog({ pedido, cajaAbierta, posUser, sucu
       const abonoCreado = await base44.entities.Abono.create({
         pedido_id: pedido.id, sucursal_id: pedido.sucursal_id, sucursal_nombre: pedido.sucursal_nombre,
         monto: m, metodo_pago: pago.metodo_pago, afecta_caja: true,
+        // FASE 3 A-FIX (Opción A): desglose por método del abono (mismo split que la
+        // venta paralela). Los buckets de abonos suman estas columnas → el efectivo de
+        // un abono mixto se trata IGUAL que cualquier efectivo (doble conteo consistente).
+        monto_efectivo: pago.monto_efectivo,
+        monto_tarjeta: pago.monto_tarjeta,
+        monto_transferencia: pago.monto_transferencia,
         corte_caja_id: cajaAbierta?.id || null,
         registrado_por_id: posUser?.id, registrado_por_nombre: posUser?.nombre,
         fecha_abono: new Date().toISOString(), notas,
@@ -163,9 +174,11 @@ export default function RegistrarPagoDialog({ pedido, cajaAbierta, posUser, sucu
           </div>
           <MetodoPagoSelector
             total={parseFloat(monto) || 0}
-            resetKey={open}
+            metodo={metodo}
+            montos={montosMixto}
+            onMetodoChange={setMetodo}
+            onMontosChange={setMontosMixto}
             disabled={loading}
-            onChange={(p, v) => { setPago(p); setPagoValido(v); }}
           />
           <div>
             <Label className="text-xs">Notas (opcional)</Label>

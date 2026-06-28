@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## Sesión 2026-06-28 — FASE 3 A-FIX (Opción A): abono mixto = suma de partes + fix del rezago del selector
+
+### Opción A — abono mixto entra a los buckets (consistencia del doble conteo) — `BUGS_PENDING (k)` RESUELTO
+- **Migración 0025** `abonos_desglose_metodo` (aplicada): `monto_efectivo/tarjeta/transferencia` (numeric default 0) en `abonos` + backfill desde metodo_pago (0 filas en staging limpio; en prod single-método el CASE las cubre).
+- **Código:** adaptador (whitelist abonos +3 cols); `RegistrarPagoDialog` setea el desglose del abono desde `construirPago`; `Caja.jsx:266-271` SUMA las columnas (no filtra por metodo_pago). `efectivo_esperado` (1236/1316) NO se tocó: el quirk del doble conteo se MANTIENE, ahora consistente (el efectivo del mixto entra a `abonosEfectivo`).
+- **Verificado en vivo (BD/PDF):** regresión single-método IDÉNTICA (corte solo-efectivo $50 → efectivo_esperado **$100**); consistencia mixto (single $50 + mixtos $120 ef → efectivo_esperado **$340**, antes $220); card "Pagos de pedidos de pastel" muestra el mixto (Efectivo $170/Total $250); totales por método y etiquetas del PDF sin cambio.
+
+### Fix del rezago del selector — `BUGS_PENDING (l)` (encontrado durante A-FIX)
+- `MetodoPagoSelector` emitía el `pago` vía `useEffect→onChange` (async) → cambiar el monto y confirmar rápido dejaba el desglose por método VIEJO (reproducido: abono $50 con `monto_efectivo=370`). **Fix:** selector CONTROLADO (el padre dueño de metodo+montos; `construirPago` síncrono); `PaymentModal`/`RegistrarPagoDialog` adaptados. Verificado: confirm inmediato → desglose correcto. Mostrador mixto+single regresión OK.
+- Staging limpiado a pristino.
+
 ## Sesión 2026-06-28 — Auditoría post-#3 (BLOQUE A): verificaciones + hallazgo del abono mixto/quirk
 
 Auditoría de la entrega de #3 contra el código real. Mixto bien construido; 2 puntos de dinero que el reporte de #3 no cubrió.

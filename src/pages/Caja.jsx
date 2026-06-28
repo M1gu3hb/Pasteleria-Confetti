@@ -262,13 +262,16 @@ export default function Caja() {
       const tCreated = g.created_date ? new Date(g.created_date).getTime() : 0;
       return tCreated >= apertura;
     });
-    // Fase 4 — totales de abonos por método
-    const abonosEfectivo = safeAbonos.reduce(
-      (s, a) => s + (a?.metodo_pago === 'efectivo' ? (Number(a.monto) || 0) : 0), 0);
-    const abonosTarjeta = safeAbonos.reduce(
-      (s, a) => s + (a?.metodo_pago === 'tarjeta' ? (Number(a.monto) || 0) : 0), 0);
-    const abonosTransferencia = safeAbonos.reduce(
-      (s, a) => s + (a?.metodo_pago === 'transferencia' ? (Number(a.monto) || 0) : 0), 0);
+    // Fase 4 — totales de abonos por método.
+    // FASE 3 A-FIX (Opción A): suma el DESGLOSE por método (monto_efectivo/tarjeta/
+    // transferencia), NO filtra por metodo_pago. Así un abono MIXTO aporta su porción a
+    // cada bucket igual que un abono de método único → el efectivo del mixto entra al
+    // doble conteo de efectivo_esperado de forma CONSISTENTE (el quirk NO cambia). Las
+    // filas existentes traen el desglose por el backfill de la migración 0025. Para
+    // método único, monto_<metodo> = monto, así que el resultado es idéntico al anterior.
+    const abonosEfectivo = safeAbonos.reduce((s, a) => s + (Number(a?.monto_efectivo) || 0), 0);
+    const abonosTarjeta = safeAbonos.reduce((s, a) => s + (Number(a?.monto_tarjeta) || 0), 0);
+    const abonosTransferencia = safeAbonos.reduce((s, a) => s + (Number(a?.monto_transferencia) || 0), 0);
     const abonosTotal = abonosEfectivo + abonosTarjeta + abonosTransferencia;
     // Propinas: sumadas aparte. NO entran a totalGeneral / utilidad / costos.
     const totalPropinas = ventas.reduce((s, v) => s + (Number(v?.propina_monto) || 0), 0);

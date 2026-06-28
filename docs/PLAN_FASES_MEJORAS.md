@@ -67,12 +67,13 @@ máximo cuidado; Miguel confirma cada parte.
    ESTADO: HECHO y verificado (componente reutilizable MetodoPagoSelector +
    util metodoPago.js; integrado en mostrador y anticipos; CobrarPedidoWebDialog
    ELIMINADO en vez de conectarse para no duplicar; migración 0024 = abonos
-   acepta 'mixto'; corte/PDF muestra "Mixto (E+T)" con E/T/TR). PENDIENTE DE
-   DECISIÓN DE MIGUEL (no implementado): el abono MIXTO no entra a los buckets
-   de método → su porción efectivo no se doble-cuenta en efectivo_esperado
-   (inconsistente con el candado) y no sale en ResumenDelDia. Ver BUGS_PENDING (k),
-   opciones A (consistencia, recomendada) / B. Tocar efectivo_esperado/buckets
-   solo tras visto bueno.
+   acepta 'mixto'; corte/PDF muestra "Mixto (E+T)" con E/T/TR). A-FIX HECHO
+   (Opción A, aprobada por Miguel): el abono mixto entra a los buckets de método
+   (migración 0025 + buckets suman el desglose) → su efectivo se doble-cuenta
+   CONSISTENTE con el candado (el quirk se mantiene) y aparece en ResumenDelDia;
+   además se arregló un rezago del selector (ahora controlado, pago síncrono).
+   Verificado en vivo (regresión single idéntica; mixto $220→$340). Ver
+   BUGS_PENDING (k)/(l). **#3 COMPLETO.**
 
 4. CANCELACIÓN DE PEDIDO CON ANTICIPO: si se cancela un pedido (web o pastel)
    que YA tuvo anticipo (registrado en un corte previo), debe AVISAR del dinero
