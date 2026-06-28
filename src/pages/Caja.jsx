@@ -624,7 +624,7 @@ export default function Caja() {
             const sub = Number(item.subtotal) || 0;
             return base44.entities.DetalleVenta.create({
               venta_id: ventaCreada.id,
-              producto_id: '',
+              producto_id: null,   // FASE 3 A — item de pedido web parseado de notas, sin id de catálogo (columna nullable, migr 0023)
               producto_nombre: item.producto_nombre,
               cantidad: cant,
               precio_unitario_snapshot: cant > 0 ? sub / cant : sub,

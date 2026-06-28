@@ -1,0 +1,23 @@
+-- FASE 3 A — detalle_venta.producto_id NULLABLE (corrige bug BUGS_PENDING (i)).
+-- Una venta puede tener líneas que NO son productos de catálogo: el "anticipo/pago de
+-- pedido" (venta paralela que crea RegistrarPagoDialog) y los items de un pedido web de
+-- catálogo parseados de texto (handleCobrarPedidoWeb). Esas líneas no tienen un
+-- producto_id real → antes se insertaban con producto_id='' → la columna es uuid NOT
+-- NULL → "invalid input syntax for type uuid: ''" → la línea NO se creaba (el dinero
+-- entraba al corte pero la línea no salía en el ticket/PDF).
+--
+-- FIX: hacer producto_id NULLABLE. Esas líneas se crean con producto_id=null y el
+-- concepto en producto_nombre (snapshot). El modelo ya es snapshot-first (NO hay FK
+-- producto_id→productos; el ticket/corte usan producto_nombre, no lookup), así que null
+-- es coherente: "línea sin producto de catálogo".
+--
+-- SEGURIDAD/COMPAT: detalle_venta solo tiene FK en venta_id (no en producto_id). Todas
+-- las filas existentes tienen un uuid válido (las de '' fallaban, nunca se insertaron),
+-- así que relajar NOT NULL no afecta datos existentes ni las ventas normales de mostrador
+-- (que siguen con producto_id real). Consumidores verificados que toleran null:
+--   * CorteTicket.jsx:52  key = producto_id || producto_nombre (cae al nombre); render por producto_nombre.
+--   * joins de receta (CorteAutoDownloader/CorteViewerDialog/Caja/inventarioValidation):
+--     receta.producto_id === det.producto_id → con null no machea → costo 0 (correcto: un pago no tiene receta).
+--   * DescuentoInventarioVenta (Caja:1131): entidad no mapeada → no-op en Confetti.
+
+alter table detalle_venta alter column producto_id drop not null;

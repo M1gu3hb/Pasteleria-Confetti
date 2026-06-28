@@ -107,8 +107,8 @@ export default function RegistrarPagoDialog({ pedido, cajaAbierta, posUser, sucu
         if (ventaCreada?.id) {
           await base44.entities.DetalleVenta.create({
             venta_id: ventaCreada.id,
-            producto_id: '',
-            producto_nombre: `Adelanto de pago — ${pedido.folio}`,
+            producto_id: null,   // FASE 3 A — línea de pago, sin producto de catálogo (columna nullable, migr 0023)
+            producto_nombre: `Anticipo pedido ${pedido.folio}`,
             cantidad: 1,
             precio_unitario_snapshot: m,
             subtotal: m,
