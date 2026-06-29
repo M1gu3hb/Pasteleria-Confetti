@@ -11,7 +11,9 @@ import { Layers, Plus, Trash2 } from 'lucide-react';
 // Configuración de los rellenos del formulario de pastel.
 // Lee/escribe el campo rellenos_pastel (JSON string) de ConfiguracionNegocio.
 // Cada relleno: { id, nombre, precio_kilo, activo }.
-// precio_kilo 0 = usa el precio por kilo global; > 0 = sobreescribe.
+// El campo precio_kilo guarda el MONTO EXTRA PLANO del relleno: 0 = no cobra (no se muestra
+// ni se suma); > 0 = se SUMA al total del pastel (como base/oblea/muñeca/velas). NO sobreescribe
+// el precio por kilo. (El nombre de columna se conserva por compatibilidad.)
 function slugify(s) {
   return String(s || '')
     .toLowerCase()
@@ -108,7 +110,7 @@ export default function RellenosPastelSection({ cfg }) {
               placeholder="Nombre del relleno"
             />
             <div className="flex items-center gap-1.5 shrink-0">
-              <span className="text-xs text-muted-foreground">$/kg</span>
+              <span className="text-xs text-muted-foreground">+$</span>
               <Input
                 type="number"
                 min="0"
@@ -116,6 +118,7 @@ export default function RellenosPastelSection({ cfg }) {
                 onChange={e => actualizar(rel.id, 'precio_kilo', parseFloat(e.target.value) || 0)}
                 className="skeu-input w-24 h-9 text-sm"
                 placeholder="0"
+                title="Precio del relleno — se suma al total"
               />
             </div>
             <Button
@@ -138,7 +141,9 @@ export default function RellenosPastelSection({ cfg }) {
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          Precio por kilo 0 = usa el precio por kilo global. Si pones un precio, ese relleno sobreescribe el precio por kilo en el cálculo del pastel.
+          <strong>Precio del relleno — se suma al total.</strong> En 0 no cobra (no aparece precio).
+          Si pones un precio (p. ej. $40), ese monto se SUMA al total del pastel como un extra
+          (igual que base/oblea/muñeca/velas), sin cambiar el precio por kilo. Aplica igual en el POS y la web.
         </p>
       </CardContent>
     </Card>

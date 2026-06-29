@@ -166,20 +166,21 @@ export default function NuevoPedidoPastel() {
     const personas = parseFloat(form.personas_estimadas) || 0;
     const kilosSugeridos = personas > 0 ? Math.ceil(personas / ratioConfig) : 0;
     const kilos = parseFloat(form.kilos) || 0;
-    const precioKiloManual = parseFloat(form.precio_kilo) || 0;
-    // Si el relleno elegido tiene precio_kilo > 0, sobreescribe el precio/kilo.
+    const precioKilo = parseFloat(form.precio_kilo) || 0;
+    // El relleno NO cambia el precio/kilo: si tiene precio > 0, se SUMA como un extra PLANO
+    // (igual que base/oblea/muñeca/velas). Si es 0, no suma. Consistente con la web.
     const rellenoSel = rellenosPastel.find(r => r.nombre === form.rellenos);
-    const precioKiloRelleno = Number(rellenoSel?.precio_kilo) || 0;
-    const precioKilo = precioKiloRelleno > 0 ? precioKiloRelleno : precioKiloManual;
+    const precioRelleno = Number(rellenoSel?.precio_kilo) || 0; // valor configurado = monto plano
     const subtotalPastel = Math.round(kilos * precioKilo * 100) / 100;
-    const subtotalExtras = extrasPastel.reduce((s, e) =>
+    const subtotalExtrasBase = extrasPastel.reduce((s, e) =>
       s + (form.extras[e.id] ? (parseFloat(form.preciosExtras[e.id]) || 0) : 0), 0);
+    const subtotalExtras = Math.round((subtotalExtrasBase + precioRelleno) * 100) / 100; // incluye relleno
     const totalCalculado = subtotalPastel + subtotalExtras;
     const totalFinal = form.total_final === '' ? totalCalculado : (parseFloat(form.total_final) || 0);
     const aCuenta = parseFloat(form.a_cuenta) || 0;
     const resta = Math.max(0, totalFinal - aCuenta);
     const difiere = totalCalculado > 0 && Math.abs(totalFinal - totalCalculado) / totalCalculado > 0.2;
-    return { kilosSugeridos, subtotalPastel, subtotalExtras, totalCalculado, totalFinal, aCuenta, resta, difiere, precioKilo };
+    return { kilosSugeridos, subtotalPastel, subtotalExtras, totalCalculado, totalFinal, aCuenta, resta, difiere, precioKilo, precioRelleno };
   }, [form, ratioConfig, extrasPastel, rellenosPastel]);
 
   // Fase 4 — Guardia: sin caja abierta no se registran pedidos.
@@ -538,7 +539,7 @@ export default function NuevoPedidoPastel() {
                           {r.nombre}
                           {precio > 0 && (
                             <span className={`ml-1.5 text-[10px] font-normal ${activo ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
-                              {fmt(precio)}/kg
+                              +{fmt(precio)}
                             </span>
                           )}
                         </button>
