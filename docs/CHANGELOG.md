@@ -1,5 +1,27 @@
 # CHANGELOG
 
+## 2026-06-29 — Auditoría final pre-instalación (POS) — restos Base44 + deploy
+> Detalle completo y bitácora en `AUDITORIA_FINAL/` (raíz del workspace).
+- **IDs de sucursal Base44 → UUID reales** en `Dashboard.jsx` y `SelectorSucursalesProducto.jsx`
+  (antes ventas por sucursal en $0 en la vista general). Verificado contra `sucursales` (MCP).
+- **Vista `config_publica`** ahora expone `extras_pastel` + `rellenos_pastel` (mig **0029**, ya
+  aplicada en vivo). Cierra el feature **precio de relleno → web** (la web ya lo lee/suma; POS y
+  web consistentes: el `precio_kilo` del relleno **sobrescribe** el global).
+- **Restos Base44 en código vivo eliminados:** `WebPublica.jsx` `WEB_URL` → web Vercel (el botón
+  "Ver web pública" apuntaba a la web Base44 muerta); `ConfigContext.jsx` `MH_LOGO_URL` →
+  Supabase Storage.
+- **Imágenes re-hospedadas a Supabase Storage** (decisión de Miguel): logo del negocio
+  (`configuracion_negocio.logo_url`) + **16** imágenes de producto (`productos.imagen_url`) +
+  logo de plataforma → bucket `uploads/rehost/`. **0 referencias Base44** restantes en BD y en
+  TODO el código desplegado (POS y Web). URLs nuevas verificadas HTTP 200.
+- **Volumen/concurrencia:** índices de filtro presentes en tablas calientes; folios atómicos por
+  `folio_contador UNIQUE(tipo,sucursal_id)`. Sin índice crítico faltante.
+- **FLAG (no tocado):** `qrPedidoFlow.js:171` usa el campo viejo `visible_en_menu_digital` (ruta
+  Portal QR, inactiva en Confetti; el campo inexistente vuelve la condición inocua). Limpieza
+  futura; riesgo nulo.
+- **No se tocó la matemática del dinero** (candados intactos). Commits POS: `74f7332`, `4fafe4a`
+  → Vercel READY (producción).
+
 ## Run nocturno 2026-06-28 — Cierre de cabos de limpieza (Fase 5)
 - **Configuracion.jsx:** eliminado el código muerto de mesas (color-sync de `saveUser`
   —mesero-only, Confetti no tiene meseros—, query `mesas`, handlers `handleSaveMesa/
