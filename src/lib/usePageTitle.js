@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
-const BRAND = 'MH Astral POS';
+const BRAND = 'Pastelería Confetti';
 
 const ROUTE_TITLES = {
   '/': `Dashboard | ${BRAND}`,
