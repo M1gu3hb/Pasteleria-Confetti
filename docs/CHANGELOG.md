@@ -1,5 +1,24 @@
 # CHANGELOG
 
+## 2026-06-29 (cont.2) — POS instalable como PWA (tablets) + rebrand Confetti
+> Solo el POS. Detalle en `AUDITORIA_FINAL/06_PWA_POS.md`. No toca dinero/candados ni lógica.
+- **Íconos locales** en `public/` desde el logo Confetti (centrado, sin estirar, fondo claro
+  #FFF8F4): `pwa-192.png`, `pwa-512.png`, `maskable-512.png` (safe-zone), `apple-touch-icon.png`.
+- **`public/manifest.json`** rebrand: name "Pastelería Confetti", short_name "Confetti POS",
+  display standalone, theme #E8579A, background #FFF8F4, lang es-MX, íconos locales (any +
+  maskable). **0 base44.**
+- **`index.html`** rebrand: title/description/application-name Confetti, theme #E8579A, meta Apple
+  (`apple-mobile-web-app-capable`/`-title "Confetti POS"`/`-status-bar-style`), apple-touch-icon
+  local. **Quitadas TODAS las URLs media.base44.com** (icon/og/twitter) y el canonical/og de MH Astral.
+- **`vite-plugin-pwa`** (devDep) en `vite.config.js`: `registerType:'autoUpdate'`, SW que
+  **precachea solo el shell** (JS/CSS/HTML/íconos) + `navigateFallback`; **🔴 `*.supabase.co` =
+  NetworkOnly** (datos SIEMPRE en vivo, nunca cacheados); `skipWaiting`+`clientsClaim` (las tablets
+  instaladas reciben la versión nueva al desplegar). `manifest:false` (usa el estático ya enlazado).
+- **`usePageTitle.js`:** título de pestaña `MH Astral POS` → **Pastelería Confetti**.
+- **Verificado en vivo** (deploy `dpl_DAmNGrG3` READY): sw.js/registerSW/manifest/4 íconos = 200;
+  SW registrado (scope "/"); 5 requests a Supabase EN VIVO; **0 base44**; 0 supabase en el precache;
+  título "… | Pastelería Confetti". Commits `e98a2f5` (PWA) + `98a8d1a` (título) → Vercel VERDE.
+
 ## 2026-06-29 (cont.) — Relleno = extra PLANO que se SUMA (no reemplaza)
 > Detalle en `AUDITORIA_FINAL/REPORTES/BITACORA.md` (Fase 4).
 - `src/pages/NuevoPedidoPastel.jsx`: el precio del relleno ya **no sobrescribe** el precio/kilo.
