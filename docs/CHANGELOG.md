@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## 2026-06-29 (cont.) — Relleno = extra PLANO que se SUMA (no reemplaza)
+> Detalle en `AUDITORIA_FINAL/REPORTES/BITACORA.md` (Fase 4).
+- `src/pages/NuevoPedidoPastel.jsx`: el precio del relleno ya **no sobrescribe** el precio/kilo.
+  El precio/kilo base se mantiene siempre y el relleno (si > 0) se **suma** como extra plano
+  (entra a `subtotal_extras` → total → corte cuadra). Chip `{precio}/kg` → `+{precio}`.
+- `src/components/configuracion/RellenosPastelSection.jsx`: label `$/kg`→`+$` + ayuda "Precio del
+  relleno — se suma al total" (semántica plana; columna `precio_kilo` conservada).
+- Consistente con la web (mismo modelo aditivo). **Verificado EN VIVO:** relleno $40 → total +$40
+  en POS y web; $0 no suma. NO toca corte/efectivo_esperado/candados. Commit `29771c2` → Vercel READY.
+
 ## 2026-06-29 — Auditoría final pre-instalación (POS) — restos Base44 + deploy
 > Detalle completo y bitácora en `AUDITORIA_FINAL/` (raíz del workspace).
 - **IDs de sucursal Base44 → UUID reales** en `Dashboard.jsx` y `SelectorSucursalesProducto.jsx`
