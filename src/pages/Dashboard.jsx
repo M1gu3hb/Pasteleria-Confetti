@@ -26,9 +26,9 @@ import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 // ── Sucursales fijas de Confetti (para la comparativa en vista general) ──
 // Cada sucursal tiene un color distintivo para las cards y la dona.
 const SUCURSALES = [
-  { id: '6a28b475553d114b364bf134', nombre: 'Xochimilco / Principal', color: '#E8579A' },
-  { id: '6a28b475553d114b364bf135', nombre: 'Topilejo', color: '#F59E0B' },
-  { id: '6a28b475553d114b364bf136', nombre: 'San Gregorio', color: '#8B5CF6' },
+  { id: '057f9ba7-b340-4060-ace3-7f1646da36fa', nombre: 'Xochimilco / Principal', color: '#E8579A' },
+  { id: '161185fa-adda-42cd-9568-b1d66dad5737', nombre: 'Topilejo', color: '#F59E0B' },
+  { id: '07c59ab6-f5ef-4a3f-8d02-2d820f6ef1f8', nombre: 'San Gregorio', color: '#8B5CF6' },
 ];
 
 // ¿El created_date cae en "hoy" zona México?
