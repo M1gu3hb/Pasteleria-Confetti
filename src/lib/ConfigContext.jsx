@@ -10,7 +10,7 @@ import {
 } from '@/lib/packageConfig';
 
 // Logo oficial por defecto de la plataforma MH Astral Systems
-export const MH_LOGO_URL = 'https://media.base44.com/images/public/69fbe8877069565e6f39775c/44176242f_1000129680.png';
+export const MH_LOGO_URL = 'https://ivqcxdpqxwjxfohiswqb.supabase.co/storage/v1/object/public/uploads/rehost/mhlogo/platform.png';
 
 const PLATFORM_BRAND = 'MH Astral Systems';
 const DEFAULT_SYSTEM_NAME = 'MH Astral POS';

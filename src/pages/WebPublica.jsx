@@ -13,7 +13,7 @@ import ImageUploader from '@/components/common/ImageUploader';
 import NuevoProductoWebDialog from '@/components/productos/NuevoProductoWebDialog';
 import EliminarProductoDialog from '@/components/productos/EliminarProductoDialog';
 
-const WEB_URL = 'https://confetti-pasteleria.base44.app/confetti';
+const WEB_URL = 'https://pasteleria-confetti-wpasteleria-con.vercel.app/confetti';
 
 export default function WebPublica() {
   const queryClient = useQueryClient();
