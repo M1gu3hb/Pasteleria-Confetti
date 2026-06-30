@@ -140,21 +140,6 @@ export default function TicketPastelConfetti({ pedido, config }) {
           </div>
         )}
       </div>
-
-      {pedido.imagen_referencia_url && (
-        <>
-          <Linea />
-          <div className="text-center">
-            <p className="text-xs font-bold tracking-wide text-stone-500 mb-1">IMAGEN DE REFERENCIA</p>
-            <img
-              src={pedido.imagen_referencia_url}
-              alt="Referencia del pastel"
-              className="mx-auto rounded-lg object-contain"
-              style={{ maxWidth: '100%', maxHeight: '280px' }}
-            />
-          </div>
-        </>
-      )}
     </div>
   );
 }

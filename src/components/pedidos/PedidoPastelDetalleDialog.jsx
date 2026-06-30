@@ -213,6 +213,7 @@ export default function PedidoPastelDetalleDialog({ pedido, open, onClose }) {
               src={pedido.imagen_referencia_url}
               alt="Referencia del pastel"
               className="w-full max-h-72 object-contain rounded-lg bg-muted"
+              style={{ imageOrientation: 'from-image' }}
             />
           </div>
         )}

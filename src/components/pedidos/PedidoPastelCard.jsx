@@ -52,7 +52,8 @@ export default function PedidoPastelCard({ pedido, onVer, mostrarSucursal }) {
       <div className="flex gap-3">
         {pedido.imagen_referencia_url && (
           <img src={pedido.imagen_referencia_url} alt="ref"
-            className="w-14 h-14 rounded-lg object-cover border shrink-0" />
+            className="w-14 h-14 rounded-lg object-cover border shrink-0"
+            style={{ imageOrientation: 'from-image' }} />
         )}
         <div className="min-w-0 flex-1 space-y-0.5">
           <p className="font-display font-semibold text-sm truncate">{pedido.cliente_nombre}</p>

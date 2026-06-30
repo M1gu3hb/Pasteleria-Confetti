@@ -6,6 +6,7 @@ import { useTerminal } from '@/lib/TerminalContext';
 import { usePOSAuth } from '@/lib/POSAuthContext';
 import { useConfig } from '@/lib/ConfigContext';
 import { useCajaAbierta } from '@/lib/useCajaAbierta';
+import { normalizarImagen } from '@/utils/normalizarImagen';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -215,7 +216,8 @@ export default function NuevoPedidoPastel() {
     if (!file) return;
     setSubiendoImg(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const normalizado = await normalizarImagen(file); // deja la imagen derecha (orientación EXIF → píxeles)
+      const { file_url } = await base44.integrations.Core.UploadFile({ file: normalizado });
       set('imagen_referencia_url', file_url);
       toast.success('Imagen de referencia subida');
     } catch (err) {
