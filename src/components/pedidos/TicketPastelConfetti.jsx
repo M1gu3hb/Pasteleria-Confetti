@@ -1,5 +1,6 @@
 import React from 'react';
 import { safeFormatDate } from '@/lib/safeFormat';
+import { resolverExtrasPedido } from '@/utils/extrasPedido';
 
 // Ticket con el formato de la NOTA FÍSICA de Confetti Pastelería.
 // Solo se usa para pedidos pastel_personalizado. Muestra únicamente
@@ -114,10 +115,9 @@ export default function TicketPastelConfetti({ pedido, config }) {
           <p className="text-xs font-bold tracking-wide text-stone-500 mb-1">VENTA</p>
           <div className="space-y-0.5">
             <Fila label="Pastel" value={Number(pedido.subtotal_pastel) > 0 ? fmt(pedido.subtotal_pastel) : null} />
-            {pedido.incluye_base && <Fila label="Base" value={fmt(pedido.precio_base)} />}
-            {pedido.incluye_oblea && <Fila label="Oblea" value={fmt(pedido.precio_oblea)} />}
-            {pedido.incluye_muneca && <Fila label="Muñeca" value={fmt(pedido.precio_muneca)} />}
-            {pedido.incluye_velas && <Fila label="Velas" value={fmt(pedido.precio_velas)} />}
+            {resolverExtrasPedido(pedido).map((e, i) => (
+              <Fila key={e.id || i} label={e.nombre} value={fmt(e.precio)} />
+            ))}
           </div>
         </>
       )}

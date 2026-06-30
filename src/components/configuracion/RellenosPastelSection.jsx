@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import InputDinero from '@/components/ui/InputDinero';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { Layers, Plus, Trash2 } from 'lucide-react';
@@ -111,11 +112,10 @@ export default function RellenosPastelSection({ cfg }) {
             />
             <div className="flex items-center gap-1.5 shrink-0">
               <span className="text-xs text-muted-foreground">+$</span>
-              <Input
-                type="number"
+              <InputDinero
                 min="0"
-                value={rel.precio_kilo ?? 0}
-                onChange={e => actualizar(rel.id, 'precio_kilo', parseFloat(e.target.value) || 0)}
+                value={rel.precio_kilo}
+                onChange={v => actualizar(rel.id, 'precio_kilo', v)}
                 className="skeu-input w-24 h-9 text-sm"
                 placeholder="0"
                 title="Precio del relleno — se suma al total"

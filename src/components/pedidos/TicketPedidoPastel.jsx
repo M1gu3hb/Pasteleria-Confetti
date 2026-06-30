@@ -1,4 +1,5 @@
 import React from 'react';
+import { resolverExtrasPedido } from '@/utils/extrasPedido';
 
 // Ticket imprimible del pedido de pastel — replica el layout del ticket
 // físico de Pastelería Confetti. Usa la clase global `ticket-printable`
@@ -9,12 +10,8 @@ export default function TicketPedidoPastel({ pedido, config }) {
   if (!pedido) return null;
   const hoy = pedido.created_date ? new Date(pedido.created_date) : new Date();
   const fechaStr = hoy.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
-  const extras = [
-    pedido.incluye_base && { nombre: 'Pastel de base', precio: pedido.precio_base },
-    pedido.incluye_oblea && { nombre: 'Oblea', precio: pedido.precio_oblea },
-    pedido.incluye_muneca && { nombre: 'Muñeca', precio: pedido.precio_muneca },
-    pedido.incluye_velas && { nombre: 'Velas', precio: pedido.precio_velas },
-  ].filter(Boolean);
+  // Extras genéricos: lista nueva (extras_seleccionados) con fallback a columnas viejas.
+  const extras = resolverExtrasPedido(pedido);
 
   return (
     <div className="ticket-printable letter-doc bg-white text-black p-6 max-w-md mx-auto" style={{ fontFamily: 'Georgia, serif' }}>

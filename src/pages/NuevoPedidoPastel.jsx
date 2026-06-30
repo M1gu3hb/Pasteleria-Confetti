@@ -20,6 +20,7 @@ import NotaVozRecorder from '@/components/pedidos/NotaVozRecorder';
 import {
   getPrecioKilo, getRatioPersonas, generarFolioPedido, buildWhatsAppLink,
 } from '@/utils/pedidoPastelUtils';
+import { parseExtrasSeleccionados } from '@/utils/extrasPedido';
 import TicketPedidoPastel from '@/components/pedidos/TicketPedidoPastel';
 import PedidoPastelDetalleDialog from '@/components/pedidos/PedidoPastelDetalleDialog';
 import CanvasDibujo from '@/components/pedidos/CanvasDibujo';
@@ -129,6 +130,24 @@ export default function NuevoPedidoPastel() {
       try {
         const p = await base44.entities.PedidoPastel.get(editId);
         if (!p) return;
+        // Extras: arranca con las 4 columnas fijas (pedidos viejos) y, si el pedido
+        // trae la lista genérica `extras_seleccionados`, hidrata también los extras
+        // nuevos (ids fuera de base/oblea/muneca/velas) para poder editarlos.
+        const extrasMap = {
+          base: p.incluye_base === true, oblea: p.incluye_oblea === true,
+          muneca: p.incluye_muneca === true, velas: p.incluye_velas === true,
+        };
+        const preciosMap = {
+          base: p.precio_base ? String(p.precio_base) : '',
+          oblea: p.precio_oblea ? String(p.precio_oblea) : '',
+          muneca: p.precio_muneca ? String(p.precio_muneca) : '',
+          velas: p.precio_velas ? String(p.precio_velas) : '',
+        };
+        for (const e of parseExtrasSeleccionados(p.extras_seleccionados)) {
+          if (!e?.id) continue;
+          extrasMap[e.id] = true;
+          preciosMap[e.id] = e.precio != null ? String(e.precio) : '';
+        }
         setForm({
           cliente_nombre: p.cliente_nombre || '', cliente_telefono: p.cliente_telefono || '',
           cliente_email: p.cliente_email || '', cliente_direccion: p.cliente_direccion || '',
@@ -136,16 +155,8 @@ export default function NuevoPedidoPastel() {
           personas_estimadas: p.personas_estimadas ? String(p.personas_estimadas) : '',
           kilos: p.kilos ? String(p.kilos) : '',
           precio_kilo: String(p.precio_kilo_usado ?? precioKiloConfig),
-          extras: {
-            base: p.incluye_base === true, oblea: p.incluye_oblea === true,
-            muneca: p.incluye_muneca === true, velas: p.incluye_velas === true,
-          },
-          preciosExtras: {
-            base: p.precio_base ? String(p.precio_base) : '',
-            oblea: p.precio_oblea ? String(p.precio_oblea) : '',
-            muneca: p.precio_muneca ? String(p.precio_muneca) : '',
-            velas: p.precio_velas ? String(p.precio_velas) : '',
-          },
+          extras: extrasMap,
+          preciosExtras: preciosMap,
           total_final: p.total_final != null ? String(p.total_final) : '',
           decorado: p.decorado || '', concepto: p.concepto || '', rellenos: p.rellenos || '',
           leyenda_pastel: p.leyenda_pastel || '', nota_interna: p.nota_interna || '',
@@ -239,6 +250,11 @@ export default function NuevoPedidoPastel() {
 
     setGuardando(true);
     try {
+      // Lista genérica de extras elegidos (fuente para ticket/detalle/PDF de pedidos
+      // nuevos). Las 4 columnas fijas se siguen guardando para retro-compatibilidad.
+      const extras_seleccionados = extrasPastel
+        .filter(e => form.extras[e.id])
+        .map(e => ({ id: e.id, nombre: e.nombre, precio: parseFloat(form.preciosExtras[e.id]) || 0 }));
       const payload = {
         sucursal_id: sucId,
         sucursal_nombre: sucNombre,
@@ -258,6 +274,7 @@ export default function NuevoPedidoPastel() {
         incluye_oblea: form.extras.oblea, precio_oblea: form.extras.oblea ? (parseFloat(form.preciosExtras.oblea) || 0) : 0,
         incluye_muneca: form.extras.muneca, precio_muneca: form.extras.muneca ? (parseFloat(form.preciosExtras.muneca) || 0) : 0,
         incluye_velas: form.extras.velas, precio_velas: form.extras.velas ? (parseFloat(form.preciosExtras.velas) || 0) : 0,
+        extras_seleccionados,
         precio_kilo_usado: calc.precioKilo,
         subtotal_pastel: calc.subtotalPastel,
         subtotal_extras: calc.subtotalExtras,
