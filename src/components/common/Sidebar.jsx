@@ -63,6 +63,7 @@ export default function Sidebar({ collapsed, onToggle }) {
   const [sucursalDialog, setSucursalDialog] = useState(null);
 
   const esDueno = adminRole === 'dueno';
+  const esPastelero = adminRole === 'pastelero';
 
   // Badge "Pedidos de Pastel": cuenta SOLO pedidos personalizados activos
   // (pendiente / confirmado / con_anticipo) y respeta la sucursal efectiva.
@@ -92,6 +93,14 @@ export default function Sidebar({ collapsed, onToggle }) {
   // Cerrar al cambiar de ruta
   useEffect(() => { setMobileOpen(false); }, [location.pathname]);
 
+  // Fase 06 (CAMBIOS_V2) — guard de ruta del PASTELERO: solo puede estar en
+  // /pedidos-pastel. Cualquier otra ruta (incluida por URL directa) lo redirige.
+  useEffect(() => {
+    if (adminMode && adminRole === 'pastelero' && location.pathname !== '/pedidos-pastel') {
+      navigate('/pedidos-pastel', { replace: true });
+    }
+  }, [adminMode, adminRole, location.pathname, navigate]);
+
   // PIN validado para ENTRAR a modo admin → activar con el usuario completo.
   // Fase 4 (mapeo sesión→RLS):
   //  - DUEÑO: abre su sesión Supabase REAL (global, pos_is_admin) → ve todas.
@@ -103,13 +112,16 @@ export default function Sidebar({ collapsed, onToggle }) {
       // (sessionStorage). Se separa aquí y se descarta.
       const { _pin, ...adminLimpio } = adminUser || {};
       const esDuenoLogin = adminLimpio?.adminRole === 'dueno';
+      // Pastelero: como el dueño, necesita sesión Supabase GLOBAL para que la RLS
+      // lo identifique y pueda leer los pedidos de todas las sucursales.
+      const esPasteleroLogin = adminLimpio?.adminRole === 'pastelero';
 
-      if (esDuenoLogin) {
-        // Sesión global del dueño (ModalPinAdmin ya validó el PIN; loginConPin
-        // lo revalida y hace signInWithPassword).
+      if (esDuenoLogin || esPasteleroLogin) {
+        // Sesión global (ModalPinAdmin ya validó el PIN; loginConPin lo revalida
+        // y hace signInWithPassword).
         const op = await loginConPin(_pin, adminLimpio.id);
         if (!op) {
-          toast.error('No se pudo iniciar la sesión de dueño.');
+          toast.error('No se pudo iniciar la sesión.');
           return;
         }
       } else if (terminal?.sucursal_id && adminLimpio?.sucursal_id !== terminal.sucursal_id) {
@@ -135,8 +147,8 @@ export default function Sidebar({ collapsed, onToggle }) {
         sucursal_nombre: adminLimpio?.sucursal_nombre ?? null,
       });
       // PARTE C — al SUBIR de empleado a admin/dueño, llevar al Dashboard.
-      // El Dashboard vive en la ruta "/" (ver App.jsx), no en "/Dashboard".
-      navigate('/');
+      // El pastelero va DIRECTO a Pedidos de Pastel (su única sección).
+      navigate(esPasteleroLogin ? '/pedidos-pastel' : '/');
     } catch (err) {
       console.error('[Sidebar] handleAdminSuccess:', err);
       toast.error('No se pudo activar el modo administrador.');
@@ -247,6 +259,12 @@ export default function Sidebar({ collapsed, onToggle }) {
     navItems = navItems.filter(item =>
       PATHS_VISTA_GENERAL.includes(item.path)
     );
+  }
+
+  // Fase 06 (CAMBIOS_V2) — el PASTELERO solo ve "Pedidos de Pastel" (sin dinero,
+  // sin Dashboard, sin Registros, sin Configuración, sin Web Pública).
+  if (adminMode && adminRole === 'pastelero') {
+    navItems = navItems.filter(item => item.path === '/pedidos-pastel');
   }
 
   const closeMobile = () => setMobileOpen(false);
@@ -414,7 +432,7 @@ export default function Sidebar({ collapsed, onToggle }) {
               title="Salir de modo administrador"
             >
               <LogOut className="w-5 h-5 shrink-0" />
-              {!collapsed && <span>Salir de {esDueno ? 'dueño' : 'administrador'}</span>}
+              {!collapsed && <span>Salir de {esDueno ? 'dueño' : esPastelero ? 'pastelero' : 'administrador'}</span>}
             </button>
           </>
         )}
@@ -444,7 +462,7 @@ export default function Sidebar({ collapsed, onToggle }) {
                   {adminMode ? posUser.nombre : 'Modo empleado'}
                 </p>
                 <p className="text-[10px] text-sidebar-foreground/50">
-                  {adminMode ? (esDueno ? 'Dueño' : 'Administrador') : 'Terminal operativa'}
+                  {adminMode ? (esDueno ? 'Dueño' : esPastelero ? 'Pastelero' : 'Administrador') : 'Terminal operativa'}
                 </p>
               </div>
             )}

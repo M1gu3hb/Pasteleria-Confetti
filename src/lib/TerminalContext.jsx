@@ -120,7 +120,8 @@ export function TerminalProvider({ children }) {
   // Devuelve { ok:boolean, error?:string }.
   const activarAdmin = useCallback(async (usuario) => {
     const rolRaw = usuario?.rol === 'dueño' ? 'dueno' : usuario?.rol;
-    const rol = rolRaw === 'dueno' ? 'dueno' : 'administrador';
+    // 'pastelero' es global (no requiere sucursal). 'dueno' también es global.
+    const rol = rolRaw === 'dueno' ? 'dueno' : rolRaw === 'pastelero' ? 'pastelero' : 'administrador';
 
     if (rol === 'administrador' && !usuario?.sucursal_id) {
       return {
@@ -174,6 +175,8 @@ export function TerminalProvider({ children }) {
   //  CASO 3 — dueño: la que está viendo en memoria (ACCIÓN B) o null/global.
   //  CASO 1 — empleado (sin adminMode): la del dispositivo (terminal).
   const sucursalEfectiva = (() => {
+    // Pastelero: vista GLOBAL (todas las sucursales) → sin sucursal efectiva.
+    if (adminMode && adminRole === 'pastelero') return null;
     if (adminMode && adminRole === 'administrador') {
       return adminUser?.sucursal_id
         ? { sucursal_id: adminUser.sucursal_id, sucursal_nombre: adminUser.sucursal_nombre || '', folio_prefijo: adminUser.sucursal_folio_prefijo || '' }

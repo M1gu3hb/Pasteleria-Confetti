@@ -15,7 +15,7 @@ import { toast } from 'sonner';
  *    un error explicativo (usado en el flujo "Soy dueño").
  *  - title / subtitle: textos opcionales del encabezado.
  */
-const ROLES_ADMIN = ['dueño', 'administrador'];
+const ROLES_ADMIN = ['dueño', 'administrador', 'pastelero'];
 
 export default function ModalPinAdmin({
   open,
@@ -52,16 +52,19 @@ export default function ModalPinAdmin({
       }
 
       const esDueno = found.rol === 'dueño';
+      const esPastelero = found.rol === 'pastelero';
 
-      // Flujo "Soy dueño": rechazar administradores con mensaje claro.
+      // Flujo "Soy dueño": rechazar administradores/pasteleros con mensaje claro.
       if (soloDueno && !esDueno) {
         toast.error('Esta opción es solo para el dueño.');
         setPin('');
         return;
       }
 
-      const adminRole = esDueno ? 'dueno' : 'administrador';
-      toast.success(`Acceso ${esDueno ? 'dueño' : 'administrador'}: ${found.nombre}`);
+      // adminRole normalizado: 'dueno' | 'pastelero' | 'administrador'.
+      const adminRole = esDueno ? 'dueno' : esPastelero ? 'pastelero' : 'administrador';
+      const etiquetaRol = esDueno ? 'dueño' : esPastelero ? 'pastelero' : 'administrador';
+      toast.success(`Acceso ${etiquetaRol}: ${found.nombre}`);
       // _pin: lo necesita el handler del dueño para abrir su sesión global
       // (signInWithPassword). Transitorio, solo en memoria.
       if (typeof onSuccess === 'function') onSuccess({ ...found, adminRole, _pin: pinToCheck });

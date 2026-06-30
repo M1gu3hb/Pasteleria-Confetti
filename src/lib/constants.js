@@ -78,6 +78,8 @@ export const ROLES = {
   CASHIER: 'caja',
   WAITER: 'mesero',
   KITCHEN: 'cocina',
+  // CAMBIOS_V2 Fase 06 — hornea para todas las sucursales; solo ve Pedidos de Pastel.
+  PASTELERO: 'pastelero',
 };
 
 // Etiquetas completas — incluye roles legacy (`barra`) para que la UI
@@ -90,6 +92,7 @@ export const ROLE_LABELS = {
   mesero: 'Mesero',
   cocina: 'Cocina',
   barra: 'Barra',
+  pastelero: 'Pastelero',
 };
 
 // Roles visibles en el SELECTOR de Configuración → Usuarios para Confetti.
@@ -99,6 +102,7 @@ export const ROLE_LABELS = {
 export const ROLES_CONFETTI = [
   { value: 'dueno', label: 'Dueño' },
   { value: 'administrador', label: 'Administrador' },
+  { value: 'pastelero', label: 'Pastelero' },
 ];
 
 // Etiquetas para el SELECTOR de rol al crear/editar usuarios.

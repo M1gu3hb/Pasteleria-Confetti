@@ -179,8 +179,9 @@ export default function Configuracion() {
 
       if (prevUser?.id) {
         // EDITAR: campos por update normal (sin pin); el PIN (si cambió) por RPC.
+        // sucursal_id vacío → null (pastelero/dueño no llevan sucursal; '' rompe el cast uuid).
         const { pin, ...rest } = payload;
-        await base44.entities.UsuarioPOS.update(prevUser.id, { ...rest, rol: rolDB });
+        await base44.entities.UsuarioPOS.update(prevUser.id, { ...rest, rol: rolDB, sucursal_id: payload.sucursal_id || null });
         if (pinNuevo) {
           const { error } = await supabase.rpc('actualizar_pin_usuario', {
             p_user_id: prevUser.id, p_pin: pinNuevo,
