@@ -1,5 +1,24 @@
 # CHANGELOG
 
+## 2026-06-30 — Fix imagen de referencia del pedido de pastel (duplicada + volteada)
+> Bug en vivo. Solo display/subida; NO se borró ningún pedido/dato; NO toca dinero/candados.
+- **Duplicada:** `TicketPastelConfetti.jsx` renderizaba la imagen de referencia ADEMÁS del recuadro
+  → eliminado ese bloque. La imagen queda SOLO en el recuadro "Imagen de referencia" de
+  `PedidoPastelDetalleDialog.jsx`. Verificado en vivo (POS desplegado, PP-A-0002): el ticket ya no
+  tiene imagen; aparece solo en el recuadro.
+- **Volteada (de cabeza):** diagnóstico con la imagen real (PP-A-0002, screenshot del cliente):
+  EXIF orientation=1 (normal) pero **los PÍXELES venían rotados 180°** → ningún visor la corregía.
+  - Existente: re-procesado del archivo (rotado 180° los píxeles, re-subido a un path nuevo de
+    `web-uploads`; se actualizó SOLO `pedidos.imagen_referencia_url` de PP-A-0002 — pedido y datos
+    intactos). Verificado: ahora se ve derecha.
+  - A prueba de futuro: `src/utils/normalizarImagen.js` (nuevo) hornea la orientación EXIF en los
+    píxeles y re-encoda derecha (sin EXIF), con degradación segura; aplicado en `NuevoPedidoPastel`
+    al subir. (En la web, mismo arreglo en su repo.)
+  - Defensa de display: `image-orientation: from-image` en el `<img>` del recuadro y del thumbnail
+    de la card (`PedidoPastelCard.jsx`).
+  - **NO** se puso `rotate(180deg)` fijo (voltearía las correctas).
+- vite build OK. Commit `4d3ab9c` → Vercel READY. Web: commit `a17b6de` → READY.
+
 ## 2026-06-29 (cont.2) — POS instalable como PWA (tablets) + rebrand Confetti
 > Solo el POS. Detalle en `AUDITORIA_FINAL/06_PWA_POS.md`. No toca dinero/candados ni lógica.
 - **Íconos locales** en `public/` desde el logo Confetti (centrado, sin estirar, fondo claro
