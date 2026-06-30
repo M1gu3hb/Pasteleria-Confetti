@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Eye, EyeOff, KeyRound, User, Phone, Mail, Palette, Save, Layers, AlertTriangle, Store } from 'lucide-react';
+import { KeyRound, User, Phone, Mail, Palette, Save, Layers, AlertTriangle, Store } from 'lucide-react';
 import { ROLES_CONFETTI, ROLES } from '@/lib/constants';
 import { useConfig } from '@/lib/ConfigContext';
 import { toast } from 'sonner';
@@ -51,7 +51,6 @@ export default function UsuarioPOSDialog({ open, onClose, user, onSave }) {
     puede_ver_todas_estaciones: false,
     sucursal_id: '', sucursal_nombre: '',
   });
-  const [verPin, setVerPin] = useState(false);
   const [cambiarPin, setCambiarPin] = useState(false);
   const [nuevoPin, setNuevoPin] = useState('');
   const [confirmarPin, setConfirmarPin] = useState('');
@@ -476,24 +475,16 @@ export default function UsuarioPOSDialog({ open, onClose, user, onSave }) {
           <div className="rounded-xl border p-3 bg-muted/30 space-y-2">
             <div className="flex items-center justify-between gap-2">
               <Label className="text-xs flex items-center gap-1.5">
-                <KeyRound className="w-3 h-3" /> NIP / PIN actual
+                <KeyRound className="w-3 h-3" /> NIP / PIN
               </Label>
-              {isEdit && form.pin && (
-                <button
-                  type="button"
-                  onClick={() => setVerPin(v => !v)}
-                  className="text-xs text-primary inline-flex items-center gap-1"
-                >
-                  {verPin ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                  {verPin ? 'Ocultar' : 'Ver NIP'}
-                </button>
-              )}
             </div>
-            {isEdit ? (
-              <p className="font-mono font-bold text-base tracking-widest">
-                {verPin ? (form.pin || '—') : '••••'}
+            {/* CAMBIOS_V2 Fase 08 — se quitó "Ver NIP": el PIN es bcrypt y no se
+                puede mostrar. Para cambiarlo se usa "Cambiar NIP" (RPC). */}
+            {isEdit && (
+              <p className="text-[11px] text-muted-foreground">
+                El NIP está cifrado y no se puede mostrar. Usa “Cambiar NIP” para asignar uno nuevo.
               </p>
-            ) : null}
+            )}
 
             {/* Cambiar PIN */}
             {isEdit && (
