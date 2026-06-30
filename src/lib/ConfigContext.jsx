@@ -45,7 +45,7 @@ const DEFAULT_CONFIG = {
   descargar_pdf_corte_auto: true,
   formato_export_default: 'csv',
   colorear_importes_monetarios: true,
-  paquete_modo: 'restaurante_pro',
+  paquete_modo: 'esencial', // Confetti es 'esencial'; default seguro = paquete mínimo (nunca restaurante)
   modo_presentacion_activo: false,
   presentacion_password: '2797',
 };

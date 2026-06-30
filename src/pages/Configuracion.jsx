@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import PageHeader from '@/components/common/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -170,12 +171,35 @@ export default function Configuracion() {
         }
       }
 
-      let saved = null;
+      // El PIN NO se guarda por la entidad (la whitelist lo descarta → pin_hash NULL y sin
+      // cuenta auth → "el PIN no existe"). Se gestiona por RPC SECURITY DEFINER (crea pin_hash
+      // + cuenta auth). Normalizamos el rol del selector ('dueno') a la forma de BD ('dueño').
+      const rolDB = payload.rol === 'dueno' ? 'dueño' : payload.rol;
+      const pinNuevo = /^\d{4}$/.test(String(payload.pin || '')) ? String(payload.pin) : null;
+
       if (prevUser?.id) {
-        await base44.entities.UsuarioPOS.update(prevUser.id, payload);
-        saved = { ...prevUser, ...payload };
+        // EDITAR: campos por update normal (sin pin); el PIN (si cambió) por RPC.
+        const { pin, ...rest } = payload;
+        await base44.entities.UsuarioPOS.update(prevUser.id, { ...rest, rol: rolDB });
+        if (pinNuevo) {
+          const { error } = await supabase.rpc('actualizar_pin_usuario', {
+            p_user_id: prevUser.id, p_pin: pinNuevo,
+          });
+          if (error) throw new Error(error.message);
+        }
       } else {
-        saved = await base44.entities.UsuarioPOS.create({ ...payload, activo: true });
+        // CREAR: alta completa (usuarios_pos + pin_hash + cuenta auth) por RPC.
+        const { error } = await supabase.rpc('crear_usuario_pos', {
+          p_nombre: payload.nombre,
+          p_rol: rolDB,
+          p_pin: pinNuevo,
+          p_sucursal_id: payload.sucursal_id || null,
+          p_sucursal_nombre: payload.sucursal_nombre || null,
+          p_color: payload.color || null,
+          p_telefono: payload.telefono || null,
+          p_correo: payload.correo || null,
+        });
+        if (error) throw new Error(error.message);
       }
 
       queryClient.invalidateQueries({ queryKey: ['usuarios_pos'] });

@@ -173,10 +173,15 @@ export const PACKAGE_COMPARISON = [
 
 // ---------- Funciones helper ----------
 
+// FALLBACK SEGURO = 'esencial' (paquete MÍNIMO), nunca 'restaurante_pro'. Si la config no está
+// hidratada o llega por la vista pública (config_publica) sin paquete_modo, Confetti NUNCA debe
+// mostrar mesas/mesero/cocina ni perder el botón de venta de Caja.
+const PAQUETE_FALLBACK = 'esencial';
+
 export function getCurrentPackage(config) {
   const valor = config?.paquete_modo;
   if (valor === 'esencial' || valor === 'operativo' || valor === 'restaurante_pro') return valor;
-  return 'restaurante_pro';
+  return PAQUETE_FALLBACK;
 }
 
 export function isPackage(config, packageName) {
@@ -186,24 +191,24 @@ export function isPackage(config, packageName) {
 export function canAccessModule(moduleName, paqueteModo) {
   const paquete = (paqueteModo === 'esencial' || paqueteModo === 'operativo' || paqueteModo === 'restaurante_pro')
     ? paqueteModo
-    : 'restaurante_pro';
+    : PAQUETE_FALLBACK;
   return PACKAGE_MODULES[paquete].includes(moduleName);
 }
 
 export function getPackageLabel(paqueteModo) {
-  return PACKAGE_LABELS[paqueteModo] || PACKAGE_LABELS.restaurante_pro;
+  return PACKAGE_LABELS[paqueteModo] || PACKAGE_LABELS[PAQUETE_FALLBACK];
 }
 
 export function getPackageFeatures(paqueteModo) {
-  return PACKAGE_FEATURES[paqueteModo] || PACKAGE_FEATURES.restaurante_pro;
+  return PACKAGE_FEATURES[paqueteModo] || PACKAGE_FEATURES[PAQUETE_FALLBACK];
 }
 
 export function getPackageTagline(paqueteModo) {
-  return PACKAGE_TAGLINES[paqueteModo] || PACKAGE_TAGLINES.restaurante_pro;
+  return PACKAGE_TAGLINES[paqueteModo] || PACKAGE_TAGLINES[PAQUETE_FALLBACK];
 }
 
 export function getPackageTarget(paqueteModo) {
-  return PACKAGE_TARGET[paqueteModo] || PACKAGE_TARGET.restaurante_pro;
+  return PACKAGE_TARGET[paqueteModo] || PACKAGE_TARGET[PAQUETE_FALLBACK];
 }
 
 // ---------- Mapa de rutas -> módulo requerido ----------
