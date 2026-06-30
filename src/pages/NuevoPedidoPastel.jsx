@@ -87,7 +87,7 @@ export default function NuevoPedidoPastel() {
   }, [config?.rellenos_pastel]);
 
   const [form, setForm] = useState({
-    cliente_nombre: '', cliente_telefono: '', cliente_email: '', cliente_direccion: '',
+    cliente_nombre: '', cliente_telefono: '', cliente_email: '', cliente_direccion: '', atendido_por: '',
     fecha_entrega: '', hora_entrega: '',
     personas_estimadas: '', kilos: '', precio_kilo: String(precioKiloConfig),
     extras: { base: false, oblea: false, muneca: false, velas: false },
@@ -154,6 +154,14 @@ export default function NuevoPedidoPastel() {
     });
   };
 
+  // Prellenar "¿Quién te atendió?" con el usuario logueado (solo en pedido nuevo
+  // y si está vacío; no pisa lo que el empleado escriba).
+  useEffect(() => {
+    if (editId) return;
+    if (posUser?.nombre) setForm(f => (f.atendido_por === '' ? { ...f, atendido_por: posUser.nombre } : f));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [posUser?.nombre, editId]);
+
   // Refrescar precio/kilo si llega config después del montaje (solo si el
   // usuario no lo ha tocado: campo aún con el default inicial).
   useEffect(() => {
@@ -190,6 +198,7 @@ export default function NuevoPedidoPastel() {
         setForm({
           cliente_nombre: p.cliente_nombre || '', cliente_telefono: p.cliente_telefono || '',
           cliente_email: p.cliente_email || '', cliente_direccion: p.cliente_direccion || '',
+          atendido_por: p.atendido_por || '', // pedidos web nacen vacíos
           fecha_entrega: p.fecha_entrega || '', hora_entrega: p.hora_entrega || '',
           personas_estimadas: p.personas_estimadas ? String(p.personas_estimadas) : '',
           kilos: p.kilos ? String(p.kilos) : '',
@@ -269,6 +278,52 @@ export default function NuevoPedidoPastel() {
     }));
   };
 
+  // Selector de relleno (Fase 04: ahora va ARRIBA de personas/kilos, porque un
+  // relleno especial define el precio por kilo antes de calcular).
+  const renderRellenoPicker = () => {
+    if (rellenosPastel.length === 0) {
+      return (
+        <Input value={form.rellenos} onChange={e => set('rellenos', e.target.value)}
+          placeholder="Fruta natural, tres leches, chocolate..." className="skeu-input h-11 mt-1" />
+      );
+    }
+    return (
+      <>
+        {rellenoTextoLibre && !avisoTextoLibreOculto && (
+          <div className="mt-1.5 mb-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-2">
+            <p>Relleno actual (no está en la lista): <strong className="break-words">{form.rellenos}</strong></p>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => setAvisoTextoLibreOculto(true)}
+                className="px-3 py-1.5 rounded-md bg-amber-600 text-white text-xs font-medium hover:bg-amber-700">Conservar texto</button>
+              <button type="button" onClick={() => set('rellenos', '')}
+                className="px-3 py-1.5 rounded-md border border-amber-400 text-amber-800 text-xs font-medium hover:bg-amber-100">Cambiar por un chip</button>
+            </div>
+          </div>
+        )}
+        <div className="flex flex-wrap gap-2 mt-1.5">
+          {rellenosPastel.map(r => {
+            const activo = form.rellenos === r.nombre;
+            const monto = Number(r.monto) || 0;
+            const esPK = r.tipo === 'precio_kilo';
+            return (
+              <button key={r.id} type="button" onClick={() => seleccionarRelleno(r)}
+                className={`px-3 py-2 rounded-full text-sm font-medium border-2 transition-all ${activo
+                  ? 'bg-primary text-primary-foreground border-primary shadow'
+                  : 'bg-card text-foreground border-border hover:border-primary/50'}`}>
+                {r.nombre}
+                {monto > 0 && (
+                  <span className={`ml-1.5 text-[10px] font-normal ${activo ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+                    {esPK ? `${fmt(monto)}/kg` : `+${fmt(monto)}`}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </>
+    );
+  };
+
   const subirImagen = async (file) => {
     if (!file) return;
     setSubiendoImg(true);
@@ -307,8 +362,8 @@ export default function NuevoPedidoPastel() {
         origen: 'pos_interno',
         cliente_nombre: form.cliente_nombre.trim(),
         cliente_telefono: form.cliente_telefono.trim(),
-        cliente_email: form.cliente_email.trim(),
         cliente_direccion: form.cliente_direccion.trim(),
+        atendido_por: form.atendido_por.trim(),
         fecha_entrega: form.fecha_entrega,
         hora_entrega: form.hora_entrega,
         kilos: parseFloat(form.kilos) || 0,
@@ -436,8 +491,9 @@ export default function NuevoPedidoPastel() {
             <Input type="tel" value={form.cliente_telefono} onChange={e => set('cliente_telefono', e.target.value)} className="skeu-input h-11 mt-1" />
           </div>
           <div>
-            <Label className="text-xs">Correo electrónico</Label>
-            <Input type="email" value={form.cliente_email} onChange={e => set('cliente_email', e.target.value)} className="skeu-input h-11 mt-1" />
+            <Label className="text-xs">¿Quién te atendió?</Label>
+            <Input value={form.atendido_por} onChange={e => set('atendido_por', e.target.value)}
+              placeholder="Nombre del empleado" className="skeu-input h-11 mt-1" />
           </div>
           <div>
             <Label className="text-xs">Dirección</Label>
@@ -463,8 +519,13 @@ export default function NuevoPedidoPastel() {
 
       {/* SECCIÓN 4 — Calculadora */}
       <Card className="border-2 border-primary/30">
-        <CardHeader><CardTitle className="text-base font-heading">4 · Kilos y precio</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base font-heading">4 · Relleno, kilos y precio</CardTitle></CardHeader>
         <CardContent className="space-y-4">
+          {/* Relleno PRIMERO: un relleno especial define el precio por kilo */}
+          <div className="pb-2 border-b">
+            <Label className="text-xs font-semibold">Relleno</Label>
+            {renderRellenoPicker()}
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label className="text-xs">Número de personas</Label>
@@ -581,72 +642,10 @@ export default function NuevoPedidoPastel() {
             <Textarea value={form.decorado} onChange={e => set('decorado', e.target.value)}
               placeholder="Describe cómo debe ir decorado..." className="mt-1 skeu-textarea" />
           </div>
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div>
-              <Label className="text-xs">Concepto</Label>
-              <Input value={form.concepto} onChange={e => set('concepto', e.target.value)}
-                placeholder="XV años, boda, infantil..." className="skeu-input h-11 mt-1" />
-            </div>
-            <div>
-              <Label className="text-xs">Relleno</Label>
-              {rellenosPastel.length > 0 ? (
-                <>
-                  {/* FIX 2 — Si el pedido trae un relleno de texto libre que NO
-                      coincide con ningún chip, avisamos para no perder el texto. */}
-                  {rellenoTextoLibre && !avisoTextoLibreOculto && (
-                    <div className="mt-1.5 mb-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-2">
-                      <p>
-                        Relleno actual (no está en la lista):{' '}
-                        <strong className="break-words">{form.rellenos}</strong>
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setAvisoTextoLibreOculto(true)}
-                          className="px-3 py-1.5 rounded-md bg-amber-600 text-white text-xs font-medium hover:bg-amber-700"
-                        >
-                          Conservar texto
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => set('rellenos', '')}
-                          className="px-3 py-1.5 rounded-md border border-amber-400 text-amber-800 text-xs font-medium hover:bg-amber-100"
-                        >
-                          Cambiar por un chip
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                  <div className="flex flex-wrap gap-2 mt-1.5">
-                    {rellenosPastel.map(r => {
-                      const activo = form.rellenos === r.nombre;
-                      const monto = Number(r.monto) || 0;
-                      const esPK = r.tipo === 'precio_kilo';
-                      return (
-                        <button
-                          key={r.id}
-                          type="button"
-                          onClick={() => seleccionarRelleno(r)}
-                          className={`px-3 py-2 rounded-full text-sm font-medium border-2 transition-all ${activo
-                            ? 'bg-primary text-primary-foreground border-primary shadow'
-                            : 'bg-card text-foreground border-border hover:border-primary/50'}`}
-                        >
-                          {r.nombre}
-                          {monto > 0 && (
-                            <span className={`ml-1.5 text-[10px] font-normal ${activo ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
-                              {esPK ? `${fmt(monto)}/kg` : `+${fmt(monto)}`}
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </>
-              ) : (
-                <Input value={form.rellenos} onChange={e => set('rellenos', e.target.value)}
-                  placeholder="Fruta natural, tres leches, chocolate..." className="skeu-input h-11 mt-1" />
-              )}
-            </div>
+          <div>
+            <Label className="text-xs">Concepto</Label>
+            <Input value={form.concepto} onChange={e => set('concepto', e.target.value)}
+              placeholder="XV años, boda, infantil..." className="skeu-input h-11 mt-1" />
           </div>
           <div>
             <Label className="text-xs">Leyenda en el pastel</Label>
