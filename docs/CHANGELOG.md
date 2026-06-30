@@ -1,5 +1,28 @@
 # CHANGELOG
 
+## 2026-06-30 (cont.) — Fix alta de usuario (PIN no se guardaba) + paquete fallback Restaurante Pro
+> Dos bugs en vivo. NO se borró ningún dato real (solo usuarios de prueba creados por mí). No toca dinero/candados.
+- **BUG 1 — el PIN no se guardaba ("el PIN no existe"):** el alta mandaba `pin` plano; la whitelist
+  `usuarios_pos` no lo incluye → `pin_hash` NULL y sin cuenta auth. **Migración 0030**: RPC
+  SECURITY DEFINER `crear_usuario_pos` (inserta usuarios_pos + `pin_hash=crypt(pin)` + cuenta
+  `auth.users`/`auth.identities` réplica del patrón 0016, email `<id>@pos.confetti.local`,
+  `encrypted_password=crypt('POS-'||pin)`) y `actualizar_pin_usuario` (recalcula pin_hash +
+  password auth; crea la cuenta si faltaba → repara usuarios rotos). Guard: solo DUEÑO
+  (o backend sin sesión). Helper privado `_pos_provision_auth`. Front (`Configuracion.jsx`
+  `handleSaveUser`): CREAR → `crear_usuario_pos` (ya no UsuarioPOS.create con pin plano); EDITAR
+  con PIN nuevo → `actualizar_pin_usuario`; normaliza rol `dueno`→`dueño`. PIN sigue siendo 4
+  dígitos; **1111/0000/1234 se aceptan**. **Reparado SIN borrar** el usuario real "Xochimilco
+  sucursal" (PIN 1111). Verificado EN VIVO (UI desplegada): alta crea pin_hash+auth, `login_pos`
+  y la password auth funcionan; usuario de prueba borrado.
+- **BUG 2 — al cambiar de sucursal (dueño) aparecía Restaurante Pro (mesas/mesero/cocina) y Caja
+  perdía el botón de venta:** `config_publica` no traía `paquete_modo` → fallback a
+  `restaurante_pro`. `packageConfig.js`: todos los fallback → **`esencial`** (paquete mínimo).
+  `ConfigContext.jsx` `DEFAULT_CONFIG.paquete_modo` → `esencial`. **Migración 0031**:
+  `config_publica` expone `paquete_modo`. Verificado EN VIVO: tras cambiar sucursal en modo dueño,
+  el menú = Dashboard/Caja/Ventas/Pedidos/Web Pública/Configuración (0 módulos de restaurante);
+  Caja con productos + botón Cobrar.
+- Commit `053a708` → Vercel READY. Migraciones hasta **0031**.
+
 ## 2026-06-30 — Fix imagen de referencia del pedido de pastel (duplicada + volteada)
 > Bug en vivo. Solo display/subida; NO se borró ningún pedido/dato; NO toca dinero/candados.
 - **Duplicada:** `TicketPastelConfetti.jsx` renderizaba la imagen de referencia ADEMÁS del recuadro
