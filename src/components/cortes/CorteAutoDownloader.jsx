@@ -64,6 +64,8 @@ export default function CorteAutoDownloader({ corte, onDone }) {
         ? (await Promise.all(ventaIds.map(id => base44.entities.DetalleVenta.filter({ venta_id: id }).catch(() => [])))).flat()
         : [];
       const gastosCorte = allGastos.filter(g => {
+        // CAMBIOS_V2 Fase 07 — scoping exacto por corte_caja_id; legacy por fecha.
+        if (g?.corte_caja_id) return g.corte_caja_id === corte.id;
         const t = g.created_date ? new Date(g.created_date).getTime() : 0;
         return t >= inicio && t <= cierre;
       });

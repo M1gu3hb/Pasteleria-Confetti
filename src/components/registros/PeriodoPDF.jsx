@@ -40,6 +40,14 @@ export default function PeriodoPDF({ data, config = {}, isEsencial = false, sucu
           <tr><td className="border px-2 py-1.5 font-medium w-1/2">Ingresos por ventas</td><td className="border px-2 py-1.5 text-right">{formatCurrency(totals.ingresos || 0)}</td></tr>
           <tr><td className="border px-2 py-1.5 font-medium">Número de ventas</td><td className="border px-2 py-1.5 text-right">{totals.nVentas || 0}</td></tr>
           <tr><td className="border px-2 py-1.5 font-medium">Ticket promedio</td><td className="border px-2 py-1.5 text-right">{formatCurrency(totals.ticketPromedio || (totals.nVentas > 0 ? (totals.ingresos || 0) / totals.nVentas : 0))}</td></tr>
+          {/* CAMBIOS_V2 Fase 07 — en Confetti (esencial) mostramos gastos y neto del periodo */}
+          {isEsencial && (
+            <>
+              <tr><td className="border px-2 py-1.5 font-medium">Gastos del periodo</td><td className="border px-2 py-1.5 text-right text-red-700">−{formatCurrency(totals.gastos || 0)}</td></tr>
+              <tr className="bg-gray-100"><td className="border px-2 py-2 font-bold">NETO (ventas − gastos)</td>
+                <td className="border px-2 py-2 text-right font-bold text-base">{((totals.ingresos || 0) - (totals.gastos || 0)) >= 0 ? '' : '−'}{formatCurrency(Math.abs((totals.ingresos || 0) - (totals.gastos || 0)))}</td></tr>
+            </>
+          )}
           {!isEsencial && (
             <>
               <tr><td className="border px-2 py-1.5 font-medium">Utilidad bruta</td><td className="border px-2 py-1.5 text-right text-emerald-700">{formatCurrency(totals.utilidad || 0)}</td></tr>
@@ -109,30 +117,30 @@ export default function PeriodoPDF({ data, config = {}, isEsencial = false, sucu
           </tbody>
         </table>
       ) : <p className="text-xs text-gray-500 italic">Sin compras en este periodo.</p>}
+      </>)}
 
-      {/* Gastos */}
-      <h3 className="text-sm font-bold uppercase tracking-wide mb-2 mt-4">Gastos operativos ({gastos.length})</h3>
+      {/* Gastos — CAMBIOS_V2 Fase 07: visible TAMBIÉN en Confetti (esencial) */}
+      <h3 className="text-sm font-bold uppercase tracking-wide mb-2 mt-4">Gastos ({gastos.length})</h3>
       {gastos.length > 0 ? (
         <table className="w-full text-[10px] border mb-4">
           <thead className="bg-gray-100"><tr>
             <th className="border px-1.5 py-1 text-left">Fecha</th>
-            <th className="border px-1.5 py-1 text-left">Categoría</th>
             <th className="border px-1.5 py-1 text-left">Descripción</th>
+            <th className="border px-1.5 py-1 text-left">Método</th>
             <th className="border px-1.5 py-1 text-right">Monto</th>
           </tr></thead>
           <tbody>
             {gastos.map(g => (
               <tr key={g.id}>
                 <td className="border px-1.5 py-1">{g.fecha}</td>
-                <td className="border px-1.5 py-1 capitalize">{g.categoria}</td>
                 <td className="border px-1.5 py-1">{g.descripcion}</td>
+                <td className="border px-1.5 py-1 capitalize">{g.metodo_pago || '—'}</td>
                 <td className="border px-1.5 py-1 text-right font-medium text-red-700">−{formatCurrency(g.monto)}</td>
               </tr>
             ))}
           </tbody>
         </table>
       ) : <p className="text-xs text-gray-500 italic">Sin gastos en este periodo.</p>}
-      </>)}
 
       <div className="mt-8 pt-4 border-t text-[9px] text-gray-500 text-center">
         Documento generado automáticamente por {config.nombre_sistema || 'AZECAFE POS'}

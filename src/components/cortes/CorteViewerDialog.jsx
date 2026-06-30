@@ -113,6 +113,8 @@ export default function CorteViewerDialog({ corte, open, onClose }) {
       ]);
 
       const gastosCorte = (Array.isArray(allGastos) ? allGastos : []).filter(g => {
+        // CAMBIOS_V2 Fase 07 — scoping exacto por corte_caja_id; legacy por fecha+sucursal.
+        if (g?.corte_caja_id) return g.corte_caja_id === corteId;
         if (corteSucId && g?.sucursal_id && g.sucursal_id !== corteSucId) return false;
         const t = g?.created_date ? new Date(g.created_date).getTime() : 0;
         return t >= inicio && t <= cierre;

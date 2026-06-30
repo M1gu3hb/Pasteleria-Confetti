@@ -23,6 +23,7 @@ import { desgloseMetodosPagoExacto } from '@/utils/tipsUtils';
 import SafeBoundary from '@/components/common/SafeBoundary';
 import AbrirCajaDialog from '@/components/caja/AbrirCajaDialog';
 import CierreDiarioDialog from '@/components/caja/CierreDiarioDialog';
+import GastosCajaTab from '@/components/caja/GastosCajaTab';
 import MesasPendientesCierreDialog from '@/components/caja/MesasPendientesCierreDialog';
 import AjustarCuentaDialog from '@/components/caja/AjustarCuentaDialog';
 import { obtenerMesasPendientesCierre } from '@/utils/mesasPendientesCierre';
@@ -253,6 +254,7 @@ export default function Caja() {
       return {
         numVentas: 0, totalEfectivo: 0, totalTarjeta: 0, totalTransferencia: 0,
         totalGeneral: 0, costoTotal: 0, utilidadBruta: 0, totalGastos: 0, ticketPromedio: 0,
+        gastosEfectivo: 0, gastosDelCorte: [],
       };
     }
     const aperturaIso = cajaAbierta.fecha_apertura || cajaAbierta.fecha_inicio || cajaAbierta.created_date;
@@ -276,11 +278,17 @@ export default function Caja() {
     });
     const gastosCaja = safeGastos.filter(g => {
       if (!g) return false;
-      // Salvaguarda: gasto de la misma sucursal del corte (o sin sucursal, legacy).
+      // CAMBIOS_V2 Fase 07 — si el gasto está amarrado a un corte, debe ser ESTE
+      // corte (scoping exacto por corte_caja_id). Si no (legacy), por sucursal+fecha.
+      if (g.corte_caja_id) return g.corte_caja_id === cajaAbierta.id;
       if (corteSucId && g.sucursal_id && g.sucursal_id !== corteSucId) return false;
       const tCreated = g.created_date ? new Date(g.created_date).getTime() : 0;
       return tCreated >= apertura;
     });
+    // CAMBIOS_V2 Fase 07 — solo los gastos EN EFECTIVO del corte restan del
+    // efectivo esperado (tarjeta/transferencia NO salen del cajón).
+    const gastosEfectivo = gastosCaja.reduce(
+      (s, g) => s + (g?.metodo_pago === 'efectivo' ? (Number(g.monto) || 0) : 0), 0);
     // Fase 4 — totales de abonos por método.
     // FASE 3 A-FIX (Opción A): suma el DESGLOSE por método (monto_efectivo/tarjeta/
     // transferencia), NO filtra por metodo_pago. Así un abono MIXTO aporta su porción a
@@ -326,6 +334,8 @@ export default function Caja() {
       costoTotal: ventas.reduce((s, v) => s + (v.costo_total_snapshot || 0), 0),
       utilidadBruta: ventas.reduce((s, v) => s + (v.utilidad_bruta_snapshot || 0), 0),
       totalGastos: gastosCaja.reduce((s, g) => s + (g.monto || 0), 0),
+      gastosEfectivo,
+      gastosDelCorte: gastosCaja,
       ticketPromedio: ventas.length > 0 ? ventas.reduce((s, v) => s + (v.total || 0), 0) / ventas.length : 0,
       totalPropinas,
       propinasPorMesero: Object.values(propinasPorMesero),
@@ -1308,8 +1318,10 @@ export default function Caja() {
         numero_ventas: resumen.numVentas,
         ticket_promedio: resumen.ticketPromedio,
         total_gastos: resumen.totalGastos,
-        // Fase 4 — el efectivo esperado incluye abonos de pedidos en efectivo
-        efectivo_esperado: resumen.totalEfectivo + (resumen.abonosEfectivo || 0),
+        // Fase 4 — el efectivo esperado incluye abonos de pedidos en efectivo.
+        // CAMBIOS_V2 Fase 07 — y RESTA los gastos en efectivo del corte (salida del cajón).
+        // Sin gastos en efectivo, gastosEfectivo=0 → idéntico al cálculo anterior (cero regresión).
+        efectivo_esperado: resumen.totalEfectivo + (resumen.abonosEfectivo || 0) - (resumen.gastosEfectivo || 0),
         efectivo_contado: form.efectivo_contado,
         diferencia_efectivo: form.diferencia_efectivo,
         dinero_dejado_en_caja: form.dinero_dejado_en_caja,
@@ -1578,6 +1590,7 @@ export default function Caja() {
             )}
           </TabsTrigger>
           <TabsTrigger value="buscar" className="shrink-0">Buscar</TabsTrigger>
+          <TabsTrigger value="gastos" className="shrink-0">Gastos</TabsTrigger>
           <TabsTrigger value="resumen" className="shrink-0">Resumen</TabsTrigger>
           <TabsTrigger value="historial" className="shrink-0">Historial</TabsTrigger>
         </TabsList>
@@ -1784,6 +1797,16 @@ export default function Caja() {
               )}
             </div>
           </div>
+        </TabsContent>
+
+        {/* GASTOS — CAMBIOS_V2 Fase 07: registrar gastos del corte abierto */}
+        <TabsContent value="gastos">
+          <GastosCajaTab
+            cajaAbierta={cajaAbierta}
+            posUser={posUser}
+            sucursalEfectiva={sucursalEfectiva}
+            gastos={resumen.gastosDelCorte || []}
+          />
         </TabsContent>
 
         {/* RESUMEN — usa componente unificado con propinas + total cobrado */}

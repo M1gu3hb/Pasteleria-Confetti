@@ -38,7 +38,9 @@ import { useLocation } from 'react-router-dom';
 export default function Registros() {
   const { config, paquete_modo } = useConfig();
   const isEsencial = paquete_modo === 'esencial';
-  const showOperativos = !isEsencial; // compras, movimientos, gastos
+  const showOperativos = !isEsencial; // compras, movimientos
+  // CAMBIOS_V2 Fase 07 — los GASTOS sí aplican a Confetti (esencial): siempre visibles.
+  const showGastos = true;
   const showPropinas = tipsEnabled(config);
   const { posUser } = usePOSAuth();
   const { sucursalEfectiva } = useTerminal();
@@ -267,7 +269,7 @@ export default function Registros() {
           {showOperativos && (
             <TabsTrigger value="movimientos" className="gap-1"><Package className="w-3 h-3" />Movimientos ({movimientos.length})</TabsTrigger>
           )}
-          {showOperativos && (
+          {showGastos && (
             <TabsTrigger value="gastos" className="gap-1"><Scissors className="w-3 h-3" />Gastos ({gastosFiltrados.length})</TabsTrigger>
           )}
         </TabsList>

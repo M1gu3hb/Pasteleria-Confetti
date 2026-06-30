@@ -41,7 +41,7 @@ const COLUMNS = {
   pedidos: ['folio','sucursal_id','sucursal_nombre','origen','tipo_pedido','estado','cliente_nombre','cliente_telefono','cliente_email','cliente_direccion','requiere_entrega','fecha_entrega','hora_entrega','kilos','personas_estimadas','decorado','concepto','rellenos','leyenda_pastel','incluye_base','precio_base','incluye_oblea','precio_oblea','incluye_muneca','precio_muneca','incluye_velas','precio_velas','precio_kilo_usado','subtotal_pastel','subtotal_extras','total_calculado','total_final','a_cuenta','resta','total_abonado','saldo_pendiente','nota_interna','imagen_referencia_url','notas_generales','creado_por_id','creado_por_nombre','fecha_confirmacion','fecha_anticipo','fecha_pago_completo','fecha_entrega_real','tipo_cancelacion','motivo_cancelacion','cancelado_por_id','cancelado_por_nombre','fecha_cancelacion','monto_devuelto','nota_voz_url','nota_voz_transcripcion','extras_seleccionados','atendido_por'],
   abonos: ['pedido_id','sucursal_id','sucursal_nombre','monto','metodo_pago','monto_efectivo','monto_tarjeta','monto_transferencia','afecta_caja','corte_caja_id','registrado_por_id','registrado_por_nombre','fecha_abono','notas'],
   folio_contador: ['tipo','sucursal_id','prefijo','ultimo_numero'],
-  gastos_operativos: ['fecha','categoria','descripcion','monto','metodo_pago','sucursal_id','sucursal_nombre','usuario_id','usuario_nombre','notas'],
+  gastos_operativos: ['fecha','categoria','descripcion','monto','metodo_pago','sucursal_id','sucursal_nombre','usuario_id','usuario_nombre','notas','corte_caja_id'],
 };
 
 // Base44 usaba created_date/updated_date; el esquema migrado usa created_at.

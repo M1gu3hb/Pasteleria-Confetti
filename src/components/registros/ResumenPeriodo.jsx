@@ -55,7 +55,16 @@ export default function ResumenPeriodo({ compras = [], gastos = [], sucId = null
           )}
         </div>
         <Button size="sm" disabled={cargando}
-          onClick={() => onPDF?.({ from, to, periodo, totals, margen })}>
+          onClick={() => {
+            // CAMBIOS_V2 Fase 07 — incluir el detalle de gastos del periodo en el PDF.
+            const f = from?.getTime?.() || 0;
+            const t = to?.getTime?.() || Date.now();
+            const gastosPeriodo = (Array.isArray(gastos) ? gastos : []).filter(g => {
+              const ts = new Date(g?.created_date || g?.fecha || 0).getTime();
+              return Number.isFinite(ts) && ts >= f && ts <= t;
+            });
+            onPDF?.({ from, to, periodo, totals, margen, gastos: gastosPeriodo });
+          }}>
           <FileDown className="w-4 h-4 mr-1" /> Generar PDF
         </Button>
       </div>
@@ -93,6 +102,10 @@ export default function ResumenPeriodo({ compras = [], gastos = [], sucId = null
         <Stat icon={DollarSign} label="Ingresos" value={cargando ? '—' : formatCurrency(totals.ingresos)} sub={cargando ? '' : `${totals.nVentas} ventas`} color={colorize ? "text-primary" : "text-foreground"} />
         <Stat icon={Hash} label="Número de ventas" value={cargando ? '—' : (totals.nVentas || 0).toLocaleString()} color={colorize ? "text-blue-600" : "text-foreground"} />
         <Stat icon={Receipt} label="Ticket promedio" value={cargando ? '—' : formatCurrency(totals.ticketPromedio)} color={colorize ? "text-primary" : "text-foreground"} />
+        {/* CAMBIOS_V2 Fase 07 — gastos del periodo visibles también en Confetti */}
+        {isEsencial && (
+          <Stat icon={ShoppingBag} label="Gastos" value={cargando ? '—' : formatCurrency(totals.gastos || 0)} color={colorize ? "text-red-600" : "text-foreground"} />
+        )}
         {!isEsencial && (
           <>
             <Stat icon={TrendingUp} label="Utilidad bruta" value={cargando ? '—' : formatCurrency(totals.utilidad)} sub={cargando ? '' : `${(Number.isFinite(Number(margen)) ? Number(margen) : 0).toFixed(1)}% margen`} color={colorize ? "text-emerald-600" : "text-foreground"} />

@@ -46,6 +46,8 @@ export default function CierreDiarioDialog({
   const totalTarjeta = Number(safeResumen.totalTarjeta) || 0;
   const totalTransferencia = Number(safeResumen.totalTransferencia) || 0;
   const totalGastos = Number(safeResumen.totalGastos) || 0;
+  // CAMBIOS_V2 Fase 07 — gastos en efectivo del corte (salen del cajón).
+  const gastosEfectivo = Number(safeResumen.gastosEfectivo) || 0;
   const utilidadBruta = Number(safeResumen.utilidadBruta) || 0;
   const costoTotal = Number(safeResumen.costoTotal) || 0;
   const numVentas = Number(safeResumen.numVentas) || 0;
@@ -65,9 +67,10 @@ export default function CierreDiarioDialog({
   const taTotal = totalTarjeta + taPropinas;
   const trTotal = totalTransferencia + trPropinas;
   // El conteo de efectivo debe cuadrar contra el total cobrado en efectivo
-  // (ventas reales + propinas en efectivo), porque eso es lo que físicamente
-  // hay en el cajón.
-  const efectivoEsperado = efTotal;
+  // (ventas reales + propinas en efectivo) MENOS los gastos pagados en efectivo
+  // (CAMBIOS_V2 Fase 07), porque eso es lo que físicamente queda en el cajón.
+  // Sin gastos en efectivo, gastosEfectivo=0 → idéntico al cálculo anterior.
+  const efectivoEsperado = efTotal - gastosEfectivo;
 
   const efNum = Number.parseFloat(efectivoContado);
   const efValido = efectivoContado !== '' && Number.isFinite(efNum);
@@ -123,7 +126,8 @@ export default function CierreDiarioDialog({
               {!esEsencial && <KPI label="Costo de ventas" value={formatCurrency(costoTotal)} />}
               {!esEsencial && <KPI label="Utilidad bruta" value={formatCurrency(utilidadBruta)} icon={TrendingUp} color={tone ? 'text-emerald-700 dark:text-emerald-300' : 'text-foreground'} />}
               {!esEsencial && <KPI label="Margen prom." value={formatPercent(margen)} />}
-              {!esEsencial && <KPI label="Gastos op." value={formatCurrency(totalGastos)} icon={Scissors} color={tone ? 'text-rose-600 dark:text-rose-300' : 'text-foreground'} />}
+              {/* Gastos op. visible TAMBIÉN para Confetti (esencial) — CAMBIOS_V2 Fase 07 */}
+              <KPI label="Gastos op." value={formatCurrency(totalGastos)} icon={Scissors} color={tone ? 'text-rose-600 dark:text-rose-300' : 'text-foreground'} />
               {!esEsencial && (
                 <KPI
                   label="Utilidad neta est."
@@ -210,7 +214,9 @@ export default function CierreDiarioDialog({
                     {formatCurrency(efectivoEsperado)}
                   </p>
                   <p className="text-[11px] text-emerald-700 dark:text-emerald-300 mt-0.5">
-                    Ventas en efectivo {formatCurrency(totalEfectivo)} + propinas en efectivo {formatCurrency(efPropinas)}
+                    Ventas en efectivo {formatCurrency(totalEfectivo)}
+                    {efPropinas > 0 && <> + propinas {formatCurrency(efPropinas)}</>}
+                    {gastosEfectivo > 0 && <> − gastos en efectivo {formatCurrency(gastosEfectivo)}</>}
                   </p>
                 </div>
               </div>

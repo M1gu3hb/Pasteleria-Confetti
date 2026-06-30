@@ -31,6 +31,10 @@ const CorteTicket = React.forwardRef(function CorteTicket({ corte, ventas = [], 
   const fCierre = corte?.fecha_cierre ? format(new Date(corte.fecha_cierre), "d MMM yyyy, HH:mm", { locale: es }) : '—';
   const margen = corte?.total_general > 0 ? (corte.utilidad_bruta_total / corte.total_general * 100) : 0;
   const utilidadNeta = (corte?.utilidad_bruta_total || 0) - (corte?.total_gastos || 0);
+  // CAMBIOS_V2 Fase 07 — totales de gastos para la sección del PDF.
+  const gastosArr = Array.isArray(gastos) ? gastos : [];
+  const totalGastosPdf = gastosArr.reduce((s, g) => s + (Number(g?.monto) || 0), 0);
+  const gastosEfectivoPdf = gastosArr.reduce((s, g) => s + (g?.metodo_pago === 'efectivo' ? (Number(g.monto) || 0) : 0), 0);
 
   // Detalle agrupado por venta
   const detallesPorVenta = detalles.reduce((acc, d) => {
@@ -418,27 +422,41 @@ const CorteTicket = React.forwardRef(function CorteTicket({ corte, ventas = [], 
       </Section>
       )}
 
-      {/* Gastos — solo Operativo / Pro */}
-      {!isEsencial && gastos.length > 0 && (
-        <Section title="Gastos operativos">
+      {/* Gastos — CAMBIOS_V2 Fase 07: visible TAMBIÉN en Confetti (esencial),
+          entre Productos y Cancelaciones. Hora / concepto / método / monto. */}
+      {gastosArr.length > 0 && (
+        <Section title="Gastos">
           <table className="w-full text-xs border">
             <thead className="bg-gray-100">
               <tr>
-                <th className="border px-2 py-1 text-left">Categoría</th>
-                <th className="border px-2 py-1 text-left">Descripción</th>
-                <th className="border px-2 py-1 text-left">Pago</th>
+                <th className="border px-2 py-1 text-left">Hora</th>
+                <th className="border px-2 py-1 text-left">Concepto</th>
+                <th className="border px-2 py-1 text-left">Método</th>
                 <th className="border px-2 py-1 text-right">Monto</th>
               </tr>
             </thead>
             <tbody>
-              {gastos.map((g, i) => (
-                <tr key={i}>
-                  <td className="border px-2 py-1 capitalize">{g.categoria}</td>
-                  <td className="border px-2 py-1">{g.descripcion}</td>
-                  <td className="border px-2 py-1 capitalize">{g.metodo_pago || '—'}</td>
-                  <td className="border px-2 py-1 text-right font-bold">{formatCurrency(g.monto)}</td>
+              {gastosArr.map((g, i) => {
+                const fechaG = g?.created_date || g?.fecha;
+                return (
+                  <tr key={i}>
+                    <td className="border px-2 py-1">{fechaG ? format(new Date(fechaG), 'HH:mm', { locale: es }) : '—'}</td>
+                    <td className="border px-2 py-1">{g.descripcion || g.categoria || '—'}</td>
+                    <td className="border px-2 py-1 capitalize">{g.metodo_pago || '—'}</td>
+                    <td className="border px-2 py-1 text-right font-bold">{formatCurrency(g.monto)}</td>
+                  </tr>
+                );
+              })}
+              <tr className="bg-gray-50">
+                <td className="border px-2 py-1 font-bold" colSpan={3}>Total gastos</td>
+                <td className="border px-2 py-1 text-right font-bold">{formatCurrency(totalGastosPdf)}</td>
+              </tr>
+              {gastosEfectivoPdf > 0 && (
+                <tr>
+                  <td className="border px-2 py-1 text-gray-600" colSpan={3}>De los cuales en efectivo (restan del efectivo esperado)</td>
+                  <td className="border px-2 py-1 text-right">{formatCurrency(gastosEfectivoPdf)}</td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </Section>
