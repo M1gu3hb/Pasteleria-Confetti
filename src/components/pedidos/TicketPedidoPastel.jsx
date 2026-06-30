@@ -10,8 +10,12 @@ export default function TicketPedidoPastel({ pedido, config }) {
   if (!pedido) return null;
   const hoy = pedido.created_date ? new Date(pedido.created_date) : new Date();
   const fechaStr = hoy.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
-  // Extras genéricos: lista nueva (extras_seleccionados) con fallback a columnas viejas.
-  const extras = resolverExtrasPedido(pedido);
+  // Importe de base (obligatorio por rangos) como primera línea, luego extras
+  // genéricos (lista nueva con fallback a columnas viejas).
+  const baseRow = pedido.incluye_base && Number(pedido.precio_base) > 0
+    ? [{ nombre: 'Importe de base', precio: pedido.precio_base }]
+    : [];
+  const extras = [...baseRow, ...resolverExtrasPedido(pedido)];
 
   return (
     <div className="ticket-printable letter-doc bg-white text-black p-6 max-w-md mx-auto" style={{ fontFamily: 'Georgia, serif' }}>

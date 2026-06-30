@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { Cake } from 'lucide-react';
 import ExtrasPastelSection from '@/components/configuracion/ExtrasPastelSection';
 import RellenosPastelSection from '@/components/configuracion/RellenosPastelSection';
+import BaseRangosSection from '@/components/configuracion/BaseRangosSection';
 
 // Configuración de Pasteles Personalizados (Fase 3).
 // Dos bloques independientes: ratio personas/kilo y precio por kilo,
@@ -168,6 +169,7 @@ export default function PastelesConfigSection({ cfg }) {
         onGuardar={() => guardar('precio')}
         guardando={guardando === 'precio'}
       />
+      <BaseRangosSection cfg={cfg} />
       <ExtrasPastelSection cfg={cfg} />
       <RellenosPastelSection cfg={cfg} />
     </div>

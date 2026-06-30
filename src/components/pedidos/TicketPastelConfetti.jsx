@@ -115,6 +115,9 @@ export default function TicketPastelConfetti({ pedido, config }) {
           <p className="text-xs font-bold tracking-wide text-stone-500 mb-1">VENTA</p>
           <div className="space-y-0.5">
             <Fila label="Pastel" value={Number(pedido.subtotal_pastel) > 0 ? fmt(pedido.subtotal_pastel) : null} />
+            {pedido.incluye_base && Number(pedido.precio_base) > 0 && (
+              <Fila label="Importe de base" value={fmt(pedido.precio_base)} />
+            )}
             {resolverExtrasPedido(pedido).map((e, i) => (
               <Fila key={e.id || i} label={e.nombre} value={fmt(e.precio)} />
             ))}

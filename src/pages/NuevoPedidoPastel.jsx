@@ -21,6 +21,7 @@ import {
   getPrecioKilo, getRatioPersonas, generarFolioPedido, buildWhatsAppLink,
 } from '@/utils/pedidoPastelUtils';
 import { parseExtrasSeleccionados } from '@/utils/extrasPedido';
+import { calcularImporteBase } from '@/utils/baseRangos';
 import TicketPedidoPastel from '@/components/pedidos/TicketPedidoPastel';
 import PedidoPastelDetalleDialog from '@/components/pedidos/PedidoPastelDetalleDialog';
 import CanvasDibujo from '@/components/pedidos/CanvasDibujo';
@@ -57,15 +58,20 @@ export default function NuevoPedidoPastel() {
   // Función 1 — Extras configurables. Se leen desde ConfiguracionNegocio
   // (campo extras_pastel, JSON string). Solo se muestran los activos.
   // Los IDs (base/oblea/muneca/velas) coinciden con los campos del form.
+  // Fase 02: `base` ya NO es un extra (es el "Importe de base" por rangos). Se
+  // excluye de la lista de extras genéricos.
   const extrasPastel = useMemo(() => {
-    if (!config?.extras_pastel) return EXTRAS_FALLBACK.filter(e => e.activo);
+    if (!config?.extras_pastel) return EXTRAS_FALLBACK.filter(e => e.activo && e.id !== 'base');
     try {
       const arr = JSON.parse(config.extras_pastel);
-      return Array.isArray(arr) ? arr.filter(e => e?.activo) : [];
+      return Array.isArray(arr) ? arr.filter(e => e?.activo && e.id !== 'base') : [];
     } catch {
       return [];
     }
   }, [config?.extras_pastel]);
+
+  // Rangos de importe de base (config compartida con la web).
+  const baseRangos = config?.base_rangos;
 
   // Rellenos configurables (mismo patrón que extras). Solo activos.
   // Cada relleno: { id, nombre, precio_kilo, activo }.
@@ -85,6 +91,7 @@ export default function NuevoPedidoPastel() {
     personas_estimadas: '', kilos: '', precio_kilo: String(precioKiloConfig),
     extras: { base: false, oblea: false, muneca: false, velas: false },
     preciosExtras: { base: '', oblea: '', muneca: '', velas: '' },
+    importe_base: '', // '' = automático por rangos; un valor lo fija manualmente
     total_final: '',
     decorado: '', concepto: '', rellenos: '', leyenda_pastel: '',
     nota_interna: '', imagen_referencia_url: '', notas_generales: '',
@@ -157,6 +164,8 @@ export default function NuevoPedidoPastel() {
           precio_kilo: String(p.precio_kilo_usado ?? precioKiloConfig),
           extras: extrasMap,
           preciosExtras: preciosMap,
+          // Importe de base guardado del pedido (pedidos viejos conservan su valor).
+          importe_base: p.incluye_base && p.precio_base != null ? String(p.precio_base) : '',
           total_final: p.total_final != null ? String(p.total_final) : '',
           decorado: p.decorado || '', concepto: p.concepto || '', rellenos: p.rellenos || '',
           leyenda_pastel: p.leyenda_pastel || '', nota_interna: p.nota_interna || '',
@@ -186,14 +195,18 @@ export default function NuevoPedidoPastel() {
     const subtotalPastel = Math.round(kilos * precioKilo * 100) / 100;
     const subtotalExtrasBase = extrasPastel.reduce((s, e) =>
       s + (form.extras[e.id] ? (parseFloat(form.preciosExtras[e.id]) || 0) : 0), 0);
-    const subtotalExtras = Math.round((subtotalExtrasBase + precioRelleno) * 100) / 100; // incluye relleno
-    const totalCalculado = subtotalPastel + subtotalExtras;
+    const subtotalExtras = Math.round((subtotalExtrasBase + precioRelleno) * 100) / 100; // incluye relleno (sin base)
+    // Importe de base obligatorio: automático por rangos de kilos. Editable: si
+    // el usuario escribe un valor, manda el suyo; si lo deja vacío, va el automático.
+    const importeBaseAuto = calcularImporteBase(kilos, baseRangos);
+    const importeBase = form.importe_base === '' ? importeBaseAuto : (parseFloat(form.importe_base) || 0);
+    const totalCalculado = subtotalPastel + subtotalExtras + importeBase;
     const totalFinal = form.total_final === '' ? totalCalculado : (parseFloat(form.total_final) || 0);
     const aCuenta = parseFloat(form.a_cuenta) || 0;
     const resta = Math.max(0, totalFinal - aCuenta);
     const difiere = totalCalculado > 0 && Math.abs(totalFinal - totalCalculado) / totalCalculado > 0.2;
-    return { kilosSugeridos, subtotalPastel, subtotalExtras, totalCalculado, totalFinal, aCuenta, resta, difiere, precioKilo, precioRelleno };
-  }, [form, ratioConfig, extrasPastel, rellenosPastel]);
+    return { kilosSugeridos, subtotalPastel, subtotalExtras, importeBase, importeBaseAuto, totalCalculado, totalFinal, aCuenta, resta, difiere, precioKilo, precioRelleno };
+  }, [form, ratioConfig, extrasPastel, rellenosPastel, baseRangos]);
 
   // Fase 4 — Guardia: sin caja abierta no se registran pedidos.
   // Colocado DESPUÉS de todos los hooks para no romper las reglas de hooks.
@@ -270,7 +283,9 @@ export default function NuevoPedidoPastel() {
         ratio_personas_por_kilo_usado: ratioConfig,
         decorado: form.decorado, concepto: form.concepto, rellenos: form.rellenos,
         leyenda_pastel: form.leyenda_pastel,
-        incluye_base: form.extras.base, precio_base: form.extras.base ? (parseFloat(form.preciosExtras.base) || 0) : 0,
+        // Importe de base (Fase 02): reutiliza precio_base/incluye_base. El corte
+        // NO depende de estos campos (auditado), así que no hay regresión de dinero.
+        incluye_base: calc.importeBase > 0, precio_base: calc.importeBase,
         incluye_oblea: form.extras.oblea, precio_oblea: form.extras.oblea ? (parseFloat(form.preciosExtras.oblea) || 0) : 0,
         incluye_muneca: form.extras.muneca, precio_muneca: form.extras.muneca ? (parseFloat(form.preciosExtras.muneca) || 0) : 0,
         incluye_velas: form.extras.velas, precio_velas: form.extras.velas ? (parseFloat(form.preciosExtras.velas) || 0) : 0,
@@ -343,6 +358,7 @@ export default function NuevoPedidoPastel() {
       personas_estimadas: '', kilos: '', precio_kilo: String(precioKiloConfig),
       extras: { base: false, oblea: false, muneca: false, velas: false },
       preciosExtras: { base: '', oblea: '', muneca: '', velas: '' },
+      importe_base: '',
       total_final: '',
       decorado: '', concepto: '', rellenos: '', leyenda_pastel: '',
       nota_interna: '', imagen_referencia_url: '', notas_generales: '',
@@ -475,9 +491,31 @@ export default function NuevoPedidoPastel() {
             })}
           </div>
 
+          {/* Importe de base (obligatorio, automático por rangos de kilos) */}
+          <div className="space-y-2 pt-2 border-t">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <Label className="text-xs font-semibold">Importe de base</Label>
+                <p className="text-[10px] text-muted-foreground">
+                  {calc.importeBaseAuto > 0
+                    ? <>Automático según kilos: <strong>{fmt(calc.importeBaseAuto)}</strong> — editable</>
+                    : 'Sin rango para estos kilos — a confirmar (puedes capturarlo)'}
+                </p>
+              </div>
+              <Input
+                type="number" min="0" step="0.01"
+                value={form.importe_base}
+                placeholder={String(calc.importeBaseAuto)}
+                onChange={e => set('importe_base', e.target.value)}
+                className="skeu-input w-28 h-10 text-right font-bold"
+              />
+            </div>
+          </div>
+
           {/* Resumen */}
           <div className="skeu-card rounded-2xl p-4 space-y-1 text-sm">
             <div className="flex justify-between"><span>Subtotal pastel ({form.kilos || 0} kg × {fmt(calc.precioKilo)})</span><span className="font-semibold">{fmt(calc.subtotalPastel)}</span></div>
+            <div className="flex justify-between"><span>Importe de base</span><span className="font-semibold">{fmt(calc.importeBase)}</span></div>
             <div className="flex justify-between"><span>Extras</span><span className="font-semibold">{fmt(calc.subtotalExtras)}</span></div>
             <div className="flex justify-between font-bold border-t pt-1"><span>Total calculado</span><span>{fmt(calc.totalCalculado)}</span></div>
           </div>
