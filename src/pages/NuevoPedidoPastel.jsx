@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -22,6 +22,7 @@ import {
 } from '@/utils/pedidoPastelUtils';
 import { parseExtrasSeleccionados } from '@/utils/extrasPedido';
 import { calcularImporteBase } from '@/utils/baseRangos';
+import { normalizarRelleno } from '@/utils/rellenoPastel';
 import TicketPedidoPastel from '@/components/pedidos/TicketPedidoPastel';
 import PedidoPastelDetalleDialog from '@/components/pedidos/PedidoPastelDetalleDialog';
 import CanvasDibujo from '@/components/pedidos/CanvasDibujo';
@@ -79,7 +80,7 @@ export default function NuevoPedidoPastel() {
     if (!config?.rellenos_pastel) return [];
     try {
       const arr = JSON.parse(config.rellenos_pastel);
-      return Array.isArray(arr) ? arr.filter(r => r?.activo) : [];
+      return Array.isArray(arr) ? arr.map(normalizarRelleno).filter(r => r?.activo) : [];
     } catch {
       return [];
     }
@@ -121,6 +122,37 @@ export default function NuevoPedidoPastel() {
   const [pedidoGuardado, setPedidoGuardado] = useState(null);
   const [verDetalle, setVerDetalle] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  // Precio/kilo impuesto por el último relleno especial elegido (para saber si el
+  // usuario lo editó manualmente: su edición manda).
+  const rellenoPKRef = useRef(null);
+
+  // Elegir/quitar un relleno. Si es 'precio_kilo' (especial), fija el precio por
+  // kilo del form a su monto (editable después: manda la edición manual). Al
+  // cambiar a plano/quitar, si el precio/kilo seguía siendo el impuesto (no
+  // editado), regresa al precio base de configuración.
+  const seleccionarRelleno = (r) => {
+    setForm(f => {
+      const yaSel = f.rellenos === r.nombre;
+      const pkActual = parseFloat(f.precio_kilo) || 0;
+      const veniaImpuesto = rellenoPKRef.current != null && pkActual === rellenoPKRef.current;
+      if (yaSel) {
+        const next = { ...f, rellenos: '' };
+        if (veniaImpuesto) { next.precio_kilo = String(precioKiloConfig); rellenoPKRef.current = null; }
+        return next;
+      }
+      const next = { ...f, rellenos: r.nombre };
+      if (r.tipo === 'precio_kilo') {
+        const monto = Number(r.monto) || 0;
+        next.precio_kilo = String(monto);
+        rellenoPKRef.current = monto;
+      } else {
+        if (veniaImpuesto) next.precio_kilo = String(precioKiloConfig);
+        rellenoPKRef.current = null;
+      }
+      return next;
+    });
+  };
 
   // Refrescar precio/kilo si llega config después del montaje (solo si el
   // usuario no lo ha tocado: campo aún con el default inicial).
@@ -188,10 +220,11 @@ export default function NuevoPedidoPastel() {
     const kilosSugeridos = personas > 0 ? Math.ceil(personas / ratioConfig) : 0;
     const kilos = parseFloat(form.kilos) || 0;
     const precioKilo = parseFloat(form.precio_kilo) || 0;
-    // El relleno NO cambia el precio/kilo: si tiene precio > 0, se SUMA como un extra PLANO
-    // (igual que base/oblea/muñeca/velas). Si es 0, no suma. Consistente con la web.
+    // Relleno con tipo (Fase 03): 'plano' suma su monto como extra; 'precio_kilo'
+    // NO suma plano — fija el precio por kilo (ya aplicado en form.precio_kilo al
+    // elegirlo). Así nunca hay doble cobro.
     const rellenoSel = rellenosPastel.find(r => r.nombre === form.rellenos);
-    const precioRelleno = Number(rellenoSel?.precio_kilo) || 0; // valor configurado = monto plano
+    const precioRelleno = rellenoSel?.tipo === 'plano' ? (Number(rellenoSel.monto) || 0) : 0;
     const subtotalPastel = Math.round(kilos * precioKilo * 100) / 100;
     const subtotalExtrasBase = extrasPastel.reduce((s, e) =>
       s + (form.extras[e.id] ? (parseFloat(form.preciosExtras[e.id]) || 0) : 0), 0);
@@ -450,8 +483,12 @@ export default function NuevoPedidoPastel() {
           <div className="max-w-xs">
             <Label className="text-xs">Precio por kilo ($)</Label>
             <Input type="number" min="0" step="0.01" value={form.precio_kilo}
-              onChange={e => set('precio_kilo', e.target.value)} className="skeu-input h-11 mt-1 font-bold" />
-            <p className="text-[10px] text-muted-foreground mt-1">Precio base de configuración: {fmt(precioKiloConfig)}/kg</p>
+              onChange={e => { rellenoPKRef.current = null; set('precio_kilo', e.target.value); }} className="skeu-input h-11 mt-1 font-bold" />
+            {rellenosPastel.find(r => r.nombre === form.rellenos)?.tipo === 'precio_kilo' ? (
+              <p className="text-[10px] text-primary mt-1">Precio por kilo definido por el relleno — editable (tu cambio manda)</p>
+            ) : (
+              <p className="text-[10px] text-muted-foreground mt-1">Precio base de configuración: {fmt(precioKiloConfig)}/kg</p>
+            )}
           </div>
 
           {/* Extras */}
@@ -583,20 +620,21 @@ export default function NuevoPedidoPastel() {
                   <div className="flex flex-wrap gap-2 mt-1.5">
                     {rellenosPastel.map(r => {
                       const activo = form.rellenos === r.nombre;
-                      const precio = Number(r.precio_kilo) || 0;
+                      const monto = Number(r.monto) || 0;
+                      const esPK = r.tipo === 'precio_kilo';
                       return (
                         <button
                           key={r.id}
                           type="button"
-                          onClick={() => set('rellenos', activo ? '' : r.nombre)}
+                          onClick={() => seleccionarRelleno(r)}
                           className={`px-3 py-2 rounded-full text-sm font-medium border-2 transition-all ${activo
                             ? 'bg-primary text-primary-foreground border-primary shadow'
                             : 'bg-card text-foreground border-border hover:border-primary/50'}`}
                         >
                           {r.nombre}
-                          {precio > 0 && (
+                          {monto > 0 && (
                             <span className={`ml-1.5 text-[10px] font-normal ${activo ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
-                              +{fmt(precio)}
+                              {esPK ? `${fmt(monto)}/kg` : `+${fmt(monto)}`}
                             </span>
                           )}
                         </button>
