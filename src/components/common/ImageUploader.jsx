@@ -1,7 +1,8 @@
 import React, { useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Upload, X, Loader2, ImageIcon } from 'lucide-react';
+import { Upload, X, Loader2, ImageIcon, Camera } from 'lucide-react';
 import { toast } from 'sonner';
+import { normalizarImagen } from '@/utils/normalizarImagen';
 
 /**
  * Uploader reutilizable de imágenes para productos / recetas / menús.
@@ -27,6 +28,7 @@ export default function ImageUploader({
   label = 'Subir imagen',
 }) {
   const inputRef = useRef(null);
+  const cameraRef = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
 
@@ -43,7 +45,11 @@ export default function ImageUploader({
     }
     setUploading(true);
     try {
-      const res = await base44.integrations.Core.UploadFile({ file });
+      // Normaliza (hornea la orientación EXIF en píxeles) para que la foto no
+      // salga volteada. Si falla, sube el original (degradación segura).
+      let fileNorm = file;
+      try { fileNorm = await normalizarImagen(file); } catch { fileNorm = file; }
+      const res = await base44.integrations.Core.UploadFile({ file: fileNorm });
       const url = res?.file_url || '';
       if (!url) throw new Error('Sin URL');
       onChange?.(url);
@@ -89,6 +95,13 @@ export default function ImageUploader({
     inputRef.current?.click();
   };
 
+  // Abre la cámara (trasera en tablets/celulares vía capture="environment";
+  // en escritorio cae al selector normal, inocuo).
+  const abrirCamara = () => {
+    if (disabled || uploading) return;
+    cameraRef.current?.click();
+  };
+
   const quitar = (e) => {
     e.stopPropagation();
     onChange?.('');
@@ -114,6 +127,14 @@ export default function ImageUploader({
           </button>
           <button
             type="button"
+            onClick={abrirCamara}
+            disabled={disabled || uploading}
+            className="px-3 py-1.5 rounded-md bg-white text-slate-900 text-xs font-semibold shadow flex items-center gap-1.5 disabled:opacity-50"
+          >
+            <Camera className="w-3.5 h-3.5" /> Tomar foto
+          </button>
+          <button
+            type="button"
             onClick={quitar}
             disabled={disabled || uploading}
             className="px-3 py-1.5 rounded-md bg-red-600 text-white text-xs font-semibold shadow flex items-center gap-1.5 disabled:opacity-50"
@@ -125,6 +146,14 @@ export default function ImageUploader({
           ref={inputRef}
           type="file"
           accept="image/*"
+          className="hidden"
+          onChange={onPickFile}
+        />
+        <input
+          ref={cameraRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
           className="hidden"
           onChange={onPickFile}
         />
@@ -159,12 +188,30 @@ export default function ImageUploader({
             Arrastra una imagen aquí o haz clic
           </p>
           <p className="text-[10px] text-muted-foreground/70">JPG, PNG, WEBP · máx {maxMB} MB</p>
+          {/* Tomar foto: stopPropagation para no disparar también el selector del contenedor */}
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); abrirCamara(); }}
+            disabled={disabled || uploading}
+            className="mt-2 px-3 py-1.5 rounded-md border border-border bg-card text-xs font-semibold text-foreground flex items-center gap-1.5 hover:bg-muted disabled:opacity-50"
+          >
+            <Camera className="w-3.5 h-3.5" /> Tomar foto
+          </button>
         </>
       )}
       <input
         ref={inputRef}
         type="file"
         accept="image/*"
+        className="hidden"
+        onChange={onPickFile}
+        disabled={disabled || uploading}
+      />
+      <input
+        ref={cameraRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
         className="hidden"
         onChange={onPickFile}
         disabled={disabled || uploading}
