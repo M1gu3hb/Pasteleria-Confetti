@@ -1,23 +1,23 @@
-// Efectivo esperado en el cajón (CAMBIOS_V2 · FIX 1 — único origen de verdad).
+// Efectivo esperado en el cajón (CAMBIOS_V2 · FIX 1 + FIX devoluciones — único origen de verdad).
 // "Dinero esperado en caja" = TODO el efectivo físicamente en el cajón ese día,
 // contado UNA sola vez. El diálogo de cierre (CierreDiarioDialog) y el valor
 // guardado (Caja.jsx) usan efectivoEsperadoDeResumen(resumen) para no divergir.
 //
-// 🔴 HALLAZGO DE AUDITORÍA (dinero) — NO se suma abonosEfectivo:
-// En esta arquitectura, CADA abono/anticipo (RegistrarPagoDialog) genera además
-// una VENTA PARALELA en el mismo corte, que YA está contada en `totalEfectivo`.
-// Por eso el efectivo del anticipo NO se debe sumar otra vez como abono; hacerlo
-// lo contaría DOBLE. Verificado empíricamente: venta $1000 + anticipo $500 →
-// ventas_efectivo=1500 (= físico en cajón); ventas+abonos=2000 (doble). Ver
-// AUDITORIA_PREDEPLOY.md · Hallazgo FIX1. (Decisión de dinero: requiere visto
-// bueno de Miguel; su instrucción literal de "sumar abonos" duplicaría por la
-// venta paralela.)
+// 🔴 REGLA DE DINERO (abonos):
+//   - Un anticipo POSITIVO que ENTRA ya crea una VENTA PARALELA (RegistrarPagoDialog)
+//     contada en `totalEfectivo`. Por eso los abonos positivos NO se suman aparte
+//     (se contarían dos veces).
+//   - Una DEVOLUCIÓN de anticipo (devolucionAnticipo.js) crea SOLO un abono NEGATIVO
+//     (sin venta paralela). Ese reembolso en efectivo SÍ sale del cajón, así que SÍ
+//     debe restar. Por eso se incluye `devolucionesEfectivo` (suma de monto_efectivo
+//     de los abonos con monto<0, que es negativa → resta).
+// Verificado: venta 1000 + anticipo 500 (venta paralela 500) → 1500; + devolución 500
+//   (abono −500) → 1000 (cada peso una vez).
 //
-// Fórmula (cada peso una vez): ventas en efectivo + propinas en efectivo − gastos
-// en efectivo. Los anticipos en efectivo ya entran por su venta paralela.
+// Fórmula: ventas efectivo + propinas efectivo + devoluciones efectivo (negativas) − gastos efectivo.
 
-// Util genérico (suma de los sumandos provistos). Se mantiene el parámetro
-// abonosEfectivo por generalidad, pero el helper de resumen lo pasa en 0 (ver arriba).
+// Util genérico (suma de los sumandos provistos). `abonosEfectivo` aquí es el término
+// de abonos que SÍ debe entrar (para el corte: solo las devoluciones negativas).
 export function calcularEfectivoEsperado({
   ventasEfectivo = 0,
   propinaEfectivo = 0,
@@ -31,14 +31,14 @@ export function calcularEfectivoEsperado({
 }
 
 // Extrae del `resumen` de Caja y calcula. Ambos call-sites (guardado y diálogo)
-// usan ESTA función para que nunca diverjan. abonosEfectivo=0 a propósito: el
-// efectivo del anticipo ya está en totalEfectivo por su venta paralela.
+// usan ESTA función para que nunca diverjan. Solo entran las devoluciones (abonos
+// negativos); los anticipos positivos ya vienen en totalEfectivo por su venta paralela.
 export function efectivoEsperadoDeResumen(resumen) {
   const r = resumen || {};
   return calcularEfectivoEsperado({
     ventasEfectivo: r.totalEfectivo,
     propinaEfectivo: r.metodosPagoConPropinas?.efectivo?.propinas,
-    abonosEfectivo: 0, // NO sumar: el anticipo ya viene en totalEfectivo (venta paralela).
+    abonosEfectivo: r.devolucionesEfectivo, // negativo: resta el reembolso en efectivo
     gastosEfectivo: r.gastosEfectivo,
   });
 }

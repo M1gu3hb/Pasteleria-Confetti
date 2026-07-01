@@ -255,7 +255,7 @@ export default function Caja() {
       return {
         numVentas: 0, totalEfectivo: 0, totalTarjeta: 0, totalTransferencia: 0,
         totalGeneral: 0, costoTotal: 0, utilidadBruta: 0, totalGastos: 0, ticketPromedio: 0,
-        gastosEfectivo: 0, gastosDelCorte: [],
+        gastosEfectivo: 0, gastosDelCorte: [], devolucionesEfectivo: 0,
       };
     }
     const aperturaIso = cajaAbierta.fecha_apertura || cajaAbierta.fecha_inicio || cajaAbierta.created_date;
@@ -301,6 +301,12 @@ export default function Caja() {
     const abonosTarjeta = safeAbonos.reduce((s, a) => s + (Number(a?.monto_tarjeta) || 0), 0);
     const abonosTransferencia = safeAbonos.reduce((s, a) => s + (Number(a?.monto_transferencia) || 0), 0);
     const abonosTotal = abonosEfectivo + abonosTarjeta + abonosTransferencia;
+    // CAMBIOS_V2 FIX devoluciones — efectivo de las DEVOLUCIONES de anticipo (abonos
+    // NEGATIVOS). Los anticipos POSITIVOS que entran ya están contados por su venta
+    // paralela en totalEfectivo; solo las devoluciones (monto<0) restan del cajón.
+    // Suma el monto_efectivo (que es negativo) SOLO de los abonos con monto<0.
+    const devolucionesEfectivo = safeAbonos.reduce(
+      (s, a) => s + ((Number(a?.monto) || 0) < 0 ? (Number(a?.monto_efectivo) || 0) : 0), 0);
     // Propinas: sumadas aparte. NO entran a totalGeneral / utilidad / costos.
     const totalPropinas = ventas.reduce((s, v) => s + (Number(v?.propina_monto) || 0), 0);
     // Desglose por mesero (solo se usa en Restaurante Pro)
@@ -342,6 +348,7 @@ export default function Caja() {
       propinasPorMesero: Object.values(propinasPorMesero),
       metodosPagoConPropinas,
       abonosEfectivo,
+      devolucionesEfectivo,
       abonosTarjeta,
       abonosTransferencia,
       abonosTotal,
