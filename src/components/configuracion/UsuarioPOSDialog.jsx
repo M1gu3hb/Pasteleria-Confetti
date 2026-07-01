@@ -102,7 +102,6 @@ export default function UsuarioPOSDialog({ open, onClose, user, onSave }) {
         sucursal_id: user?.sucursal_id || '',
         sucursal_nombre: user?.sucursal_nombre || '',
       });
-      setVerPin(false);
       setCambiarPin(false);
       setNuevoPin('');
       setConfirmarPin('');
