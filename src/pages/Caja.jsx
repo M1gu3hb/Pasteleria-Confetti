@@ -24,6 +24,7 @@ import SafeBoundary from '@/components/common/SafeBoundary';
 import AbrirCajaDialog from '@/components/caja/AbrirCajaDialog';
 import CierreDiarioDialog from '@/components/caja/CierreDiarioDialog';
 import GastosCajaTab from '@/components/caja/GastosCajaTab';
+import { efectivoEsperadoDeResumen } from '@/utils/efectivoEsperado';
 import MesasPendientesCierreDialog from '@/components/caja/MesasPendientesCierreDialog';
 import AjustarCuentaDialog from '@/components/caja/AjustarCuentaDialog';
 import { obtenerMesasPendientesCierre } from '@/utils/mesasPendientesCierre';
@@ -1318,10 +1319,10 @@ export default function Caja() {
         numero_ventas: resumen.numVentas,
         ticket_promedio: resumen.ticketPromedio,
         total_gastos: resumen.totalGastos,
-        // Fase 4 — el efectivo esperado incluye abonos de pedidos en efectivo.
-        // CAMBIOS_V2 Fase 07 — y RESTA los gastos en efectivo del corte (salida del cajón).
-        // Sin gastos en efectivo, gastosEfectivo=0 → idéntico al cálculo anterior (cero regresión).
-        efectivo_esperado: resumen.totalEfectivo + (resumen.abonosEfectivo || 0) - (resumen.gastosEfectivo || 0),
+        // CAMBIOS_V2 FIX 1 — único origen de verdad: ventas efectivo + propinas
+        // efectivo + abonos efectivo − gastos efectivo. EXACTAMENTE el mismo valor
+        // que muestra el diálogo de cierre (ambos usan efectivoEsperadoDeResumen).
+        efectivo_esperado: efectivoEsperadoDeResumen(resumen),
         efectivo_contado: form.efectivo_contado,
         diferencia_efectivo: form.diferencia_efectivo,
         dinero_dejado_en_caja: form.dinero_dejado_en_caja,

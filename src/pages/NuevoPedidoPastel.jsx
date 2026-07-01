@@ -240,14 +240,16 @@ export default function NuevoPedidoPastel() {
     const subtotalExtras = Math.round((subtotalExtrasBase + precioRelleno) * 100) / 100; // incluye relleno (sin base)
     // Importe de base obligatorio: automático por rangos de kilos. Editable: si
     // el usuario escribe un valor, manda el suyo; si lo deja vacío, va el automático.
-    const importeBaseAuto = calcularImporteBase(kilos, baseRangos);
+    const baseCalc = calcularImporteBase(kilos, baseRangos); // { importe, cotizaAparte }
+    const importeBaseAuto = baseCalc.importe;
+    const baseCotizaAparte = baseCalc.cotizaAparte;
     const importeBase = form.importe_base === '' ? importeBaseAuto : (parseFloat(form.importe_base) || 0);
     const totalCalculado = subtotalPastel + subtotalExtras + importeBase;
     const totalFinal = form.total_final === '' ? totalCalculado : (parseFloat(form.total_final) || 0);
     const aCuenta = parseFloat(form.a_cuenta) || 0;
     const resta = Math.max(0, totalFinal - aCuenta);
     const difiere = totalCalculado > 0 && Math.abs(totalFinal - totalCalculado) / totalCalculado > 0.2;
-    return { kilosSugeridos, subtotalPastel, subtotalExtras, importeBase, importeBaseAuto, totalCalculado, totalFinal, aCuenta, resta, difiere, precioKilo, precioRelleno };
+    return { kilosSugeridos, subtotalPastel, subtotalExtras, importeBase, importeBaseAuto, baseCotizaAparte, totalCalculado, totalFinal, aCuenta, resta, difiere, precioKilo, precioRelleno };
   }, [form, ratioConfig, extrasPastel, rellenosPastel, baseRangos]);
 
   // Fase 4 — Guardia: sin caja abierta no se registran pedidos.
@@ -589,15 +591,17 @@ export default function NuevoPedidoPastel() {
             })}
           </div>
 
-          {/* Importe de base (obligatorio, automático por rangos de kilos) */}
+          {/* Importe de base (automático por rangos de kilos; editable) */}
           <div className="space-y-2 pt-2 border-t">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <Label className="text-xs font-semibold">Importe de base</Label>
                 <p className="text-[10px] text-muted-foreground">
-                  {calc.importeBaseAuto > 0
-                    ? <>Automático según kilos: <strong>{fmt(calc.importeBaseAuto)}</strong> — editable</>
-                    : 'Sin rango para estos kilos — a confirmar (puedes capturarlo)'}
+                  {calc.baseCotizaAparte
+                    ? <span className="text-amber-700">Pastel grande: se cotiza aparte — captura la base a mano</span>
+                    : calc.importeBaseAuto > 0
+                      ? <>Automático según kilos: <strong>{fmt(calc.importeBaseAuto)}</strong> — editable</>
+                      : 'Sin importe de base para estos kilos (puedes capturarlo)'}
                 </p>
               </div>
               <Input

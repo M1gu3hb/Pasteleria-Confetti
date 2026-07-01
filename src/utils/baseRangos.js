@@ -1,8 +1,8 @@
-// Importe de base por rangos de kilos (CAMBIOS_V2 · Fase 02).
-// La "base" deja de ser un extra opcional: es un cargo OBLIGATORIO cuyo precio
-// depende del rango de kilos del pastel. Abel configura los rangos en
-// Configuración → Pasteles (campo `base_rangos`, JSON string de
-// [{ min_kg, max_kg, precio }]). POS y web comparten esta misma lógica.
+// Importe de base por rangos de kilos (CAMBIOS_V2 · Fase 02 + FIX 2).
+// La "base" es un cargo cuyo precio depende del rango de kilos. Abel configura
+// los rangos en Configuración → Pasteles (campo `base_rangos`, JSON string de
+// [{ min_kg, max_kg, precio }]; el precio puede ser 0). POS y web comparten esta
+// lógica.
 
 // Normaliza `base_rangos` (string JSON o array) a array de rangos válidos.
 export function parseBaseRangos(value) {
@@ -20,22 +20,30 @@ export function parseBaseRangos(value) {
     .filter((r) => r.max_kg >= r.min_kg);
 }
 
-// Devuelve el importe de base para unos kilos dados.
-// Reglas (documentadas): se toma el rango cuyo [min,max] contiene los kilos.
-// Si los kilos exceden el último rango → se usa el último. Si son menores que
-// el primero → se usa el primero (el más cercano). Sin rangos o kilos<=0 → 0
-// (degradación segura: "a confirmar").
+// Kilo máximo configurado (tope del rango más alto). 0 si no hay rangos.
+// Se usa para la leyenda "los pasteles de más de N kg se cotizan aparte".
+export function rangoMaximoKg(base_rangos) {
+  return parseBaseRangos(base_rangos).reduce((m, r) => Math.max(m, r.max_kg), 0);
+}
+
+// Devuelve { importe, cotizaAparte } para unos kilos dados (FIX 2):
+//  - kilos DENTRO de un rango  → { importe: precioDelRango, cotizaAparte:false }
+//    (el precio puede ser 0 → no se cobra base, sin línea).
+//  - kilos ARRIBA del max más alto → { importe:0, cotizaAparte:true }
+//    ("se cotiza aparte": NO se cobra base automática; el total queda a consultar).
+//  - kilos bajo el min más chico o en un HUECO entre rangos → { importe:0, cotizaAparte:false }
+//    (sin base).
+//  - sin rangos o kilos<=0 → { importe:0, cotizaAparte:false }.
 export function calcularImporteBase(kilos, base_rangos) {
   const k = Number(kilos) || 0;
   const rangos = parseBaseRangos(base_rangos);
-  if (k <= 0 || rangos.length === 0) return 0;
+  if (k <= 0 || rangos.length === 0) return { importe: 0, cotizaAparte: false };
   const ord = [...rangos].sort((a, b) => a.min_kg - b.min_kg);
   for (const r of ord) {
-    if (k >= r.min_kg && k <= r.max_kg) return r.precio;
+    if (k >= r.min_kg && k <= r.max_kg) return { importe: r.precio, cotizaAparte: false };
   }
-  const primero = ord[0];
   const ultimo = ord[ord.length - 1];
-  if (k < primero.min_kg) return primero.precio;
-  if (k > ultimo.max_kg) return ultimo.precio;
-  return 0;
+  if (k > ultimo.max_kg) return { importe: 0, cotizaAparte: true };
+  // Bajo el primer rango o en un hueco entre rangos: sin base automática.
+  return { importe: 0, cotizaAparte: false };
 }

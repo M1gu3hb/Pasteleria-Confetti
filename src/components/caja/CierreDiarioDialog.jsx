@@ -6,6 +6,7 @@ import NumericInput from '@/components/common/NumericInput';
 import { Label } from '@/components/ui/label';
 import { Lock, TrendingUp, DollarSign, Receipt, CreditCard, Banknote, Smartphone, Wallet, Scissors, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { formatCurrency, formatPercent } from '@/utils/financialUtils';
+import { efectivoEsperadoDeResumen } from '@/utils/efectivoEsperado';
 
 /**
  * Modal de Cierre de caja diario (premium).
@@ -66,11 +67,11 @@ export default function CierreDiarioDialog({
   const efTotal = totalEfectivo + efPropinas;
   const taTotal = totalTarjeta + taPropinas;
   const trTotal = totalTransferencia + trPropinas;
-  // El conteo de efectivo debe cuadrar contra el total cobrado en efectivo
-  // (ventas reales + propinas en efectivo) MENOS los gastos pagados en efectivo
-  // (CAMBIOS_V2 Fase 07), porque eso es lo que físicamente queda en el cajón.
-  // Sin gastos en efectivo, gastosEfectivo=0 → idéntico al cálculo anterior.
-  const efectivoEsperado = efTotal - gastosEfectivo;
+  // CAMBIOS_V2 FIX 1 — único origen de verdad (mismo util y mismos valores que el
+  // guardado en Caja.jsx): ventas efectivo + propinas efectivo − gastos efectivo.
+  // (Los anticipos en efectivo YA entran por su venta paralela → no se suman aparte
+  // para no duplicar; ver utils/efectivoEsperado.js.) Diálogo y corte guardado coinciden.
+  const efectivoEsperado = efectivoEsperadoDeResumen(safeResumen);
 
   const efNum = Number.parseFloat(efectivoContado);
   const efValido = efectivoContado !== '' && Number.isFinite(efNum);
