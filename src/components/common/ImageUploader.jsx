@@ -161,44 +161,54 @@ export default function ImageUploader({
     );
   }
 
-  // Estado vacío — dropzone
+  // Estado vacío — DOS acciones separadas y con igual peso:
+  //  (1) recuadro de subir/arrastrar   (2) botón "Tomar foto" independiente, debajo.
   return (
-    <div
-      onClick={abrirSelector}
-      onDrop={onDrop}
-      onDragOver={onDragOver}
-      onDragLeave={onDragLeave}
-      className={`relative w-full rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all
-        ${dragOver ? 'border-primary bg-primary/5' : 'border-border bg-muted/30 hover:bg-muted/50'}
-        ${disabled || uploading ? 'opacity-60 cursor-not-allowed' : ''}`}
-      style={{ height }}
-    >
-      {uploading ? (
-        <>
-          <Loader2 className="w-7 h-7 text-primary animate-spin mb-1" />
-          <p className="text-xs text-muted-foreground">Subiendo imagen…</p>
-        </>
-      ) : (
-        <>
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mb-1.5">
-            <ImageIcon className="w-5 h-5 text-primary" />
-          </div>
-          <p className="text-xs font-semibold text-foreground">{label}</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">
-            Arrastra una imagen aquí o haz clic
-          </p>
-          <p className="text-[10px] text-muted-foreground/70">JPG, PNG, WEBP · máx {maxMB} MB</p>
-          {/* Tomar foto: stopPropagation para no disparar también el selector del contenedor */}
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); abrirCamara(); }}
-            disabled={disabled || uploading}
-            className="mt-2 px-3 py-1.5 rounded-md border border-border bg-card text-xs font-semibold text-foreground flex items-center gap-1.5 hover:bg-muted disabled:opacity-50"
-          >
-            <Camera className="w-3.5 h-3.5" /> Tomar foto
-          </button>
-        </>
-      )}
+    <div className="w-full">
+      {/* (1) Subir / arrastrar — solo, sin el botón de foto adentro */}
+      <div
+        onClick={abrirSelector}
+        onDrop={onDrop}
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        className={`relative w-full rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all
+          ${dragOver ? 'border-primary bg-primary/5' : 'border-border bg-muted/30 hover:bg-muted/50'}
+          ${disabled || uploading ? 'opacity-60 cursor-not-allowed' : ''}`}
+        style={{ height }}
+      >
+        {uploading ? (
+          <>
+            <Loader2 className="w-7 h-7 text-primary animate-spin mb-1" />
+            <p className="text-xs text-muted-foreground">Subiendo imagen…</p>
+          </>
+        ) : (
+          <>
+            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mb-1.5">
+              <ImageIcon className="w-5 h-5 text-primary" />
+            </div>
+            <p className="text-xs font-semibold text-foreground">{label}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              Arrastra una imagen aquí o haz clic
+            </p>
+            <p className="text-[10px] text-muted-foreground/70">JPG, PNG, WEBP · máx {maxMB} MB</p>
+          </>
+        )}
+      </div>
+
+      {/* (2) Tomar foto — bloque INDEPENDIENTE, mismo ancho/contraste que el recuadro,
+          separado con mt-4 para no tocarlo sin querer al hacer clic arriba. */}
+      <button
+        type="button"
+        onClick={abrirCamara}
+        disabled={disabled || uploading}
+        className={`mt-4 w-full h-12 rounded-lg border-2 border-border bg-muted/30 hover:bg-muted/50 transition-all
+          flex items-center justify-center gap-2 text-sm font-semibold text-foreground
+          ${disabled || uploading ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+      >
+        <Camera className="w-5 h-5 text-primary" /> Tomar foto
+      </button>
+
+      {/* Inputs ocultos (archivo y cámara) */}
       <input
         ref={inputRef}
         type="file"
