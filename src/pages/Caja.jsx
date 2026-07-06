@@ -171,8 +171,9 @@ export default function Caja() {
   // del pastel: ticket + anticipo + entregar, SIN editar).
   const [pedidoWebDetalle, setPedidoWebDetalle] = useState(null);
 
-  // BLOQUE 0: refetch cada 2s para que QR/Mesero → Caja sea casi en vivo.
-  // Sin esto, una cuenta solicitada podía tardar hasta 6s en aparecer en Caja.
+  // BLOQUE 0: refetch de "cuenta solicitada" (flujo mesero/QR). Confetti es
+  // pastelería SIN mesas, así que este poll casi siempre viene vacío; se subió
+  // de 2s a 15s para no martillar la BD, sin afectar el uso real.
   //
   // HOTFIX P0: SIN initialData:[]. Con initialData la query nace como "data
   // ya cargada" y los consumidores muestran "0 pendientes" antes del primer
@@ -180,7 +181,7 @@ export default function Caja() {
   const { data: ventasPendientesRaw } = useQuery({
     queryKey: ['ventas_pendientes_caja'],
     queryFn: () => base44.entities.Venta.filter({ estado: 'cuenta_solicitada' }),
-    refetchInterval: 2000,
+    refetchInterval: 15000,
     staleTime: 1000,
     placeholderData: (prev) => prev,
   });

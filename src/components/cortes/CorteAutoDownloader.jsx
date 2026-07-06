@@ -60,8 +60,11 @@ export default function CorteAutoDownloader({ corte, onDone }) {
         (v.fecha_cierre && new Date(v.fecha_cierre).getTime() >= inicio && new Date(v.fecha_cierre).getTime() <= cierre)
       ));
       const ventaIds = ventasCorte.map(v => v.id);
+      // Optimización: UNA sola consulta con $in en vez de N+1 (una por venta).
+      // `detalles` solo se AGREGA (suma de consumo de ingredientes), así que el
+      // orden es irrelevante y el PDF del corte sale idéntico.
       const detalles = ventaIds.length
-        ? (await Promise.all(ventaIds.map(id => base44.entities.DetalleVenta.filter({ venta_id: id }).catch(() => [])))).flat()
+        ? (await base44.entities.DetalleVenta.filter({ venta_id: { $in: ventaIds } }, '-created_date', 5000).catch(() => []))
         : [];
       const gastosCorte = allGastos.filter(g => {
         // CAMBIOS_V2 Fase 07 — scoping exacto por corte_caja_id; legacy por fecha.
