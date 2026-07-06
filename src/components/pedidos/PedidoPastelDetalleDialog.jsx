@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { CheckCircle2, PackageCheck, XCircle, Pencil, Printer, MessageCircle, Banknote, Mail, ImageIcon, StickyNote, Mic } from 'lucide-react';
+import { CheckCircle2, PackageCheck, XCircle, Pencil, Printer, MessageCircle, Banknote, Mail, ImageIcon, StickyNote, Mic, User } from 'lucide-react';
 import { ESTADOS_PEDIDO, buildWhatsAppLink, buildMailtoLink } from '@/utils/pedidoPastelUtils';
 import TicketPastelConfetti from './TicketPastelConfetti';
 import { useConfig } from '@/lib/ConfigContext';
@@ -113,6 +113,12 @@ export default function PedidoPastelDetalleDialog({ pedido, open, onClose }) {
   const finalizado = pedido.estado === 'entregado' || pedido.estado === 'cancelado';
   // Prompt 6 — pedidos de catálogo web: mismo flujo (anticipo/entregar) SIN editar.
   const esCatalogo = pedido.tipo_pedido === 'productos_catalogo';
+  // "Atendió": solo un nombre real. Se oculta vacío, null o el basura exacto
+  // "Empleado" que dejaba el viejo prellenado en modo empleado.
+  const atendioReal = (() => {
+    const v = (pedido.atendido_por || '').trim();
+    return v && v !== 'Empleado' ? v : '';
+  })();
   // PARTE E — no permitir "Entregado" si hay saldo pendiente. Usamos
   // saldo_pendiente; si es null/undefined (pedidos viejos) caemos en `resta`.
   // El estado 'pagado' implica saldo 0, así que nunca bloquea un pedido pagado.
@@ -215,6 +221,18 @@ export default function PedidoPastelDetalleDialog({ pedido, open, onClose }) {
               className="w-full max-h-72 object-contain rounded-lg bg-muted"
               style={{ imageOrientation: 'from-image' }}
             />
+          </div>
+        )}
+
+        {/* ════════ ATENDIÓ (card propia) ════════
+            Quién atendió el pedido. Solo si hay un nombre real (oculta vacío/
+            null/"Empleado"). Mismo estilo que la nota interna; también no-print. */}
+        {!esCatalogo && atendioReal && (
+          <div className="rounded-xl border bg-card p-3 no-print">
+            <p className="text-xs font-semibold mb-1.5 text-muted-foreground flex items-center gap-1.5">
+              <User className="w-3.5 h-3.5" /> Atendió
+            </p>
+            <p className="text-sm break-words">{atendioReal}</p>
           </div>
         )}
 

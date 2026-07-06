@@ -154,13 +154,10 @@ export default function NuevoPedidoPastel() {
     });
   };
 
-  // Prellenar "¿Quién te atendió?" con el usuario logueado (solo en pedido nuevo
-  // y si está vacío; no pisa lo que el empleado escriba).
-  useEffect(() => {
-    if (editId) return;
-    if (posUser?.nombre) setForm(f => (f.atendido_por === '' ? { ...f, atendido_por: posUser.nombre } : f));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [posUser?.nombre, editId]);
+  // "¿Quién te atendió?" arranca SIEMPRE vacío (sin prellenado). Se eliminó el
+  // autorelleno con posUser.nombre: en modo empleado era "Empleado" y ensuciaba
+  // el dato ("Empleadoabel"). Ahora es obligatorio y lo escribe la persona; la
+  // validación vive en guardar().
 
   // Refrescar precio/kilo si llega config después del montaje (solo si el
   // usuario no lo ha tocado: campo aún con el default inicial).
@@ -350,6 +347,11 @@ export default function NuevoPedidoPastel() {
     if (!form.fecha_entrega) { toast.error('Falta la fecha de entrega'); return; }
     if (!(parseFloat(form.kilos) > 0)) { toast.error('Los kilos deben ser mayores a 0'); return; }
     if (!sucId) { toast.error('No hay sucursal activa. Selecciona una sucursal primero.'); return; }
+    // "¿Quién te atendió?" obligatorio para pedidos del POS. NO se exige al EDITAR
+    // un pedido web (nacen sin ese dato); todo lo demás (nuevo POS o edición de un
+    // pedido pos_interno) sí lo requiere.
+    const esEdicionWeb = !!editId && pedidoGuardado?.origen === 'web';
+    if (!esEdicionWeb && !form.atendido_por.trim()) { toast.error('Falta quién atendió'); return; }
 
     setGuardando(true);
     try {

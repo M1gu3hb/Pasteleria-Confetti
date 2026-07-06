@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { supabase } from '@/api/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Mic, Square, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -30,12 +31,16 @@ const SR = typeof window !== 'undefined'
 export default function NotaVozRecorder({ audioUrl = '', transcript = '', onChange, disabled = false }) {
   const [recording, setRecording] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [transcribiendo, setTranscribiendo] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const mediaRef = useRef(null);
   const chunksRef = useRef([]);
   const recognitionRef = useRef(null);
   const timerRef = useRef(null);
   const finalRef = useRef(transcript || '');
+  // URL de la nota activa: sirve para que una transcripción tardía NO pise una
+  // regrabación posterior (se descarta si la URL ya cambió).
+  const activeUrlRef = useRef(audioUrl || '');
 
   const soportaGrabacion = typeof navigator !== 'undefined'
     && navigator.mediaDevices && typeof window !== 'undefined' && !!window.MediaRecorder;
@@ -59,6 +64,7 @@ export default function NotaVozRecorder({ audioUrl = '', transcript = '', onChan
       mr.onstop = onStop;
       mediaRef.current = mr;
       finalRef.current = transcript || '';
+      activeUrlRef.current = ''; // nueva grabación: invalida transcripciones tardías previas
       mr.start();
       setRecording(true);
       setElapsed(0);
@@ -102,25 +108,60 @@ export default function NotaVozRecorder({ audioUrl = '', transcript = '', onChan
     const blob = new Blob(chunksRef.current, { type: tipo });
     chunksRef.current = [];
     if (!blob || blob.size === 0) { toast.error('No se capturó audio.'); return; }
+
+    // Transcripción de la Web Speech API (en vivo, Chrome/Android). Es la BASE;
+    // Whisper server-side solo la RELLENA/mejora si responde algo (útil en iPad,
+    // donde Web Speech no funciona). Nunca se pierde: se conserva tal cual.
+    const transcriptWebSpeech = finalRef.current || transcript || '';
+
+    // ── PASO 1: subir el audio SIEMPRE primero. Un fallo de transcripción nunca
+    //    debe impedir guardar el audio. ──
     setUploading(true);
+    let url = '';
     try {
       const ext = tipo.includes('ogg') ? 'ogg' : tipo.includes('mp4') ? 'mp4' : 'webm';
       const file = new File([blob], `nota-voz-${Date.now()}.${ext}`, { type: tipo });
       const res = await base44.integrations.Core.UploadFile({ file, bucket: 'notas-voz' });
-      const url = res?.file_url || '';
+      url = res?.file_url || '';
       if (!url) throw new Error('Sin URL');
-      onChange?.({ audioUrl: url, transcript: finalRef.current || transcript || '' });
+      activeUrlRef.current = url;
+      // El audio ya está guardado: emítelo YA con lo que haya de Web Speech.
+      onChange?.({ audioUrl: url, transcript: transcriptWebSpeech });
       toast.success('Nota de voz guardada');
     } catch (err) {
       console.error('[NotaVoz] upload:', err);
       toast.error('No se pudo subir la nota de voz. Intenta de nuevo.');
-    } finally {
       setUploading(false);
+      return; // sin audio no hay nada que transcribir
+    }
+    setUploading(false);
+
+    // ── PASO 2 (EXTRA, aditivo): transcripción server-side con Whisper. Nunca
+    //    bloquea ni pierde el audio. Si no hay OPENAI_API_KEY o falla, se queda la
+    //    de Web Speech (o vacío para editar a mano) — idéntico al comportamiento
+    //    actual. Solo se aplica si sigue siendo la misma nota (no se regrabó). ──
+    setTranscribiendo(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('transcribir-nota-voz', {
+        body: { audioUrl: url },
+      });
+      const serverTranscript = (!error && data && typeof data.transcript === 'string')
+        ? data.transcript.trim()
+        : '';
+      if (serverTranscript && activeUrlRef.current === url) {
+        onChange?.({ audioUrl: url, transcript: serverTranscript });
+      }
+    } catch (e) {
+      // Degrada en silencio: el audio ya quedó guardado y la nota es editable.
+      console.warn('[NotaVoz] transcripción server no disponible:', e?.message || e);
+    } finally {
+      setTranscribiendo(false);
     }
   };
 
   const quitar = () => {
     if (disabled || recording || uploading) return;
+    activeUrlRef.current = ''; // invalida cualquier transcripción tardía en curso
     onChange?.({ audioUrl: '', transcript: '' });
   };
 
@@ -162,6 +203,11 @@ export default function NotaVozRecorder({ audioUrl = '', transcript = '', onChan
         <p className="text-[11px] text-rose-600 flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-rose-600 animate-pulse" />
           Grabando… {soportaTranscripcion ? 'transcribiendo en vivo' : '(sin transcripción automática en este navegador — escribe la nota a mano)'}
+        </p>
+      )}
+      {transcribiendo && (
+        <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+          <Loader2 className="w-3.5 h-3.5 animate-spin" /> Transcribiendo…
         </p>
       )}
       {!soportaGrabacion && (
