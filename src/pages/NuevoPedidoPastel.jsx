@@ -363,7 +363,10 @@ export default function NuevoPedidoPastel() {
       const payload = {
         sucursal_id: sucId,
         sucursal_nombre: sucNombre,
-        origen: 'pos_interno',
+        // OJO: `origen` NO va en el payload común. Al EDITAR se haría UPDATE y
+        // sobreescribiría el 'web' original (borrando la etiqueta WEB). Solo se
+        // fija 'pos_interno' en la rama de CREAR (abajo). Editar un pedido web
+        // conserva su origen='web'.
         cliente_nombre: form.cliente_nombre.trim(),
         cliente_telefono: form.cliente_telefono.trim(),
         cliente_direccion: form.cliente_direccion.trim(),
@@ -419,6 +422,7 @@ export default function NuevoPedidoPastel() {
           ...payload,
           folio,
           estado: 'pendiente',
+          origen: 'pos_interno', // solo al CREAR desde el POS (no en UPDATE)
           creado_por_id: posUser?.id || '',
           creado_por_nombre: posUser?.nombre || '',
         });

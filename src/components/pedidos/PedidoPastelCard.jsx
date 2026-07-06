@@ -11,6 +11,9 @@ export default function PedidoPastelCard({ pedido, onVer, mostrarSucursal }) {
   const urgente = pedido.fecha_entrega && pedido.fecha_entrega <= hoyStr &&
     pedido.estado !== 'entregado' && pedido.estado !== 'cancelado';
   const resta = Number(pedido.resta) || 0;
+  // Vino de la web: por `origen`, con refuerzo por el sello confiable
+  // `creado_por_nombre='Web Confetti'` (que pone el RPC y no se sobreescribe).
+  const esWeb = pedido.origen === 'web' || pedido.creado_por_nombre === 'Web Confetti';
 
   return (
     <button
@@ -30,9 +33,9 @@ export default function PedidoPastelCard({ pedido, onVer, mostrarSucursal }) {
           {est.label}
         </span>
       </div>
-      {(pedido.origen === 'web' || (mostrarSucursal && pedido.sucursal_nombre)) && (
+      {(esWeb || (mostrarSucursal && pedido.sucursal_nombre)) && (
         <div className="flex items-center gap-1.5 flex-wrap mb-2">
-          {pedido.origen === 'web' && (
+          {esWeb && (
             <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold border bg-pink-50 text-pink-700 border-pink-200">
               🌐 WEB
             </span>
