@@ -44,8 +44,9 @@ export default function Ventas() {
   const puedeLimpiar = hasPermission(posUser?.rol, 'limpiar_ventas');
   const [search, setSearch] = useState('');
   const [filterEstado, setFilterEstado] = useState('all');
-  // PARTE H — Rango de fecha por defecto: últimos 7 días (protege rendimiento).
-  const [filterRango, setFilterRango] = useState('7d');
+  // PARTE H — Rango de fecha por defecto: últimos 2 días (protege rendimiento;
+  // el usuario puede cambiar a 7/30/hoy/todo). Solo es el valor inicial del filtro.
+  const [filterRango, setFilterRango] = useState('2d');
   const [selectedVenta, setSelectedVenta] = useState(null);
   const [showLimpiar, setShowLimpiar] = useState(false);
   const [confirmText, setConfirmText] = useState('');
@@ -85,6 +86,7 @@ export default function Ventas() {
       const d = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
       return d.getTime();
     }
+    if (filterRango === '2d') return ahora.getTime() - 2 * 24 * 60 * 60 * 1000;
     if (filterRango === '7d') return ahora.getTime() - 7 * 24 * 60 * 60 * 1000;
     // '30d'
     return ahora.getTime() - 30 * 24 * 60 * 60 * 1000;
@@ -169,6 +171,7 @@ export default function Ventas() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="hoy">Hoy</SelectItem>
+            <SelectItem value="2d">Últimos 2 días</SelectItem>
             <SelectItem value="7d">Últimos 7 días</SelectItem>
             <SelectItem value="30d">Últimos 30 días</SelectItem>
             <SelectItem value="todo">Todo (puede tardar más)</SelectItem>
