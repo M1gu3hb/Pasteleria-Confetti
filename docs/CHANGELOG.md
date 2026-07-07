@@ -1,5 +1,29 @@
 # CHANGELOG
 
+## 2026-07-06 — FIX DINERO: regresión del backfill al crear pedido con anticipo (skipBackfill)
+> Regresión del deploy `c3dc461` (backfill auto-sanador). NO tocó RLS ni la matemática del corte. Sin daño en datos (0 backfills en BD antes del fix), pero estaba VIVO y habría dañado el próximo pedido con anticipo.
+- **BUG:** `registrarPagoPedido.js` hace el backfill (paso 0) comparando `pedido.total_abonado` vs
+  `suma(abonos)`. Al llamarse desde `NuevoPedidoPastel` **AL CREAR** un pedido con anticipo, el pedido
+  ya nació con `total_abonado=a_cuenta` (payload de create) pero aún SIN abonos → `gap=a_cuenta` →
+  backfill FANTASMA de a_cuenta, y luego el abono REAL del anticipo → el recompute dejaba
+  `total_abonado = 2×a_cuenta`. Un pedido de $1000 con anticipo $500 quedaba `total_abonado=$1000,
+  saldo=$0, 'pagado'` (se veía pagado dando solo la mitad). El corte subía bien ($500), pero el SALDO
+  del pedido quedaba mal.
+- **FIX:** parámetro `skipBackfill` (default false) en `registrarPagoPedido`; el backfill (paso 0)
+  solo corre si `!skipBackfill`. `NuevoPedidoPastel` (anticipo AL CREAR) pasa `skipBackfill:true`
+  (ese pedido no tiene anticipo histórico sin respaldo — el abono real se crea justo ahí).
+  `RegistrarPagoDialog` (pago desde el detalle) NO pasa el flag → conserva el backfill para los 24
+  pedidos legacy.
+- **Verificado con datos TEST (borrados, residuo 0), LOS DOS caminos:**
+  - (1) Crear con anticipo — pedido $1000, anticipo $500 → 1 abono real $500 (SIN backfill),
+    `total_abonado=$500, saldo=$500, con_anticipo`; corte +$500.
+  - (2) Pago desde diálogo en legacy (réplica PP-A-0034: total 1230, total_abonado 1000, 0 abonos)
+    cobrar $230 → 1 backfill $1000 (corte=null) + 1 abono real $230, `total_abonado=$1230, saldo=$0,
+    pagado`; corte +$230 (el backfill money-neutral no entra).
+- Commit `3c9a617` (sobre `c3dc461`) → Vercel **READY** (production). Archivos:
+  `src/utils/registrarPagoPedido.js`, `src/pages/NuevoPedidoPastel.jsx`. Checkpoint local:
+  rama `respaldo-pre-skipbackfill`.
+
 ## 2026-06-30 (cont.) — Fix alta de usuario (PIN no se guardaba) + paquete fallback Restaurante Pro
 > Dos bugs en vivo. NO se borró ningún dato real (solo usuarios de prueba creados por mí). No toca dinero/candados.
 - **BUG 1 — el PIN no se guardaba ("el PIN no existe"):** el alta mandaba `pin` plano; la whitelist
