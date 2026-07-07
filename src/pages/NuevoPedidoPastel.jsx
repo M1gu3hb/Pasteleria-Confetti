@@ -408,12 +408,11 @@ export default function NuevoPedidoPastel() {
         subtotal_extras: calc.subtotalExtras,
         total_calculado: calc.totalCalculado,
         total_final: calc.totalFinal,
-        a_cuenta: calc.aCuenta,
-        resta: calc.resta,
-        // PARTE D — inicializar saldo/total_abonado al crear para que el pedido
-        // no nazca con saldo_pendiente=null. Math.max evita negativos.
-        total_abonado: calc.aCuenta,
-        saldo_pendiente: Math.max(0, (Number(calc.totalFinal) || 0) - (Number(calc.aCuenta) || 0)),
+        // OJO: a_cuenta / resta / total_abonado / saldo_pendiente NO van en el
+        // payload común. Al EDITAR se haría UPDATE y sobreescribiría el saldo real
+        // (corrompe pedidos que ya recibieron pagos → un pagado volvía a mostrar
+        // "Resta"). Los campos de pago los maneja SOLO el sistema de pagos
+        // (abonos / registrarPagoPedido). Se fijan únicamente al CREAR (abajo).
         devolver_base: form.devolver_base,
         nota_interna: form.nota_interna,
         imagen_referencia_url: form.imagen_referencia_url,
@@ -441,6 +440,12 @@ export default function NuevoPedidoPastel() {
           folio,
           estado: 'pendiente',
           origen: 'pos_interno', // solo al CREAR desde el POS (no en UPDATE)
+          // Campos de PAGO: SOLO al crear (nunca en edición). Math.max evita
+          // negativos y que el pedido nazca con saldo_pendiente=null.
+          a_cuenta: calc.aCuenta,
+          resta: calc.resta,
+          total_abonado: calc.aCuenta,
+          saldo_pendiente: Math.max(0, (Number(calc.totalFinal) || 0) - (Number(calc.aCuenta) || 0)),
           creado_por_id: posUser?.id || '',
           creado_por_nombre: posUser?.nombre || '',
         });
@@ -469,6 +474,13 @@ export default function NuevoPedidoPastel() {
           } catch (eAnt) {
             console.error('[NuevoPedidoPastel] anticipo:', eAnt);
             toast.error('El pedido se guardó, pero el anticipo no se pudo registrar. Regístralo desde Pedidos de Pastel.');
+            // Sin abono real → no dejar un anticipo FANTASMA. El pedido queda con
+            // saldo completo (total_abonado=0, saldo=total_final) para no descuadrar.
+            try {
+              const tf = Number(calc.totalFinal) || 0;
+              await base44.entities.PedidoPastel.update(saved.id, { total_abonado: 0, saldo_pendiente: tf });
+              saved = { ...saved, total_abonado: 0, saldo_pendiente: tf };
+            } catch (eFix) { console.error('[NuevoPedidoPastel] limpiar anticipo fantasma:', eFix); }
           }
         }
       }
