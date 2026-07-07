@@ -10,7 +10,11 @@ export default function PedidoPastelCard({ pedido, onVer, mostrarSucursal }) {
   const hoyStr = new Date().toISOString().slice(0, 10);
   const urgente = pedido.fecha_entrega && pedido.fecha_entrega <= hoyStr &&
     pedido.estado !== 'entregado' && pedido.estado !== 'cancelado';
-  const resta = Number(pedido.resta) || 0;
+  // FASE 3 — saldo VIVO: usa saldo_pendiente (se actualiza con cada pago); si es
+  // null (pedidos viejos) cae a resta (foto de la creación). Igual que el detalle.
+  const saldoVivo = pedido.saldo_pendiente != null
+    ? Number(pedido.saldo_pendiente)
+    : (Number(pedido.resta) || 0);
   // Vino de la web: por `origen`, con refuerzo por el sello confiable
   // `creado_por_nombre='Web Confetti'` (que pone el RPC y no se sobreescribe).
   const esWeb = pedido.origen === 'web' || pedido.creado_por_nombre === 'Web Confetti';
@@ -78,8 +82,8 @@ export default function PedidoPastelCard({ pedido, onVer, mostrarSucursal }) {
       </div>
       <div className="flex justify-between items-center mt-2 pt-2 border-t border-dashed">
         <p className="font-heading font-black text-base">{fmt(pedido.total_final)}</p>
-        {Number(pedido.a_cuenta) > 0 && (
-          <p className="text-xs font-semibold text-amber-600 dark:text-amber-400">Resta: {fmt(resta)}</p>
+        {Number(pedido.a_cuenta) > 0 && saldoVivo > 0 && (
+          <p className="text-xs font-semibold text-amber-600 dark:text-amber-400">Resta: {fmt(saldoVivo)}</p>
         )}
       </div>
     </button>
