@@ -463,6 +463,10 @@ export default function NuevoPedidoPastel() {
               pedido: saved, monto: calc.aCuenta, pago,
               cajaAbierta, posUser, sucursalEfectiva,
               notas: 'Anticipo al crear el pedido',
+              // El pedido acaba de nacer con total_abonado=a_cuenta pero sin
+              // abonos; el abono real se crea ahora. NO hay anticipo histórico
+              // sin respaldo → sin backfill (evita duplicar el anticipo).
+              skipBackfill: true,
             });
             if (res.ventaError) {
               toast.error(`Anticipo guardado, pero la venta no entró al corte: ${res.ventaError}`);

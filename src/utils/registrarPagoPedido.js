@@ -24,7 +24,7 @@ import { generarFolioVenta } from '@/utils/pedidoPastelUtils';
  *   ventaError = null si la venta paralela se creó bien; string si falló (el
  *   Abono y la actualización del pedido igual se aplican — no se pierde el pago).
  */
-export async function registrarPagoPedido({ pedido, monto, pago, cajaAbierta, posUser, sucursalEfectiva, notas = '' }) {
+export async function registrarPagoPedido({ pedido, monto, pago, cajaAbierta, posUser, sucursalEfectiva, notas = '', skipBackfill = false }) {
   const m = Number(monto) || 0;
 
   // 0) BACKFILL (auto-sanador, MONEY-NEUTRAL) — pedidos viejos / web tienen
@@ -37,20 +37,29 @@ export async function registrarPagoPedido({ pedido, monto, pago, cajaAbierta, po
   //   - afecta_caja=false + monto POSITIVO → efectivoEsperado solo cuenta abonos <0
   //   - no crea venta → invisible para el dashboard
   // Es solo el respaldo contable del anticipo ya recibido (no altera cortes).
-  const abonosPrevios = await base44.entities.Abono.filter({ pedido_id: pedido.id });
-  const sumaPrevios = (Array.isArray(abonosPrevios) ? abonosPrevios : [])
-    .reduce((s, a) => s + (Number(a?.monto) || 0), 0);
-  const gap = Number(((Number(pedido.total_abonado) || 0) - sumaPrevios).toFixed(2));
-  if (gap > 0.01) {
-    await base44.entities.Abono.create({
-      pedido_id: pedido.id, sucursal_id: pedido.sucursal_id, sucursal_nombre: pedido.sucursal_nombre,
-      monto: gap, metodo_pago: 'efectivo',
-      monto_efectivo: gap, monto_tarjeta: 0, monto_transferencia: 0,
-      afecta_caja: false, corte_caja_id: null,
-      registrado_por_nombre: 'Reconciliación anticipo',
-      fecha_abono: pedido.created_at || pedido.created_date || new Date().toISOString(),
-      notas: 'Backfill: anticipo del pedido sin abono de respaldo (no afecta corte).',
-    });
+  //
+  // skipBackfill=true lo APAGA. Se usa al CREAR un pedido con anticipo
+  // (NuevoPedidoPastel): ese pedido nace con total_abonado=a_cuenta pero SIN
+  // abonos todavía; el gap sería a_cuenta y el backfill lo DUPLICARÍA (backfill
+  // a_cuenta + abono real a_cuenta = 2×). Ahí NO hay anticipo histórico sin
+  // respaldo: el abono real se está creando justo ahora. El backfill solo aplica
+  // a pedidos legacy que ya traían total_abonado sin abono (pago desde el detalle).
+  if (!skipBackfill) {
+    const abonosPrevios = await base44.entities.Abono.filter({ pedido_id: pedido.id });
+    const sumaPrevios = (Array.isArray(abonosPrevios) ? abonosPrevios : [])
+      .reduce((s, a) => s + (Number(a?.monto) || 0), 0);
+    const gap = Number(((Number(pedido.total_abonado) || 0) - sumaPrevios).toFixed(2));
+    if (gap > 0.01) {
+      await base44.entities.Abono.create({
+        pedido_id: pedido.id, sucursal_id: pedido.sucursal_id, sucursal_nombre: pedido.sucursal_nombre,
+        monto: gap, metodo_pago: 'efectivo',
+        monto_efectivo: gap, monto_tarjeta: 0, monto_transferencia: 0,
+        afecta_caja: false, corte_caja_id: null,
+        registrado_por_nombre: 'Reconciliación anticipo',
+        fecha_abono: pedido.created_at || pedido.created_date || new Date().toISOString(),
+        notas: 'Backfill: anticipo del pedido sin abono de respaldo (no afecta corte).',
+      });
+    }
   }
 
   // 1) Abono con desglose por método (mismo split que la venta paralela).
