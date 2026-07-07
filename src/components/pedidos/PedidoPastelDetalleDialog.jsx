@@ -17,6 +17,7 @@ import { CheckCircle2, PackageCheck, XCircle, Pencil, Printer, MessageCircle, Ba
 import { ESTADOS_PEDIDO, buildWhatsAppLink, buildMailtoLink } from '@/utils/pedidoPastelUtils';
 import TicketPastelConfetti from './TicketPastelConfetti';
 import { useConfig } from '@/lib/ConfigContext';
+import { printDocument } from '@/lib/print';
 
 // Fase 4 — historial de pagos registrados del pedido.
 function AbonosHistorial({ pedidoId }) {
@@ -168,9 +169,11 @@ export default function PedidoPastelDetalleDialog({ pedido, open, onClose }) {
 
   const imprimir = () => {
     try {
-      document.documentElement.setAttribute('data-print-mode', 'letter');
-      window.print();
-      setTimeout(() => document.documentElement.removeAttribute('data-print-mode'), 1000);
+      // Térmico 58/80mm vía helper (iframe + @page). Imprime SOLO el
+      // TicketPastelConfetti (.ticket-printable) renderizado abajo. Sirve igual
+      // para pastel personalizado y para pedido de catálogo web (mismo diálogo).
+      // En iPad esto abre el diálogo AirPrint de iOS; en Android su framework/RawBT.
+      printDocument({ mode: 'thermal', title: `Pedido ${pedido.folio || ''}`.trim() });
     } catch (err) {
       console.error('[PedidoPastel] imprimir:', err);
       toast.error('No se pudo iniciar la impresión');

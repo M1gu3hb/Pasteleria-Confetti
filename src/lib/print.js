@@ -33,12 +33,26 @@ const FALLBACK_SELECTOR = '.ticket-printable';
 //   Si tu impresora corta a 50mm, ajusta CONTENT_WIDTH a 50mm.
 // - Tipografía monoespaciada compacta, 10px, line-height 1.25.
 // - Logo limitado a 28mm × 16mm: nunca causa página extra ni se corta.
-const CONTENT_WIDTH = '48mm'; // alternativa: '50mm' si tu papel imprimible es más amplio
+// Ancho del papel térmico (mm). 58 (default) u 80. Lo fija ConfigProvider desde
+// config.ancho_impresora vía setPaperWidth(). El contenido imprimible va un poco
+// más angosto que el papel (márgenes del cabezal): 58→48mm, 80→72mm.
+let PAPER_WIDTH_MM = 58;
+let CONTENT_WIDTH_MM = 48;
+
+export function setPaperWidth(mm) {
+  const n = Number(mm);
+  if (n === 80) { PAPER_WIDTH_MM = 80; CONTENT_WIDTH_MM = 72; }
+  else { PAPER_WIDTH_MM = 58; CONTENT_WIDTH_MM = 48; }
+}
+export function getPaperWidth() { return PAPER_WIDTH_MM; }
+
 function buildThermalCSS() {
+  const paper = `${PAPER_WIDTH_MM}mm`;
+  const content = `${CONTENT_WIDTH_MM}mm`;
   return `
-    @page { size: 58mm auto; margin: 0; }
+    @page { size: ${paper} auto; margin: 0; }
     html, body {
-      width: 58mm !important;
+      width: ${paper} !important;
       margin: 0 !important;
       padding: 0 !important;
       background: #fff !important;
@@ -53,8 +67,8 @@ function buildThermalCSS() {
     }
     * { box-sizing: border-box; }
     .ticket-printable {
-      width: ${CONTENT_WIDTH} !important;
-      max-width: ${CONTENT_WIDTH} !important;
+      width: ${content} !important;
+      max-width: ${content} !important;
       margin: 0 auto !important;
       padding: 2mm 0 !important;
       color: #000 !important;
@@ -116,7 +130,7 @@ function printTicketViaIframe(title) {
   iframe.style.position = 'fixed';
   iframe.style.left = '-10000px';
   iframe.style.top = '0';
-  iframe.style.width = '58mm';
+  iframe.style.width = `${PAPER_WIDTH_MM}mm`;
   iframe.style.minHeight = '100mm';
   iframe.style.border = '0';
   iframe.style.visibility = 'visible';
@@ -133,7 +147,7 @@ function printTicketViaIframe(title) {
 <html>
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=58mm" />
+  <meta name="viewport" content="width=${PAPER_WIDTH_MM}mm" />
   <title>${safeTitle}</title>
   <style>${buildThermalCSS()}</style>
 </head>
@@ -190,13 +204,16 @@ function printLetterFallback(mode, title) {
   }, 80);
 }
 
-export function printDocument({ mode = 'ticket', title = 'Documento' } = {}) {
+export function printDocument({ mode = 'ticket', title = 'Documento', widthMm } = {}) {
   // 'letter' = PDF de corte de caja (legacy, página completa con CSS A4)
   if (mode === 'letter') {
     printLetterFallback(mode, title);
     return;
   }
-  // Cualquier otro modo (incluido 'thermal' y 'ticket') imprime térmico 58mm
-  // vía iframe offscreen visible.
+  // Override puntual de ancho (opcional). Normalmente el ancho lo mantiene
+  // ConfigProvider vía setPaperWidth(config.ancho_impresora).
+  if (widthMm != null) setPaperWidth(widthMm);
+  // Cualquier otro modo (incluido 'thermal' y 'ticket') imprime térmico
+  // (58/80mm según config) vía iframe offscreen visible.
   printTicketViaIframe(title);
 }

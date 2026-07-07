@@ -143,6 +143,25 @@ export default function TicketPastelConfetti({ pedido, config }) {
           </div>
         )}
       </div>
+
+      {/* Entrega a domicilio — bloque resaltado y grande, SOLO si el pedido la
+          pidió. Estilos inline: el iframe térmico no carga Tailwind. Borde +
+          negritas (no fondo oscuro) para que imprima bien en térmico. */}
+      {pedido.requiere_entrega && (
+        <>
+          <Linea />
+          <div style={{ border: '1.5px solid #3a2418', borderRadius: 6, padding: '2mm', textAlign: 'center', marginTop: '2mm' }}>
+            <p style={{ fontSize: '13px', fontWeight: 900, lineHeight: 1.2, margin: 0 }}>
+              🚚 PIDIERON ENTREGA A DOMICILIO
+            </p>
+            {pedido.cliente_direccion && (
+              <p style={{ fontSize: '11px', fontWeight: 700, paddingTop: '1mm', margin: 0 }}>
+                {pedido.cliente_direccion}
+              </p>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

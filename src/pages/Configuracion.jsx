@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import ImpresoraTermicaSection from '@/components/configuracion/ImpresoraTermicaSection';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
@@ -76,6 +77,7 @@ export default function Configuracion() {
     silenciar_notificaciones_admin: true,
     portal_qr_permitir_pedidos_cliente: false,
     estaciones_preparacion_activas: false,
+    ancho_impresora: '58',
   });
 
   // Resync cuando llega cfg del backend o cuando cambia (updated_date).
@@ -100,6 +102,7 @@ export default function Configuracion() {
       silenciar_notificaciones_admin: cfg.silenciar_notificaciones_admin ?? true,
       portal_qr_permitir_pedidos_cliente: cfg.portal_qr_permitir_pedidos_cliente === true,
       estaciones_preparacion_activas: cfg.estaciones_preparacion_activas === true,
+      ancho_impresora: cfg.ancho_impresora ?? '58',
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cfg?.id, cfg?.updated_date]);
@@ -408,6 +411,12 @@ export default function Configuracion() {
                   )}
                 </div>
               )}
+
+              <ImpresoraTermicaSection
+                ancho={bizForm.ancho_impresora}
+                onChangeAncho={(w) => setBizForm(f => ({ ...f, ancho_impresora: w }))}
+                config={cfg}
+              />
 
               <Button onClick={saveBiz} disabled={savingBiz}>
                 {savingBiz ? 'Guardando…' : 'Guardar configuración'}

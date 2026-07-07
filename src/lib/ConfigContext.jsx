@@ -1,7 +1,8 @@
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { supabase } from '@/api/supabaseClient';
+import { setPaperWidth } from '@/lib/print';
 import {
   getCurrentPackage,
   getPackageLabel,
@@ -48,6 +49,7 @@ const DEFAULT_CONFIG = {
   paquete_modo: 'esencial', // Confetti es 'esencial'; default seguro = paquete mínimo (nunca restaurante)
   modo_presentacion_activo: false,
   presentacion_password: '2797',
+  ancho_impresora: '58', // impresora térmica: '58' (default) u '80' mm
 };
 
 const ConfigContext = createContext({ config: DEFAULT_CONFIG, isLoading: false });
@@ -98,6 +100,10 @@ export function ConfigProvider({ children }) {
     background_logo_url: stored.background_logo_url || '',
     background_image_url: stored.background_image_url || '',
   };
+
+  // Mantener sincronizado el ancho de la impresora térmica (print.js) con la
+  // config. Dep primitiva → solo corre cuando cambia el valor.
+  useEffect(() => { setPaperWidth(config.ancho_impresora); }, [config.ancho_impresora]);
 
   // Helpers de paquete expuestos globalmente
   const paquete_modo = getCurrentPackage(config);
