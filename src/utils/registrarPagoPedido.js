@@ -27,6 +27,32 @@ import { generarFolioVenta } from '@/utils/pedidoPastelUtils';
 export async function registrarPagoPedido({ pedido, monto, pago, cajaAbierta, posUser, sucursalEfectiva, notas = '' }) {
   const m = Number(monto) || 0;
 
+  // 0) BACKFILL (auto-sanador, MONEY-NEUTRAL) — pedidos viejos / web tienen
+  // total_abonado escrito al crear SIN un abono de respaldo. Como el recompute
+  // (paso 3) fija total_abonado = SUMA de abonos, sin esto el anticipo histórico
+  // se PERDERÍA al registrar un pago y el saldo se inflaría. Antes de nada, si
+  // total_abonado > suma(abonos), creamos UN abono de reconciliación por el gap
+  // que NO entra a ningún corte:
+  //   - corte_caja_id=null → Caja filtra por corte_caja_id=cajaAbierta.id → no entra
+  //   - afecta_caja=false + monto POSITIVO → efectivoEsperado solo cuenta abonos <0
+  //   - no crea venta → invisible para el dashboard
+  // Es solo el respaldo contable del anticipo ya recibido (no altera cortes).
+  const abonosPrevios = await base44.entities.Abono.filter({ pedido_id: pedido.id });
+  const sumaPrevios = (Array.isArray(abonosPrevios) ? abonosPrevios : [])
+    .reduce((s, a) => s + (Number(a?.monto) || 0), 0);
+  const gap = Number(((Number(pedido.total_abonado) || 0) - sumaPrevios).toFixed(2));
+  if (gap > 0.01) {
+    await base44.entities.Abono.create({
+      pedido_id: pedido.id, sucursal_id: pedido.sucursal_id, sucursal_nombre: pedido.sucursal_nombre,
+      monto: gap, metodo_pago: 'efectivo',
+      monto_efectivo: gap, monto_tarjeta: 0, monto_transferencia: 0,
+      afecta_caja: false, corte_caja_id: null,
+      registrado_por_nombre: 'Reconciliación anticipo',
+      fecha_abono: pedido.created_at || pedido.created_date || new Date().toISOString(),
+      notas: 'Backfill: anticipo del pedido sin abono de respaldo (no afecta corte).',
+    });
+  }
+
   // 1) Abono con desglose por método (mismo split que la venta paralela).
   await base44.entities.Abono.create({
     pedido_id: pedido.id, sucursal_id: pedido.sucursal_id, sucursal_nombre: pedido.sucursal_nombre,
