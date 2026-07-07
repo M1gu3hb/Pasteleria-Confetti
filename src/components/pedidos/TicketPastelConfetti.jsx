@@ -5,19 +5,36 @@ import { resolverExtrasPedido } from '@/utils/extrasPedido';
 // Ticket con el formato de la NOTA FÍSICA de Confetti Pastelería.
 // Solo se usa para pedidos pastel_personalizado. Muestra únicamente
 // los campos que tienen valor. No realiza cálculos: lee los del pedido.
+//
+// IMPORTANTE: TODO el layout va con ESTILOS EN LÍNEA (no Tailwind). El iframe
+// térmico de print.js NO carga Tailwind, así que las clases (flex, border, etc.)
+// no aplicarían al imprimir y las 2 columnas se verían pegadas. Con inline se ve
+// IGUAL en pantalla y en la impresión térmica 58mm.
 const fmt = (n) => `$${(Number(n) || 0).toFixed(2)}`;
 
+const C_TEXT = '#3a2418';
+const C_MUTED = '#7c6f63';
+const C_DASH = '#c9bcae';
+
 function Linea() {
-  return <div className="border-t border-dashed border-stone-400 my-2" />;
+  return <div style={{ borderTop: `1px dashed ${C_DASH}`, margin: '8px 0' }} />;
 }
 
 function Fila({ label, value }) {
   if (value === null || value === undefined || value === '') return null;
   return (
-    <div className="flex justify-between gap-3 text-sm">
-      <span className="text-stone-600">{label}</span>
-      <span className="font-semibold text-right">{value}</span>
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', fontSize: '12px', lineHeight: 1.35 }}>
+      <span style={{ color: C_MUTED, whiteSpace: 'nowrap' }}>{label}</span>
+      <span style={{ fontWeight: 600, textAlign: 'right', wordBreak: 'break-word' }}>{value}</span>
     </div>
+  );
+}
+
+function SeccionLabel({ children }) {
+  return (
+    <p style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.5px', color: C_MUTED, margin: '0 0 4px' }}>
+      {children}
+    </p>
   );
 }
 
@@ -47,24 +64,26 @@ export default function TicketPastelConfetti({ pedido, config }) {
     : '';
   const logo = config?.logo_ticket_url || config?.logo_url || '';
 
+  const colStack = { display: 'flex', flexDirection: 'column', gap: '2px' };
+
   return (
     <div
       className="ticket-printable letter-doc mx-auto w-full max-w-sm p-5 rounded-lg"
-      style={{ background: '#FFF8F4', color: '#3a2418', fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+      style={{ background: '#FFF8F4', color: C_TEXT, fontFamily: "'Plus Jakarta Sans', sans-serif" }}
     >
       {/* Encabezado */}
-      <div className="text-center">
+      <div style={{ textAlign: 'center' }}>
         {logo ? (
-          <img src={logo} alt="Confetti" className="mx-auto max-h-16 object-contain mb-1" />
+          <img src={logo} alt="Confetti" style={{ margin: '0 auto 4px', maxHeight: '64px', objectFit: 'contain', display: 'block' }} />
         ) : null}
-        <h2 className="text-2xl font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>
+        <h2 style={{ fontSize: '22px', fontWeight: 700, margin: 0, fontFamily: "'Playfair Display', serif" }}>
           {config?.nombre_negocio || 'Confetti'}
         </h2>
       </div>
 
       <Linea />
 
-      <div className="space-y-0.5">
+      <div style={colStack}>
         <Fila label="NOTA" value={pedido.folio} />
         {fechaPedido && <Fila label="CDMX a" value={fechaPedido} />}
         {horaPedido && <Fila label="Hora" value={horaPedido} />}
@@ -73,7 +92,7 @@ export default function TicketPastelConfetti({ pedido, config }) {
       <Linea />
 
       {/* Cliente */}
-      <div className="space-y-0.5">
+      <div style={colStack}>
         <Fila label="Cliente" value={pedido.cliente_nombre} />
         <Fila label="Tel" value={pedido.cliente_telefono} />
         <Fila label="Dirección" value={pedido.cliente_direccion} />
@@ -86,22 +105,22 @@ export default function TicketPastelConfetti({ pedido, config }) {
       {esCatalogo ? (
         /* Catálogo web: productos en texto desde notas_generales */
         <>
-          <p className="text-xs font-bold tracking-wide text-stone-500 mb-1">PRODUCTOS</p>
-          <div className="space-y-0.5">
+          <SeccionLabel>PRODUCTOS</SeccionLabel>
+          <div style={colStack}>
             {lineasProductos.length > 0 ? (
               lineasProductos.map((linea, i) => (
-                <p key={i} className="text-sm">{linea}</p>
+                <p key={i} style={{ fontSize: '12px', margin: 0 }}>{linea}</p>
               ))
             ) : (
-              <p className="text-sm text-stone-500">Sin productos registrados.</p>
+              <p style={{ fontSize: '12px', color: C_MUTED, margin: 0 }}>Sin productos registrados.</p>
             )}
           </div>
         </>
       ) : (
         /* Pastel personalizado: concepto + desglose de venta */
         <>
-          <p className="text-xs font-bold tracking-wide text-stone-500 mb-1">CONCEPTO</p>
-          <div className="space-y-0.5">
+          <SeccionLabel>CONCEPTO</SeccionLabel>
+          <div style={colStack}>
             <Fila label="Kilos" value={pedido.kilos ? `${pedido.kilos} kg` : null} />
             <Fila label="Personas" value={pedido.personas_estimadas || null} />
             <Fila label="Concepto" value={pedido.concepto} />
@@ -112,8 +131,8 @@ export default function TicketPastelConfetti({ pedido, config }) {
 
           <Linea />
 
-          <p className="text-xs font-bold tracking-wide text-stone-500 mb-1">VENTA</p>
-          <div className="space-y-0.5">
+          <SeccionLabel>VENTA</SeccionLabel>
+          <div style={colStack}>
             <Fila label="Pastel" value={Number(pedido.subtotal_pastel) > 0 ? fmt(pedido.subtotal_pastel) : null} />
             {pedido.incluye_base && Number(pedido.precio_base) > 0 && (
               <Fila label="Importe de base" value={fmt(pedido.precio_base)} />
@@ -128,8 +147,8 @@ export default function TicketPastelConfetti({ pedido, config }) {
       <Linea />
 
       {/* Totales */}
-      <div className="space-y-0.5">
-        <div className="flex justify-between text-lg font-black">
+      <div style={colStack}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '17px', fontWeight: 900 }}>
           <span>Total</span>
           <span>{fmt(pedido.total_final)}</span>
         </div>
@@ -137,7 +156,7 @@ export default function TicketPastelConfetti({ pedido, config }) {
           <Fila label="A cuenta" value={fmt(pedido.a_cuenta)} />
         )}
         {Number(pedido.saldo_pendiente) > 0 && (
-          <div className="flex justify-between font-bold text-orange-700">
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, color: '#b45309' }}>
             <span>Resta</span>
             <span>{fmt(pedido.saldo_pendiente)}</span>
           </div>
