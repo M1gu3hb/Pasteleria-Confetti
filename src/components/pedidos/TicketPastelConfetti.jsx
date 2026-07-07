@@ -20,12 +20,26 @@ function Linea() {
   return <div style={{ borderTop: `1px dashed ${C_DASH}`, margin: '8px 0' }} />;
 }
 
-function Fila({ label, value }) {
+// Fila etiqueta↔valor. La etiqueta SE ACOMODA en varias líneas (no acapara el
+// ancho con nowrap); el valor NUNCA se parte letra por letra (overflowWrap =
+// corte por palabra, no por carácter). Para precios/números usa numeric: quedan
+// íntegros a la derecha (whiteSpace:nowrap + flexShrink:0). Se ve igual en
+// pantalla y en el iframe térmico 58mm.
+function Fila({ label, value, numeric = false }) {
   if (value === null || value === undefined || value === '') return null;
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', fontSize: '12px', lineHeight: 1.35 }}>
-      <span style={{ color: C_MUTED, whiteSpace: 'nowrap' }}>{label}</span>
-      <span style={{ fontWeight: 600, textAlign: 'right', wordBreak: 'break-word' }}>{value}</span>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '10px', fontSize: '12px', lineHeight: 1.35 }}>
+      <span style={{ color: C_MUTED, overflowWrap: 'break-word', minWidth: 0, flex: '1 1 auto' }}>{label}</span>
+      <span
+        style={{
+          fontWeight: 600,
+          textAlign: 'right',
+          overflowWrap: 'break-word',
+          ...(numeric ? { whiteSpace: 'nowrap', flexShrink: 0 } : { minWidth: 0 }),
+        }}
+      >
+        {value}
+      </span>
     </div>
   );
 }
@@ -133,12 +147,12 @@ export default function TicketPastelConfetti({ pedido, config }) {
 
           <SeccionLabel>VENTA</SeccionLabel>
           <div style={colStack}>
-            <Fila label="Pastel" value={Number(pedido.subtotal_pastel) > 0 ? fmt(pedido.subtotal_pastel) : null} />
+            <Fila label="Pastel" numeric value={Number(pedido.subtotal_pastel) > 0 ? fmt(pedido.subtotal_pastel) : null} />
             {pedido.incluye_base && Number(pedido.precio_base) > 0 && (
-              <Fila label="Importe de base" value={fmt(pedido.precio_base)} />
+              <Fila label="Importe de base" numeric value={fmt(pedido.precio_base)} />
             )}
             {resolverExtrasPedido(pedido).map((e, i) => (
-              <Fila key={e.id || i} label={e.nombre} value={fmt(e.precio)} />
+              <Fila key={e.id || i} label={e.nombre} numeric value={fmt(e.precio)} />
             ))}
           </div>
         </>
@@ -146,19 +160,19 @@ export default function TicketPastelConfetti({ pedido, config }) {
 
       <Linea />
 
-      {/* Totales */}
+      {/* Totales — mismo criterio: etiqueta se acomoda, precio íntegro a la derecha */}
       <div style={colStack}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '17px', fontWeight: 900 }}>
-          <span>Total</span>
-          <span>{fmt(pedido.total_final)}</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '10px', fontSize: '17px', fontWeight: 900 }}>
+          <span style={{ overflowWrap: 'break-word', minWidth: 0, flex: '1 1 auto' }}>Total</span>
+          <span style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>{fmt(pedido.total_final)}</span>
         </div>
         {Number(pedido.a_cuenta) > 0 && (
-          <Fila label="A cuenta" value={fmt(pedido.a_cuenta)} />
+          <Fila label="A cuenta" numeric value={fmt(pedido.a_cuenta)} />
         )}
         {Number(pedido.saldo_pendiente) > 0 && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, color: '#b45309' }}>
-            <span>Resta</span>
-            <span>{fmt(pedido.saldo_pendiente)}</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '10px', fontWeight: 700, color: '#b45309' }}>
+            <span style={{ overflowWrap: 'break-word', minWidth: 0, flex: '1 1 auto' }}>Resta</span>
+            <span style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>{fmt(pedido.saldo_pendiente)}</span>
           </div>
         )}
       </div>
