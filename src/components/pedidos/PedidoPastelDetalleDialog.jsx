@@ -108,6 +108,8 @@ export default function PedidoPastelDetalleDialog({ pedido, open, onClose }) {
   const { posUser } = usePOSAuth();
   const [showPago, setShowPago] = useState(false);
   const [showCancelar, setShowCancelar] = useState(false);
+  // FASE 4 — aviso antes de marcar "Entregado" (sale de la lista de pendientes).
+  const [confirmarEntrega, setConfirmarEntrega] = useState(false);
 
   if (!pedido) return null;
   const est = ESTADOS_PEDIDO[pedido.estado] || ESTADOS_PEDIDO.pendiente;
@@ -281,7 +283,7 @@ export default function PedidoPastelDetalleDialog({ pedido, open, onClose }) {
           {!finalizado && (
             <div className="flex flex-col">
               <Button disabled={accion || tieneSaldo}
-                onClick={() => cambiarEstado('entregado', { fecha_entrega_real: new Date().toISOString() })}
+                onClick={() => setConfirmarEntrega(true)}
                 title={tieneSaldo ? `Hay saldo pendiente de $${saldoPend.toFixed(2)}. Registra el pago completo primero.` : 'Marcar como entregado'}
                 className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 disabled:cursor-not-allowed">
                 <PackageCheck className="w-4 h-4 mr-1.5" />Entregado
@@ -344,6 +346,25 @@ export default function PedidoPastelDetalleDialog({ pedido, open, onClose }) {
             onClose?.();
           }}
         />
+
+        {/* FASE 4 — aviso antes de marcar Entregado. Solo avisa; el efecto (sacar
+            de la lista de pendientes) es el mismo del botón. */}
+        <Dialog open={confirmarEntrega} onOpenChange={(o) => { if (!o) setConfirmarEntrega(false); }}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader><DialogTitle className="font-heading">Marcar como entregado</DialogTitle></DialogHeader>
+            <p className="text-sm text-muted-foreground">
+              Al marcar entregado, este pedido saldrá de la lista de <strong>Pedidos de Pastel</strong>.
+            </p>
+            <div className="flex gap-2 mt-2">
+              <Button variant="outline" className="flex-1 h-11" disabled={accion}
+                onClick={() => setConfirmarEntrega(false)}>Cancelar</Button>
+              <Button className="flex-1 h-11 bg-emerald-600 hover:bg-emerald-700 text-white" disabled={accion}
+                onClick={() => { setConfirmarEntrega(false); cambiarEstado('entregado', { fecha_entrega_real: new Date().toISOString() }); }}>
+                Sí, entregado
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <CancelarPedidoDialog
           pedido={pedido}
