@@ -1,5 +1,24 @@
 # CHANGELOG
 
+## 2026-07-06 — Fix impresión: ticket de pastel deformaba el precio con etiquetas largas
+> Fix chico de layout del ticket térmico. NO toca dinero ni RLS.
+- **BUG:** en `TicketPastelConfetti.jsx` el componente `Fila` deformaba el valor cuando la etiqueta
+  era larga. El extra "Oblea comestible personalizada" ($150.00) salía con el precio **partido en
+  vertical** ($/1/5/0…). Causa: la etiqueta usaba `whiteSpace:nowrap` (acaparaba el ancho) y el valor
+  `wordBreak:break-word` (partía DENTRO de la palabra, carácter por carácter, al exprimirlo).
+- **FIX** en `Fila` + filas inline Total/Resta:
+  - Etiqueta: sin `nowrap`; `overflowWrap:break-word` + `minWidth:0` + `flex:1 1 auto` → se acomoda en
+    varias líneas en vez de exprimir el valor.
+  - Valor: `overflowWrap:break-word` (corte por palabra, nunca por carácter). Para precios/números
+    (nuevo prop `numeric`) `whiteSpace:nowrap` + `flexShrink:0` → quedan íntegros a la derecha.
+    `alignItems:baseline` para alinear el precio con la 1ª línea de la etiqueta.
+- **Verificado en el iframe térmico REAL 58mm** (CSS verbatim de `print.js`, contenido 48mm = 181px):
+  etiqueta "Oblea comestible personalizada" → 2 líneas; precio "$150.00" → **1 línea** (43px, no
+  vertical); relleno/decorado largos ("Chocolate con chochochips y fresas") → envuelven por palabra en
+  2 líneas; Total/Resta íntegros en 1 línea.
+- Commit `e60a73c` → Vercel **READY** (production). Archivo:
+  `src/components/pedidos/TicketPastelConfetti.jsx`. Checkpoint local: rama `respaldo-pre-ticket-fila-fix`.
+
 ## 2026-07-06 — FIX DINERO: regresión del backfill al crear pedido con anticipo (skipBackfill)
 > Regresión del deploy `c3dc461` (backfill auto-sanador). NO tocó RLS ni la matemática del corte. Sin daño en datos (0 backfills en BD antes del fix), pero estaba VIVO y habría dañado el próximo pedido con anticipo.
 - **BUG:** `registrarPagoPedido.js` hace el backfill (paso 0) comparando `pedido.total_abonado` vs
