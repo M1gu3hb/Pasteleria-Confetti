@@ -26,6 +26,9 @@ import { normalizarRelleno } from '@/utils/rellenoPastel';
 import TicketPedidoPastel from '@/components/pedidos/TicketPedidoPastel';
 import PedidoPastelDetalleDialog from '@/components/pedidos/PedidoPastelDetalleDialog';
 import CanvasDibujo from '@/components/pedidos/CanvasDibujo';
+import MetodoPagoSelector from '@/components/pos/MetodoPagoSelector';
+import { construirPago } from '@/utils/metodoPago';
+import { registrarPagoPedido } from '@/utils/registrarPagoPedido';
 
 const fmt = (n) => `$${(Number(n) || 0).toFixed(2)}`;
 
@@ -46,7 +49,7 @@ export default function NuevoPedidoPastel() {
   const { config } = useConfig();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { hayCaja } = useCajaAbierta();
+  const { hayCaja, cajaAbierta } = useCajaAbierta();
   const sucId = sucursalEfectiva?.sucursal_id || null;
   const sucNombre = sucursalEfectiva?.sucursal_nombre || '';
 
@@ -121,6 +124,10 @@ export default function NuevoPedidoPastel() {
   const [modoEntrada, setModoEntrada] = useState('imagen'); // 'imagen' | 'dibujo'
   const [pedidoGuardado, setPedidoGuardado] = useState(null);
   const [verDetalle, setVerDetalle] = useState(false);
+  // FASE 2 (DINERO) — método del anticipo al CREAR el pedido (mismo selector que
+  // RegistrarPagoDialog). Solo se usa/valida si a_cuenta > 0.
+  const [metodoAnticipo, setMetodoAnticipo] = useState('efectivo');
+  const [montosAnticipo, setMontosAnticipo] = useState({ efectivo: '', tarjeta: '', transferencia: '' });
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   // Precio/kilo impuesto por el último relleno especial elegido (para saber si el
@@ -353,6 +360,17 @@ export default function NuevoPedidoPastel() {
     const esEdicionWeb = !!editId && pedidoGuardado?.origen === 'web';
     if (!esEdicionWeb && !form.atendido_por.trim()) { toast.error('Falta quién atendió'); return; }
 
+    // FASE 2 (DINERO) — si un pedido NUEVO trae anticipo, valida el método antes
+    // de crear (el anticipo se cobra como pago real). En edición NO se re-cobra.
+    if (!editId && calc.aCuenta > 0) {
+      if (calc.aCuenta > (Number(calc.totalFinal) || 0) + 0.01) {
+        toast.error('El anticipo no puede ser mayor al total.'); return;
+      }
+      if (!construirPago(calc.aCuenta, metodoAnticipo, montosAnticipo).valido) {
+        toast.error('Revisa el método del anticipo (si es mixto, la suma debe cuadrar).'); return;
+      }
+    }
+
     setGuardando(true);
     try {
       // Lista genérica de extras elegidos (fuente para ticket/detalle/PDF de pedidos
@@ -427,6 +445,32 @@ export default function NuevoPedidoPastel() {
           creado_por_nombre: posUser?.nombre || '',
         });
         toast.success(`Pedido guardado · ${folio}`);
+
+        // FASE 2 (DINERO) — registrar el anticipo como PAGO REAL (Abono + venta
+        // paralela contable) para que entre al corte/dashboard/métodos. Reusa la
+        // MISMA lógica que RegistrarPagoDialog (util compartido) → no diverge. El
+        // anticipo cuenta por su venta paralela; NO se duplica ni rompe el
+        // efectivo esperado. Solo en CREAR (aquí), nunca en edición.
+        if (calc.aCuenta > 0 && cajaAbierta?.id) {
+          const { pago } = construirPago(calc.aCuenta, metodoAnticipo, montosAnticipo);
+          try {
+            const res = await registrarPagoPedido({
+              pedido: saved, monto: calc.aCuenta, pago,
+              cajaAbierta, posUser, sucursalEfectiva,
+              notas: 'Anticipo al crear el pedido',
+            });
+            if (res.ventaError) {
+              toast.error(`Anticipo guardado, pero la venta no entró al corte: ${res.ventaError}`);
+            }
+            saved = { ...saved, total_abonado: res.totalAbonado, saldo_pendiente: res.saldoPendiente, estado: res.nuevoEstado };
+            queryClient.invalidateQueries({ queryKey: ['ventas_pagadas_caja'] });
+            queryClient.invalidateQueries({ queryKey: ['abonos_corte'] });
+            queryClient.invalidateQueries({ queryKey: ['dashboard_data'] });
+          } catch (eAnt) {
+            console.error('[NuevoPedidoPastel] anticipo:', eAnt);
+            toast.error('El pedido se guardó, pero el anticipo no se pudo registrar. Regístralo desde Pedidos de Pastel.');
+          }
+        }
       }
       queryClient.invalidateQueries({ queryKey: ['pedidos_pastel'] });
       setPedidoGuardado(saved);
@@ -799,6 +843,21 @@ export default function NuevoPedidoPastel() {
               </div>
             </div>
           </div>
+          {/* FASE 2 (DINERO) — método del anticipo. Solo en pedido NUEVO con "A
+              cuenta"; entra al corte por su venta paralela (igual que un pago). */}
+          {!editId && calc.aCuenta > 0 && (
+            <div className="pt-1">
+              <Label className="text-xs">Método del anticipo</Label>
+              <MetodoPagoSelector
+                total={calc.aCuenta}
+                metodo={metodoAnticipo}
+                montos={montosAnticipo}
+                onMetodoChange={setMetodoAnticipo}
+                onMontosChange={setMontosAnticipo}
+                disabled={guardando}
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
 

@@ -5,9 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { generarFolioVenta } from '@/utils/pedidoPastelUtils';
 import { construirPago } from '@/utils/metodoPago';
 import MetodoPagoSelector from '@/components/pos/MetodoPagoSelector';
+import { registrarPagoPedido } from '@/utils/registrarPagoPedido';
 
 // Fase 4 — registra un abono con circuito financiero (Abono + PedidoPastel).
 // PARTE A — además crea una Venta paralela contable por cada pago (parcial o
@@ -24,11 +24,14 @@ export default function RegistrarPagoDialog({ pedido, cajaAbierta, posUser, sucu
   const [montosMixto, setMontosMixto] = useState({ efectivo: '', tarjeta: '', transferencia: '' });
   const [notas, setNotas] = useState('');
   const [loading, setLoading] = useState(false);
+  // FASE 4 — cuando un pago liquida el pedido, mostramos la pregunta "¿ya se
+  // entrega?" antes de cerrar (en vez de cerrar directo).
+  const [liquidado, setLiquidado] = useState(false);
 
   const { pago, valido: pagoValido } = construirPago(parseFloat(monto) || 0, metodo, montosMixto);
 
   useEffect(() => {
-    if (open) { setMonto(saldoActual > 0 ? String(saldoActual) : ''); setMetodo('efectivo'); setMontosMixto({ efectivo: '', tarjeta: '', transferencia: '' }); setNotas(''); }
+    if (open) { setMonto(saldoActual > 0 ? String(saldoActual) : ''); setMetodo('efectivo'); setMontosMixto({ efectivo: '', tarjeta: '', transferencia: '' }); setNotas(''); setLiquidado(false); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -54,102 +57,21 @@ export default function RegistrarPagoDialog({ pedido, cajaAbierta, posUser, sucu
     if (!pagoValido) { toast.error('Revisa el método de pago (si es mixto, la suma debe cuadrar el monto).'); return; }
     setLoading(true);
     try {
-      const abonoCreado = await base44.entities.Abono.create({
-        pedido_id: pedido.id, sucursal_id: pedido.sucursal_id, sucursal_nombre: pedido.sucursal_nombre,
-        monto: m, metodo_pago: pago.metodo_pago, afecta_caja: true,
-        // FASE 3 A-FIX (Opción A): desglose por método del abono (mismo split que la
-        // venta paralela). Los buckets de abonos suman estas columnas → el efectivo de
-        // un abono mixto se trata IGUAL que cualquier efectivo (doble conteo consistente).
-        monto_efectivo: pago.monto_efectivo,
-        monto_tarjeta: pago.monto_tarjeta,
-        monto_transferencia: pago.monto_transferencia,
-        corte_caja_id: cajaAbierta?.id || null,
-        registrado_por_id: posUser?.id, registrado_por_nombre: posUser?.nombre,
-        fecha_abono: new Date().toISOString(), notas,
-      });
-
-      // PARTE A — Venta paralela contable. Cada abono recibido genera una Venta
-      // que vive en el corte del día, aparece en Dashboard y en el PDF del corte.
-      // El folio identifica el pago como "Pago de pedido", no venta de mostrador.
-      const sucId = sucursalEfectiva?.sucursal_id || pedido.sucursal_id;
-      const sucNombre = sucursalEfectiva?.sucursal_nombre || pedido.sucursal_nombre;
-      // MINI-FIX — si no hay sucursal identificada, NO intentar la venta.
-      if (!sucId) {
-        console.error('[RegistrarPago] sucursal_id vacío - imposible crear venta paralela');
-        toast.error('No se pudo registrar la venta: sucursal no identificada.');
-      } else try {
-        // MINI-FIX — prefijo ROBUSTO desde la entidad Sucursal del pedido.
-        // sucursalEfectiva puede ser null (dueño en Vista general) → en ese caso
-        // el prefijo se obtenía mal por nombre ("Xochimilco" → "X"). Ahora lo
-        // leemos de la entidad Sucursal real (prefijo correcto: "A").
-        let prefijo = sucursalEfectiva?.folio_prefijo;
-        if (!prefijo) {
-          const suc = await base44.entities.Sucursal.filter({ id: sucId }, null, 1);
-          prefijo = Array.isArray(suc) && suc[0]?.folio_prefijo
-            ? suc[0].folio_prefijo
-            : 'X';
-        }
-        const folioVenta = await generarFolioVenta(sucId, prefijo);
-        const ventaCreada = await base44.entities.Venta.create({
-          folio: folioVenta,
-          tipo_venta: 'mostrador',
-          sucursal_id: sucId,
-          sucursal_nombre: sucNombre,
-          cliente_nombre: pedido.cliente_nombre,
-          estado: 'pagada',
-          metodo_pago: pago.metodo_pago,
-          total: m,
-          subtotal: m,
-          monto_efectivo: pago.monto_efectivo,
-          monto_tarjeta: pago.monto_tarjeta,
-          monto_transferencia: pago.monto_transferencia,
-          total_cobrado_con_propina: m,
-          notas: `Pago de pedido ${pedido.folio} - ${pedido.cliente_nombre || 'sin nombre'}`,
-          corte_caja_id: cajaAbierta.id,
-          fecha_cierre: new Date().toISOString(),
-          usuario_cajero_id: posUser?.id,
-          usuario_cajero_nombre: posUser?.nombre,
-        });
-        // MINI-FIX — DetalleVenta para que el ticket/PDF muestre el concepto del
-        // pago ("Adelanto de pago — PP-A-XXXX") en vez de aparecer sin producto.
-        if (ventaCreada?.id) {
-          await base44.entities.DetalleVenta.create({
-            venta_id: ventaCreada.id,
-            producto_id: null,   // FASE 3 A — línea de pago, sin producto de catálogo (columna nullable, migr 0023)
-            producto_nombre: `Anticipo pedido ${pedido.folio}`,
-            cantidad: 1,
-            precio_unitario_snapshot: m,
-            subtotal: m,
-            costo_unitario_snapshot: 0,
-            tipo_venta_snapshot: 'precio_fijo',
-            estado_preparacion: 'entregado',
-          });
-        }
-      } catch (errVenta) {
-        // El abono ya quedó guardado. Si la venta paralela falla, avisamos pero
-        // no revertimos el abono (no dejar pantalla blanca ni perder el pago).
-        // MINI-FIX — log VISIBLE del error real para no volver a quedar a ciegas.
-        console.error('[RegistrarPago] venta paralela:', errVenta);
-        toast.error(`Error al registrar la venta paralela: ${errVenta?.message || 'desconocido'}`);
+      // Lógica de cobro compartida (Abono + Venta paralela + recompute del pedido).
+      // La MISMA que usa el anticipo al crear el pedido → no divergen.
+      const res = await registrarPagoPedido({ pedido, monto: m, pago, cajaAbierta, posUser, sucursalEfectiva, notas });
+      if (res.ventaError) {
+        toast.error(`Error al registrar la venta paralela: ${res.ventaError}`);
       }
-
-      const abonos = await base44.entities.Abono.filter({ pedido_id: pedido.id });
-      const totalAbonado = (Array.isArray(abonos) ? abonos : []).reduce((s, a) => s + (Number(a?.monto) || 0), 0);
-      const saldoPendiente = Math.max(0, (Number(pedido.total_final) || 0) - totalAbonado);
-      const estadoActual = pedido.estado;
-      let nuevoEstado = estadoActual;
-      if (saldoPendiente <= 0) nuevoEstado = 'pagado';
-      else if (totalAbonado > 0 && !['entregado', 'cancelado', 'pagado'].includes(estadoActual)) nuevoEstado = 'con_anticipo';
-      await base44.entities.PedidoPastel.update(pedido.id, {
-        total_abonado: totalAbonado,
-        saldo_pendiente: saldoPendiente,
-        estado: nuevoEstado,
-        ...((estadoActual === 'pendiente' || estadoActual === 'confirmado') ? { fecha_anticipo: new Date().toISOString() } : {}),
-        ...(saldoPendiente <= 0 ? { fecha_pago_completo: new Date().toISOString() } : {}),
-      });
       toast.success(`Pago de $${m.toFixed(2)} registrado`);
-      onPagoRegistrado?.();
-      onClose?.();
+      // FASE 4 — si este pago LIQUIDA el pedido (saldo 0), preguntar si ya se
+      // entrega antes de cerrar. Si no liquida, cierra como siempre.
+      if (res.saldoPendiente <= 0) {
+        setLiquidado(true);
+      } else {
+        onPagoRegistrado?.();
+        onClose?.();
+      }
     } catch (err) {
       console.error('[RegistrarPago]', err);
       toast.error('No se pudo registrar el pago');
@@ -158,10 +80,49 @@ export default function RegistrarPagoDialog({ pedido, cajaAbierta, posUser, sucu
     }
   };
 
+  // FASE 4 — cierre tras liquidar (refresca listas y cierra el diálogo/detalle).
+  const cerrarTrasLiquidar = () => { onPagoRegistrado?.(); onClose?.(); };
+  // "Sí, marcar entregado" — mismo efecto que el botón Entregado: saca el pedido
+  // de la lista de pendientes. Solo cambia estado; NO toca dinero.
+  const marcarEntregadoYCerrar = async () => {
+    if (loading) return;
+    setLoading(true);
+    try {
+      await base44.entities.PedidoPastel.update(pedido.id, {
+        estado: 'entregado',
+        fecha_entrega_real: new Date().toISOString(),
+      });
+      toast.success('Pedido marcado como entregado');
+    } catch (e) {
+      console.error('[RegistrarPago] marcar entregado:', e);
+      toast.error('No se pudo marcar como entregado.');
+    } finally {
+      setLoading(false);
+      cerrarTrasLiquidar();
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o && !loading) onClose?.(); }}>
+    <Dialog open={open} onOpenChange={(o) => { if (!o && !loading) { if (liquidado) cerrarTrasLiquidar(); else onClose?.(); } }}>
       <DialogContent className="sm:max-w-sm bg-gradient-to-b from-[#fff8f4] to-white dark:from-[#2E1D0E] dark:to-[#241608]">
-        <DialogHeader><DialogTitle className="font-heading">Registrar pago</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle className="font-heading">{liquidado ? 'Pago completo' : 'Registrar pago'}</DialogTitle></DialogHeader>
+        {liquidado ? (
+          <div className="space-y-4">
+            <div className="text-center p-3 rounded-xl bg-emerald-50 border border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800/50">
+              <p className="text-sm font-bold text-emerald-800 dark:text-emerald-200">Este pago liquida el pedido.</p>
+              <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-1">¿El pastel ya se va a entregar?</p>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Button onClick={marcarEntregadoYCerrar} disabled={loading}
+                className="h-12 font-bold bg-emerald-600 hover:bg-emerald-700 text-white">
+                Sí, marcar entregado
+              </Button>
+              <Button variant="outline" onClick={cerrarTrasLiquidar} disabled={loading} className="h-11">
+                No, aún no
+              </Button>
+            </div>
+          </div>
+        ) : (
         <div className="space-y-4">
           <div className="text-center p-3 rounded-xl bg-muted/40 border">
             <p className="text-xs text-muted-foreground">Saldo pendiente</p>
@@ -188,6 +149,7 @@ export default function RegistrarPagoDialog({ pedido, cajaAbierta, posUser, sucu
             {loading ? 'Registrando…' : 'Confirmar pago'}
           </Button>
         </div>
+        )}
       </DialogContent>
     </Dialog>
   );
