@@ -20,6 +20,8 @@
  *   - mode='letter' → fallback A4 legacy (solo corte de caja).
  */
 
+import { Capacitor } from '@capacitor/core';
+
 // Selectores del contenido imprimible para tickets.
 // Preferimos [data-thermal-ticket] (atributo de PreCuentaTicket) para evitar
 // capturar accidentalmente el CorteTicket (PDF de corte de caja, otro flujo).
@@ -213,6 +215,19 @@ export function printDocument({ mode = 'ticket', title = 'Documento', widthMm } 
   // Override puntual de ancho (opcional). Normalmente el ancho lo mantiene
   // ConfigProvider vía setPaperWidth(config.ancho_impresora).
   if (widthMm != null) setPaperWidth(widthMm);
+
+  // RAMA NATIVA (SOLO dentro del APK Confetti POS) — Fase 4: imprime por el
+  // plugin ESC/POS reusando el MISMO ticket del DOM como imagen (mismo diseño),
+  // o texto plano según la config local. Es ADITIVA: en el NAVEGADOR
+  // isNativePlatform() = false, así que NUNCA entra aquí y la rama de abajo
+  // queda IDÉNTICA a como estaba (el flujo de Abel no cambia).
+  if (Capacitor.isNativePlatform()) {
+    import('@/native/printTicket')
+      .then((m) => m.imprimirTicketNativo({ title }))
+      .catch((err) => console.error('[print nativo] no se pudo cargar el dispatcher:', err));
+    return;
+  }
+
   // Cualquier otro modo (incluido 'thermal' y 'ticket') imprime térmico
   // (58/80mm según config) vía iframe offscreen visible.
   printTicketViaIframe(title);
