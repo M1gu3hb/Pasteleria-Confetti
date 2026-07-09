@@ -28,11 +28,12 @@ const TICKET_SELECTOR = '[data-thermal-ticket]';
 const FALLBACK_SELECTOR = '.ticket-printable';
 const RASTER_WIDTH = 576; // 80mm imprimible = 576 puntos
 
-export async function imprimirTicketNativo({ title } = {}) {
+export async function imprimirTicketNativo({ title, node: nodoDado } = {}) {
   if (!Capacitor.isNativePlatform()) return; // doble candado: nunca en navegador
   const cfg = getPrinterConfig();
   try {
-    const node = localizarTicket();
+    // `node` explícito (botón de prueba en Config) o el ticket del DOM.
+    const node = nodoDado || localizarTicket();
     if (!node) throw new Error('No se encontró el ticket en pantalla para imprimir.');
     await asegurarConexionImpresora(cfg);
     if (cfg.modo === 'texto') {

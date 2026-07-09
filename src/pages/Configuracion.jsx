@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ImpresoraTermicaSection from '@/components/configuracion/ImpresoraTermicaSection';
+import ImpresoraCajonAppSection from '@/components/configuracion/ImpresoraCajonAppSection';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
@@ -417,6 +418,11 @@ export default function Configuracion() {
                 onChangeAncho={(w) => setBizForm(f => ({ ...f, ancho_impresora: w }))}
                 config={cfg}
               />
+
+              {/* Fase 6 — ajustes LOCALES por dispositivo (impresora nativa/cajón/
+                  formato de corte). Funcional solo en el APK; en navegador va
+                  deshabilitada con nota. NO usa la config compartida de Supabase. */}
+              <ImpresoraCajonAppSection config={cfg} />
 
               <Button onClick={saveBiz} disabled={savingBiz}>
                 {savingBiz ? 'Guardando…' : 'Guardar configuración'}
