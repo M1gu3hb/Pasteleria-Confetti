@@ -1,5 +1,14 @@
 # DECISIONS — decisiones de arquitectura/diseño (con su porqué)
 
+## APK Android (Capacitor) — decisiones (2026-07-09)
+- **Capacitor + cargar la web viva de Vercel** (no empaquetar el `dist`). *Por qué:* las actualizaciones del POS siguen por la nube sin reinstalar el APK; solo lo nativo (impresión/cajón) se instala por USB.
+- **Impresión modo IMAGEN raster por defecto** (renderizar el MISMO ticket a 576px y mandarlo como imagen ESC/POS), con TEXTO ESC/POS como opción. *Por qué:* preserva el diseño exacto que le gusta a Abel e inmuniza contra code-page (ñ/acentos); el texto plano es solo fallback.
+- **Plugin nativo DELGADO** (connect/sendBytes/imagen/cut/drawer, envuelve **DantSu ESCPOS**) + lógica de ticket en JS. *Por qué:* lo que cambia seguido (diseño/lógica) se actualiza por Vercel; lo nativo casi no cambia.
+- **Config LOCAL por dispositivo** (localStorage), no Supabase. *Por qué:* cada sucursal tiene su impresora/IP/cajón; no debe afectar a las demás.
+- **Cajón por disparador USB-serial** como método principal (+ kick ESC/POS y "ninguno"). *Por qué:* ni la tablet Higole ni la impresora Easytime tienen RJ11.
+- **Camino A (probar en sitio):** cada eslabón incierto queda SELECCIONABLE y PROBABLE en el panel de Operación; no se autocertifica el hardware.
+- **`server.url` en la PREVIEW de la rama para el piloto** (no producción). *Por qué:* el código nativo vive en `apk/capacitor`; producción no lo tiene aún. Repuntar a producción es posterior, tras validar en sitio y OK de Miguel para fusionar.
+
 1. **Opción A (DB compartida + RLS)** — una sola Supabase para POS y Web futura. El puente Base44 desaparece (sin `posApiClient.js`, sin api_key, sin sync de productos, sin `crearPedidoPOS`). Web futura: lee `catalogo_publico` + inserta `pedidos` con anon key. *Por qué:* máxima simplificación; menos superficie de error.
 
 2. **"enums" como `text` + CHECK** (no ENUM nativo). *Por qué:* evolucionar estados sin `ALTER TYPE`; mismos valores que Base44.

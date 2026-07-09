@@ -1,5 +1,19 @@
 # FILE_MAP — archivos del port y qué NO romper
 
+## APK Android (Capacitor) — nuevos / tocados (rama `apk/capacitor`)
+> Regla: lo nativo va detrás de `Capacitor.isNativePlatform()`; el navegador queda igual.
+- **`capacitor.config.ts`** — appId `com.mhastral.confettipos`, `server.url` = preview de rama, allowNavigation, cleartext. *No romper:* NO apuntar a producción durante el piloto.
+- **`android/`** — proyecto Gradle. `android/app/src/main/java/com/mhastral/confettipos/ConfettiPrinterPlugin.java` = plugin nativo (USB/TCP, imagen raster, corte, cajón USB-serial); `MainActivity.java` lo registra + refuerzos (orientación/keep-screen-on/back). `AndroidManifest.xml` + `res/xml/device_filter.xml` = permiso USB persistente. `app/build.gradle` = deps DantSu + usb-serial-for-android (JitPack). *No romper:* `android/local.properties` (sdk.dir) y `android/keystore` NO se commitean.
+- **`src/native/confettiPrinter.js`** — API JS del plugin (registerPlugin), cada método tras `isNativePlatform()`.
+- **`src/native/printTicket.js`** — dispatcher nativo: `imprimirTicketNativo` (imagen/texto), `renderTicketA576(node, ancho)`, `imprimirCorteTermico`, `asegurarConexionImpresora`. Reusa el nodo del ticket del DOM (no rediseña).
+- **`src/native/printerConfig.js`** — config LOCAL (localStorage): conexion/ip/puerto/modo/metodoCajon/formatoCorte. *No romper:* es POR DISPOSITIVO, NO Supabase compartido.
+- **`src/native/cajon.js`** — `abrirCajon(metodo)`: ninguno/usb_trigger/kick_impresora.
+- **`src/lib/print.js`** — se AÑADIÓ una rama nativa aditiva al inicio de `printDocument` (si `isNativePlatform()` → dispatcher). *No romper:* `printTicketViaIframe` (rama navegador) es IDÉNTICA a antes.
+- **`src/components/tickets/CorteTicketTermico.jsx`** — corte de caja en 1 columna para térmico; reusa los MISMOS `corte.*` + helpers que `CorteTicket`. *No romper:* NO recalcula números (deben ser idénticos al PDF).
+- **`src/components/cortes/CorteViewerDialog.jsx`** — `handlePrintCashCut` ramifica por `formatoCorte` (termico+nativo → imagen; si no → `printNodeAsPDF` intacto). El corte térmico solo se monta en el APK.
+- **`src/components/configuracion/ImpresoraCajonAppSection.jsx`** — UI Config→Operación para seleccionar/probar impresora/cajón/corte; funcional solo en APK, deshabilitada en navegador. Montada en `Configuracion.jsx` (la sección de ancho `ImpresoraTermicaSection` NO se tocó).
+- **`src/components/tickets/PreCuentaTicket.jsx`** (Arreglo #1) — los 4 separadores `border dashed` se pasaron a divs `<Linea>` dedicados (html2canvas los tachaba al rasterizar). *Mismo diseño visual*, solo estructura DOM.
+
 ## Capa de datos
 ### `src/api/supabaseClient.js`
 Cliente Supabase + auth (Fase 4 HECHA): `ensureSession()` bootstrapea la sesión **TERMINAL** desde localStorage (ya NO la cuenta staging) + `loginTerminal(sucursalId)` / `validarPin(pin,userId?)` (RPC, sin signin, para admin) / `loginConPin(pin,userId?)` (RPC + signin, para dueño) / `logoutOperador()`. **No romper:** `ensureSession()` lo llama el adapter antes de cada query (debe auto-resolver la sesión correcta).

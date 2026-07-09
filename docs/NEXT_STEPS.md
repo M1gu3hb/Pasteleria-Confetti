@@ -2,6 +2,12 @@
 
 Última actualización: 2026-06-27 (POS+Web migrados y VALIDADOS; **bot 60 días COMPLETO e impecable**; próxima fase = **Vercel + MEJORAS**; cutover pendiente = lunes).
 
+## APK Android — próximos pasos (2026-07-09) [rama `apk/capacitor`]
+Todo el CÓDIGO del APK está hecho y auditado (fases 0,1,3,4,5,corte,6,7). Falta lo de Miguel / en sitio:
+1. **Instalar y probar en la tablet (Camino A):** copiar `C:\Pasteleria Confetti\release\ConfettiPOS.apk` por USB a la Higole, instalar (orígenes desconocidos + "instalar de todos modos"), abrir y seguir el **protocolo de `release/usb/LEEME_instalacion.txt`**: login PIN + navegación igual; en Config → Operación → "Impresora y cajón (app)" elegir/probar conexión (USB/Ethernet), modo Imagen, cajón y corte térmico hasta ✅; imprimir un ticket real de venta y uno de pastel; si el WebView se ve raro, actualizar Android System WebView.
+2. **Tras validar en sitio y con OK de Miguel:** fusionar `apk/capacitor` → `migracion/supabase` (fast-forward) y **repuntar `server.url` a producción** (`pasteleria-confetti.vercel.app`) — recompilar/refirmar el APK apuntando a producción — para que las tablets carguen producción CON el código nativo. Resguardar el keystore (`release/keystore/`) antes de nada.
+3. (Opcional) Resolver los pendientes de `BUGS_PENDING.md` que aparezcan en sitio (VID/PID del cajón, emoji 🚚, clase USB de la impresora).
+
 ## 🟢 ESTADO ACTUAL (lee esto primero)
 - **POS y Web migrados, independientes y VALIDADOS al 100% como estaban en Base44.** Fases 0-5 del POS firmadas + WEB-0..3 + flujo cruzado.
 - **Bot de pruebas largas (60 días) COMPLETO:** 60/60 días limpios · cuadres corte↔libro **180/180** (con doble conteo) · folios **180/180** sin colisión bajo concurrencia · pedidos web **30/30** a sucursal correcta · RLS **18/18** sin fugas · **0 bugs reales · 0 fallos de automatización**. Evidencia: `Bot pruebas/bot-pruebas/reportes/run60/RESUMEN_EJECUTIVO_60_DIAS.md`.

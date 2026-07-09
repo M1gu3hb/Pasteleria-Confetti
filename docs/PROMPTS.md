@@ -1,5 +1,12 @@
 # PROMPTS — apertura de sesión y patrón de trabajo
 
+## Prompt maestro — APK Android (proyecto por fases, 2026-07-09)
+> Convertir el POS web en APK Android instalable con **Capacitor** que: (1) cargue la web VIVA de Vercel (para actualizar por nube sin reinstalar); (2) imprima ESC/POS nativo (USB/Ethernet) SIN window.print/RawBT; (3) abra cajón con varios métodos seleccionables; (4) deje TODA variable incierta (conexión/modo/cajón/corte) como OPCIÓN seleccionable y probable EN SITIO; (5) NO cambie la operación actual ni el diseño de los tickets.
+>
+> **Reglas rectoras (inviolables):** UNA fase a la vez → auditar + evidencia + DETENERSE y esperar "continúa". NO tocar la lógica del DINERO (cortes/ventas/abonos/saldos/folios/RLS/efectivo esperado/registrarPagoPedido). NO cambiar el diseño de ningún ticket (el modo IMAGEN renderiza los MISMOS componentes). El NAVEGADOR queda byte-por-byte igual; lo nativo va detrás de `Capacitor.isNativePlatform()` (aditivo). Rama `apk/capacitor` (nace de `migracion/supabase`); previews sí, **producción NO** sin OK. Lo físico se prueba EN SITIO (Camino A) — no autocertificar. APK final en `C:\Pasteleria Confetti\release\`. git checkpoint antes de cada fase; conventional commits sin co-author de IA.
+>
+> **Fases:** 0 diagnóstico · 1 cáscara Capacitor+Vercel · 2 APK de prueba (validación de carga en tablet) · 3 plugin nativo delgado ESC/POS · 4 capa de impresión (IMAGEN default + TEXTO opción) · 5 cajón (variantes) · corte térmico · 6 panel Config→Operación (config local) · 7 firmar APK + carpeta release · cierre + docs. **Estado: todo el código HECHO; pendiente = prueba en sitio + repunte a producción tras OK.**
+
 ## Prompt de apertura (pegar en una sesión nueva)
 > Eres un ingeniero senior continuando la migración del POS de Pastelería Confetti (Base44 → Vercel + Supabase). **Antes de tocar nada**, lee `PROJECT_CONTEXT.md` y todo `docs/` (NEXT_STEPS, DECISIONS, DATABASE, FILE_MAP, BUGS_PENDING, CHANGELOG, ARCHITECTURE) y `CLAUDE.md`. Verifica el estado real: último commit de la rama `migracion/supabase` y el estado de la DB Supabase `ivqcxdpqxwjxfohiswqb` (list_tables, list_migrations). NO toques Base44 en vivo ni la api_key. Respeta los 3 candados. El dinero y el RLS los firma Miguel. Trabaja por fases: al terminar, DETENTE y reporta; espera luz verde. El próximo paso está en `docs/NEXT_STEPS.md` (bloqueado por una decisión de Miguel sobre el modo empleado).
 

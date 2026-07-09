@@ -3,6 +3,12 @@
 ## Visión
 Una sola base **Supabase** sirve al **POS** (autenticado, RLS por rol/sucursal) y, después, a la **Web/catálogo público** (anon key + RLS restrictiva). Dos frontends React (Vite) en **Vercel**, una DB. **El puente Base44 desapareció.**
 
+## APK Android (Capacitor) — split navegador/nativo
+El MISMO código web corre en dos entornos y se ramifica por `Capacitor.isNativePlatform()`:
+- **NAVEGADOR (PWA / lo que usa Abel hoy):** todo igual que siempre. La impresión usa `window.print` (iframe térmico de `print.js`); el corte usa el PDF carta (`printNodeAsPDF`). El APK NO cambia esta rama.
+- **APK (WebView de la tablet):** el WebView **carga la web viva desde una URL de Vercel** (`server.url`), así las actualizaciones normales del POS siguen llegando por la nube sin reinstalar el APK. Lo ÚNICO que se instala por USB es lo nativo (impresión ESC/POS + cajón). La impresión se hace por un **plugin nativo DELGADO** (connect/sendBytes/imagen/cut/drawer, envuelve DantSu ESCPOS); TODA la lógica de ticket vive en JS (se actualiza por Vercel). Modo **IMAGEN** (default): renderiza el MISMO componente de ticket del DOM a un raster 576/384px y lo manda como imagen ESC/POS → el diseño se preserva y no hay riesgo de code-page (ñ/acentos).
+- **Principio:** plugin nativo tonto + lógica en JS + config LOCAL por dispositivo + cada opción incierta seleccionable/probable en sitio (Camino A).
+
 ```
                  ┌──────────────────────────┐
   POS (React/Vite, Vercel)  ─auth (Supabase Auth)→  Supabase Postgres

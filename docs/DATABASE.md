@@ -2,6 +2,8 @@
 
 snake_case en todo. IDs `uuid` (`gen_random_uuid()`). `created_at timestamptz default now()` en todas. "enums" = `text` + CHECK.
 
+> **APK Android (2026-07-09): la BD NO se tocó.** El proyecto APK (rama `apk/capacitor`) **no agregó ni cambió ninguna tabla, columna, RPC, RLS, vista ni migración**. El APK lee la MISMA Supabase que el POS web (mismo anon key + RLS). Los ajustes de impresora/cajón/formato-corte son **LOCALES por dispositivo** (localStorage `confetti_printer_cfg`), NO viven en la BD compartida. La matemática del dinero (cortes/ventas/abonos/efectivo esperado) quedó **intacta** (solo cambió CÓMO se imprime, no QUÉ se calcula).
+
 ## 12 tablas (lista verde) — columnas clave
 - **sucursales**: nombre, direccion, telefono, activa, `folio_prefijo` (A/B/C, unique), orden_visual, notas, google_maps_url, whatsapp_numero.
 - **usuarios_pos**: nombre, `rol` CHECK(administrador|caja|dueño|mesero|cocina|barra), `pin_hash` (bcrypt), `auth_user_id` (→auth.users), activo, color, telefono, correo, `sucursal_id`→sucursales, sucursal_nombre, permisos_extra(jsonb). **`pin` plano ELIMINADO (0013).**

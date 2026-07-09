@@ -5,6 +5,24 @@
 > **Working tree estable:** `C:\Pasteleria Confetti\pos` (clon de `M1gu3hb/Pasteleria-Confetti@migracion/supabase`).
 > **Repo Web (aparte):** `M1gu3hb/Pasteleria-Confetti-web-` (CON guion final) en `C:\Pasteleria Confetti\web`.
 
+---
+
+## APK Android (Confetti POS) — estado 2026-07-09 (rama `apk/capacitor`)
+Se envolvió el POS en un **APK Android (Capacitor 8)** que carga la web viva desde Vercel e **imprime ESC/POS nativo** (arregla el "imprime a medias" del `window.print` en el WebView). **TODAS las fases de CÓDIGO están hechas** (0,1,3,4,5,corte,6,7); pendiente = **prueba física EN SITIO** + (con OK) fusionar a producción.
+
+**Qué hace / arquitectura:**
+- `capacitor.config.ts`: `server.url` = **preview de la rama** `pasteleria-confetti-git-apk-capacitor-mh-astral-systems.vercel.app` (NO producción durante el piloto; producción aún no tiene el código nativo). `allowNavigation` Vercel+Supabase, `cleartext` (TCP a impresora). Proyecto `android/` (appId `com.mhastral.confettipos`). Refuerzos: orientación horizontal, pantalla siempre encendida, botón ATRÁS no cierra.
+- **Impresión** (`src/lib/print.js` con rama nativa aditiva detrás de `isNativePlatform()`): en el APK, `printDocument` delega en `src/native/printTicket.js` → renderiza el MISMO ticket del DOM a imagen 576px (html2canvas, `useCORS` para el logo) → `imprimirImagenRaster` + `cortar`. Modo **Imagen** (default, preserva diseño) o **Texto** ESC/POS (opción). En navegador: `window.print` de siempre, intacto.
+- **Plugin nativo delgado** `ConfettiPrinterPlugin.java` (envuelve **DantSu ESCPOS 3.4.0**): conectarUSB (permiso persistente por intent-filter), conectarTCP(9100), enviarBytes, imprimirImagenRaster (576/384), cortar, abrirCajonPorImpresora, **abrirCajonUsbSerial** (usb-serial-for-android). Lógica de ticket en JS (se actualiza por Vercel).
+- **Cajón** (`src/native/cajon.js` `abrirCajon(metodo)`): `ninguno` | `usb_trigger` (disparador USB-serial) | `kick_impresora` (patada ESC/POS).
+- **Corte de caja térmico** (opción además del PDF): `CorteTicketTermico.jsx` (1 columna) reusa los MISMOS `corte.*` + helpers que `CorteTicket` → **números idénticos** (verificado). `CorteViewerDialog` ramifica por `formatoCorte`.
+- **Config LOCAL por dispositivo** `src/native/printerConfig.js` (localStorage): conexion/ip/puerto/modo/metodoCajon/formatoCorte. UI: **Config → Operación → "Impresora y cajón (app)"** (`ImpresoraCajonAppSection.jsx`) para seleccionar + PROBAR; funcional solo en APK, deshabilitada en navegador.
+- **Entregable:** `C:\Pasteleria Confetti\release\` → `ConfettiPOS.apk` (firmado, apksigner v2+v3), `keystore/` (+ `RESGUARDAR.txt`, ¡respaldar!), `usb/ConfettiPOS_USB.zip` (+ `LEEME_instalacion.txt` con protocolo de prueba en sitio), `muestras/` (PNGs de evidencia).
+
+**Hardware objetivo:** tablet **Higole** RK3399 Android 12 (USB host, LAN; **sin RJ11** de cajón). Impresora **Easytime 80mm** ESC/POS (USB+Ethernet, corte auto, 72mm/576pts, sin Bluetooth, sin RJ11). Cajón: manual o disparador USB-serial.
+
+**Pendiente (tuyo / en sitio):** (1) instalar `ConfettiPOS.apk` en la tablet y probar impresora/cajón/corte con `release/usb/LEEME_instalacion.txt`; (2) tras tu OK, **fusionar `apk/capacitor` → `migracion/supabase` y repuntar `server.url` a producción**. Ver `docs/NEXT_STEPS.md`.
+
 ## 1. Objetivo
 Independizar el **POS interno** de Pastelería Confetti de Base44, dejándolo **idéntico en comportamiento** sobre infra propia: **React (Vite) en Vercel + Supabase (Postgres + Auth + RLS + Storage)**. NO es reconstrucción: el sistema ya estaba aprobado por el cliente (Abel); se migra, no se rediseña. El cliente sigue operando en Base44 en producción durante toda la migración; el corte a producción lo decide Miguel y NO es parte de esta fase.
 

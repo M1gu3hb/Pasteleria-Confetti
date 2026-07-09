@@ -1,5 +1,12 @@
 # BUGS_PENDING / riesgos conocidos
 
+## APK Android (2026-07-09) — SIN bugs de código; pendientes = pruebas físicas EN SITIO
+El proyecto APK (rama `apk/capacitor`) compila verde (vite + gradlew assembleRelease), APK firmado, navegador intacto, dinero/RLS sin tocar. **No hay bugs de código abiertos.** Lo que falta se valida CON el hardware en la visita (Camino A):
+- **Impresora Easytime 80mm:** confirmar conexión (probar USB; si no, Ethernet + IP). Ajuste posible en sitio: el `class="7"` de `res/xml/device_filter.xml` si la impresora enumera con otra clase/VID-PID.
+- **WebView de la Higole (Android 12):** riesgo de System WebView viejo → layout roto. Fix: actualizar "Android System WebView" + Chrome (ver `LEEME_instalacion.txt`).
+- **Cajón:** no se sabe si el de Abel es electrónico. Probar `usb_trigger` (VID/PID del disparador USB-serial se lee en sitio) → `kick_impresora` → `ninguno` (manual).
+- **Emoji 🚚** del bloque de entrega: se dibujó en Chrome de escritorio (muestra), pero el WebView de la tablet PODRÍA no dibujarlo con html2canvas. Decisión de Miguel: se queda; si en sitio se pierde, cambiar por texto "ENTREGA A DOMICILIO".
+
 ## FLAGS del run nocturno 2026-06-28 (para revisión de Miguel)
 - **(voz) Verificación manual del micrófono — FASE 4.** La grabación (`getUserMedia`/
   `MediaRecorder`) y la transcripción en vivo (`SpeechRecognition` es-MX) NO se pudieron

@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## 2026-07-09 — APK Android (Capacitor): impresión ESC/POS nativa + cajón + corte térmico [rama `apk/capacitor`]
+> Proyecto por fases (Camino A). NO tocó dinero/RLS/BD ni el diseño de tickets; NAVEGADOR byte-por-byte igual; SIN deploy a producción. Todo lo nativo detrás de `Capacitor.isNativePlatform()`.
+- **Fase 0** diagnóstico (solo lectura). **Fase 1** cáscara Capacitor 8 que carga la web viva de Vercel (preview de rama); appId `com.mhastral.confettipos`; refuerzos (orientación/keep-awake/back). Commit `46464b5`.
+- **Fase 3** plugin nativo delgado `ConfettiPrinterPlugin` (DantSu ESCPOS): conectarUSB (permiso persistente)/TCP/enviarBytes/imagen576/cortar/cajón. Commit `4b5a514`.
+- **Fase 4** dispatcher de impresión: modo IMAGEN (default, renderiza el MISMO ticket del DOM a 576px con html2canvas) + TEXTO opción; `print.js` rama nativa ADITIVA (navegador intacto). Muestras 576px con logo. Commit `2abd913`.
+- **Arreglo #1** `PreCuentaTicket`: separadores `dashed` → divs `<Linea>` (html2canvas los tachaba); mismo diseño. Commit `f9930d7`.
+- **Fase 5** cajón `abrirCajon(metodo)`: ninguno / usb_trigger (usb-serial-for-android) / kick_impresora. Commit `57a8e37`.
+- **Fase Corte** corte de caja imprimible en TÉRMICO (opción además del PDF): `CorteTicketTermico` reusa los MISMOS `corte.*` + helpers → números idénticos al PDF (verificado). Commit `0a7fd5a`.
+- **Fase 6** panel Config → Operación "Impresora y cajón (app)": selecciona + prueba (config LOCAL localStorage); funcional solo en APK, deshabilitado en navegador. Commit `df56988`.
+- **Fase 7** APK release **firmado** (keystore en `release/keystore/` + `RESGUARDAR.txt`; apksigner v2+v3 verify OK); `release/ConfettiPOS.apk` + `usb/ConfettiPOS_USB.zip` (+ `LEEME_instalacion.txt`). `server.url` = preview de rama (piloto). Sin commit (artefactos fuera del repo).
+- **Cierre** verificación final (vite + gradlew assembleRelease verde; dinero/navegador intactos; release/ completo) + documentación viva. Pendiente = prueba física en sitio + fusionar/repuntar a producción tras OK (ver `NEXT_STEPS.md`).
+
 ## 2026-07-06 — Fix impresión: ticket de pastel deformaba el precio con etiquetas largas
 > Fix chico de layout del ticket térmico. NO toca dinero ni RLS.
 - **BUG:** en `TicketPastelConfetti.jsx` el componente `Fila` deformaba el valor cuando la etiqueta
