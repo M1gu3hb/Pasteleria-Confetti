@@ -93,7 +93,7 @@ export default function PreCuentaTicket({ venta, detalles, mesa, config, codigo,
         color: '#000',
       }}>
       {/* Encabezado con logo — compacto para 58mm */}
-      <div style={{ textAlign: 'center', paddingBottom: '6px', marginBottom: '6px', borderBottom: '1px dashed #000' }}>
+      <div style={{ textAlign: 'center' }}>
         {(config?.logo_ticket_url || config?.logo_url) && config?.mostrar_logo_ticket !== false && (
           <img
             src={config.logo_ticket_url || config.logo_url}
@@ -120,8 +120,10 @@ export default function PreCuentaTicket({ venta, detalles, mesa, config, codigo,
         </p>
       </div>
 
+      <Linea />
+
       {/* Datos */}
-      <div style={{ fontSize: '10px', marginBottom: '6px' }}>
+      <div style={{ fontSize: '10px' }}>
         <Row label="Folio" value={venta.folio} bold />
         {mesa && <Row label="Mesa" value={`#${mesa.numero} ${mesa.nombre || ''}`} />}
         {venta.personas > 0 && <Row label="Personas" value={venta.personas} />}
@@ -131,9 +133,11 @@ export default function PreCuentaTicket({ venta, detalles, mesa, config, codigo,
         <Row label="Fecha" value={fecha} />
       </div>
 
+      <Linea />
+
       {/* Productos — 6B: si la línea es variable, "500 g × Producto" o
           "4 shots × Producto". precio_fijo intacto. */}
-      <div style={{ borderTop: '1px dashed #000', paddingTop: '4px', marginBottom: '4px' }}>
+      <div style={{ marginBottom: '4px' }}>
         {(detallesEfectivos || []).map((d, i) => {
           const cantVarTxt = formatearCantidadVariable(d || {});
           const prefijo = cantVarTxt ? `${cantVarTxt} ×` : `${d?.cantidad || 0}×`;
@@ -155,13 +159,15 @@ export default function PreCuentaTicket({ venta, detalles, mesa, config, codigo,
         })}
       </div>
 
+      <Linea />
+
       {/* Totales — HOTFIX 6A: getVentaTotal calcula desde detalles si la venta
           tiene total/subtotal en 0. PASO 2 IVA: desglose visual si aplica. */}
       {(() => {
         const subtotalEfectivo = getVentaTotal(venta, detallesEfectivos);
         const iva = desgloseIvaDesdeConfig(subtotalEfectivo, config);
         return (
-      <div style={{ borderTop: '1px dashed #000', paddingTop: '4px', marginBottom: '4px' }}>
+      <div style={{ marginBottom: '4px' }}>
         {iva.aplica ? (
           <>
             <Row label="Subtotal s/IVA" value={formatCurrency(iva.subtotalSinIva)} />
@@ -219,8 +225,10 @@ export default function PreCuentaTicket({ venta, detalles, mesa, config, codigo,
         </div>
       )}
 
+      <Linea />
+
       {/* Footer */}
-      <div style={{ textAlign: 'center', borderTop: '1px dashed #000', paddingTop: '4px', fontSize: '10px' }}>
+      <div style={{ textAlign: 'center', fontSize: '10px' }}>
         <p style={{ margin: 0 }}>{config?.mensaje_ticket || '¡Gracias por tu visita!'}</p>
         {config?.ticket_footer && <p style={{ fontSize: '9px', margin: '2px 0 0' }}>{config.ticket_footer}</p>}
         {esFinal && <p style={{ fontSize: '9px', margin: '2px 0 0' }}>Conserva este ticket</p>}
@@ -230,6 +238,14 @@ export default function PreCuentaTicket({ venta, detalles, mesa, config, codigo,
       </div>
     </div>
   );
+}
+
+// Separador de línea punteada DEDICADO (mismo patrón que TicketPastelConfetti).
+// Antes las secciones usaban border-top: dashed directo, que html2canvas dibujaba
+// encima de la fila de texto contigua (tachado) al rasterizar para el modo IMAGEN
+// nativo. Un div dedicado se rasteriza limpio. Mismo estilo visual, misma posición.
+function Linea() {
+  return <div style={{ borderTop: '1px dashed #000', margin: '6px 0' }} />;
 }
 
 function Row({ label, value, bold, capitalize }) {
