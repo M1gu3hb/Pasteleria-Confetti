@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Impresoras USB. class="7" = clase USB "Printer" (la mayoría de las
+         térmicas ESC/POS enumeran así). Si la Easytime aparece con otra clase
+         o como USB-serial, se agrega aquí su vendor-id/product-id REALES
+         (se leen EN SITIO con la impresora conectada, p. ej. con `adb shell
+         dumpsys usb` o `lsusb`), por ejemplo:
+         <usb-device vendor-id="1234" product-id="5678" /> -->
+    <usb-device class="7" />
+</resources>

@@ -21,6 +21,8 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        // JitPack: para la librería ESC/POS de DantSu (impresión térmica nativa, Fase 3).
+        maven { url 'https://jitpack.io' }
     }
 }
 
