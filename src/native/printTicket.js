@@ -76,12 +76,12 @@ async function imprimirComoImagen(node) {
  * contenedor fuera de pantalla para NO alterar la UI viva. Se exporta para que
  * el harness de muestras use EXACTAMENTE este mismo render (fidelidad).
  */
-export async function renderTicketA576(sourceNode) {
+export async function renderTicketA576(sourceNode, anchoDestino = RASTER_WIDTH) {
   const html2canvas = (await import('html2canvas')).default;
   const holder = document.createElement('div');
-  // Holder de 400px: deja que el ticket tome su ANCHO DE DISEÑO (maxWidth 320 /
-  // max-w-sm 384) sin reflow, tal como se ve en pantalla.
-  holder.style.cssText = 'position:fixed;left:-10000px;top:0;width:400px;background:#ffffff;padding:0;margin:0;';
+  // Holder ancho: deja que el nodo tome su ANCHO DE DISEÑO (maxWidth del ticket)
+  // sin reflow, tal como se ve en pantalla.
+  holder.style.cssText = 'position:fixed;left:-10000px;top:0;width:640px;background:#ffffff;padding:0;margin:0;';
   const clone = sourceNode.cloneNode(true);
   clone.style.margin = '0';
   clone.style.background = '#ffffff';
@@ -91,11 +91,11 @@ export async function renderTicketA576(sourceNode) {
   holder.appendChild(clone);
   document.body.appendChild(holder);
   try {
-    // Captura el ticket a su ancho de diseño y lo ESCALA a 576px exactos (80mm).
-    // Sin reflow → conserva el diseño idéntico al preview y evita los artefactos
-    // de bordes de html2canvas. `scale` = supersampling directo (nítido).
+    // Captura el nodo a su ancho de diseño y lo ESCALA a `anchoDestino` px exactos
+    // (576=80mm por defecto, 384=58mm). Sin reflow → conserva el diseño idéntico
+    // al preview y evita artefactos de bordes de html2canvas.
     const anchoDiseno = clone.offsetWidth || 320;
-    const escala = RASTER_WIDTH / anchoDiseno;
+    const escala = anchoDestino / anchoDiseno;
     const canvas = await html2canvas(clone, {
       backgroundColor: '#ffffff',
       useCORS: true,
@@ -104,6 +104,29 @@ export async function renderTicketA576(sourceNode) {
     return canvas.toDataURL('image/png');
   } finally {
     document.body.removeChild(holder);
+  }
+}
+
+/**
+ * Imprime el CORTE de caja en TÉRMICO (ESC/POS) reusando el nodo ya renderizado
+ * (CorteTicketTermico, mismos datos que el PDF). Solo dentro del APK; errores
+ * visibles con toast. `anchoImpresora` = '58' | '80' (de config.ancho_impresora):
+ * 58 → 384px, cualquier otro → 576px (80mm default).
+ */
+export async function imprimirCorteTermico(node, anchoImpresora) {
+  if (!Capacitor.isNativePlatform()) return;
+  const cfg = getPrinterConfig();
+  try {
+    if (!node) throw new Error('No se encontró el corte para imprimir.');
+    await asegurarConexionImpresora(cfg);
+    const anchoDestino = String(anchoImpresora) === '58' ? 384 : RASTER_WIDTH;
+    const png = await renderTicketA576(node, anchoDestino);
+    await imprimirImagenRaster(png);
+    await cortar();
+  } catch (err) {
+    const msg = (err && err.message) ? err.message : 'No se pudo imprimir el corte.';
+    toast.error('Corte térmico: ' + msg);
+    throw err;
   }
 }
 

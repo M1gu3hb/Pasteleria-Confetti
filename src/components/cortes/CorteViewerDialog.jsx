@@ -10,13 +10,18 @@ import { obtenerEntregasDelCorte } from '@/utils/entregasCorte';
 import { downloadNodeAsPDF, printNodeAsPDF, safeFileName } from '@/lib/pdfDownload';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { Capacitor } from '@capacitor/core';
 import CorteTicket from '@/components/tickets/CorteTicket';
+import CorteTicketTermico from '@/components/tickets/CorteTicketTermico';
+import { getPrinterConfig } from '@/native/printerConfig';
+import { imprimirCorteTermico } from '@/native/printTicket';
 
 export default function CorteViewerDialog({ corte, open, onClose }) {
   const { config, paquete_modo } = useConfig();
   const isEsencial = paquete_modo === 'esencial';
   const isRP = paquete_modo === 'restaurante_pro';
   const ticketRef = useRef(null);
+  const termicoRef = useRef(null);
   const [downloading, setDownloading] = useState(false);
 
   const corteId = corte?.id || null;
@@ -185,6 +190,27 @@ export default function CorteViewerDialog({ corte, open, onClose }) {
       toast.info('Espera a que termine de prepararse el PDF.');
       return;
     }
+    // Ruta TÉRMICA (SOLO en el APK y si la config del corte es 'termico'):
+    // imprime el corte por la impresora ESC/POS reusando los MISMOS datos que el
+    // PDF (CorteTicketTermico). En el NAVEGADOR esto nunca corre → la ruta PDF
+    // de abajo queda idéntica.
+    if (getPrinterConfig().formatoCorte === 'termico' && Capacitor.isNativePlatform()) {
+      if (!termicoRef.current) {
+        toast.error('No se encontró el corte para imprimir');
+        return;
+      }
+      setDownloading(true);
+      try {
+        await imprimirCorteTermico(termicoRef.current, config?.ancho_impresora);
+      } catch (err) {
+        console.error('[CorteViewerDialog] corte térmico:', err);
+        // imprimirCorteTermico ya muestra el toast del error.
+      } finally {
+        setDownloading(false);
+      }
+      return;
+    }
+    // Ruta PDF (navegador / default) — EXACTAMENTE como antes.
     if (!ticketRef.current) {
       toast.error('No se encontró el contenido para imprimir');
       return;
@@ -250,21 +276,45 @@ export default function CorteViewerDialog({ corte, open, onClose }) {
           {loading ? (
             <p className="text-center py-12 text-muted-foreground">Preparando PDF de corte…</p>
           ) : (
-            <CorteTicket
-              ref={ticketRef}
-              corte={corte}
-              ventas={safeData.ventas}
-              detalles={safeData.detalles}
-              gastos={safeData.gastos}
-              ingredientes={safeData.ingredientes}
-              cancelaciones={safeData.cancelaciones}
-              detallesCancel={safeData.detallesCancel}
-              alertas={safeData.alertas}
-              entregas={safeData.entregas}
-              config={config}
-              isEsencial={isEsencial}
-              isRP={isRP}
-            />
+            <>
+              <CorteTicket
+                ref={ticketRef}
+                corte={corte}
+                ventas={safeData.ventas}
+                detalles={safeData.detalles}
+                gastos={safeData.gastos}
+                ingredientes={safeData.ingredientes}
+                cancelaciones={safeData.cancelaciones}
+                detallesCancel={safeData.detallesCancel}
+                alertas={safeData.alertas}
+                entregas={safeData.entregas}
+                config={config}
+                isEsencial={isEsencial}
+                isRP={isRP}
+              />
+              {/* Corte TÉRMICO — SOLO se renderiza dentro del APK, fuera de
+                  pantalla, para rasterizarlo al imprimir. En el navegador NO se
+                  renderiza (isNativePlatform=false) → DOM/preview idéntico. */}
+              {Capacitor.isNativePlatform() && (
+                <div style={{ position: 'fixed', left: '-10000px', top: 0 }} aria-hidden>
+                  <CorteTicketTermico
+                    ref={termicoRef}
+                    corte={corte}
+                    ventas={safeData.ventas}
+                    detalles={safeData.detalles}
+                    gastos={safeData.gastos}
+                    ingredientes={safeData.ingredientes}
+                    cancelaciones={safeData.cancelaciones}
+                    detallesCancel={safeData.detallesCancel}
+                    alertas={safeData.alertas}
+                    entregas={safeData.entregas}
+                    config={config}
+                    isEsencial={isEsencial}
+                    isRP={isRP}
+                  />
+                </div>
+              )}
+            </>
           )}
         </div>
       </DialogContent>

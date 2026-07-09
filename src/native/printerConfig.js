@@ -15,6 +15,7 @@ const DEFAULTS = Object.freeze({
   ip: '',                  // IP de la impresora si conexion === 'tcp'
   puerto: 9100,            // puerto TCP ESC/POS estándar
   metodoCajon: 'ninguno',  // 'ninguno' | 'usb_trigger' | 'kick_impresora'
+  formatoCorte: 'pdf',     // 'pdf' (default, PDF carta actual) | 'termico' (ESC/POS)
 });
 
 export function getPrinterConfig() {
