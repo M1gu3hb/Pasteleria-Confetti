@@ -68,6 +68,17 @@ export async function abrirCajonPorImpresora() {
   return Native.abrirCajonPorImpresora();
 }
 
+/**
+ * Abre el cajón por un DISPARADOR USB-SERIAL (dispositivo aparte, no la
+ * impresora). `bytes` opcional (Uint8Array/array); si se omite, el nativo manda
+ * la patada ESC/POS por defecto. `baudRate` por defecto 9600.
+ */
+export async function abrirCajonUsbSerial(bytes, baudRate = 9600) {
+  exigirNativo();
+  const bytesBase64 = bytes ? bytesABase64(bytes) : undefined;
+  return Native.abrirCajonUsbSerial({ bytesBase64, baudRate });
+}
+
 /** Cierra la conexión activa. */
 export async function desconectar() {
   exigirNativo();

@@ -34,7 +34,7 @@ export async function imprimirTicketNativo({ title } = {}) {
   try {
     const node = localizarTicket();
     if (!node) throw new Error('No se encontró el ticket en pantalla para imprimir.');
-    await asegurarConexion(cfg);
+    await asegurarConexionImpresora(cfg);
     if (cfg.modo === 'texto') {
       await imprimirComoTexto(node);
     } else {
@@ -55,7 +55,7 @@ function localizarTicket() {
   return nodes.length ? nodes[nodes.length - 1] : null;
 }
 
-async function asegurarConexion(cfg) {
+export async function asegurarConexionImpresora(cfg) {
   if (cfg.conexion === 'tcp') {
     if (!cfg.ip) throw new Error('Falta la IP de la impresora (Configuración → Impresora).');
     await conectarTCP(cfg.ip, cfg.puerto || 9100);

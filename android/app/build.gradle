@@ -39,6 +39,9 @@ dependencies {
     // DantSu ESCPOS-ThermalPrinter-Android: encoding ESC/POS (USB/TCP, imagen
     // raster, corte, cajón) que envuelve el plugin nativo ConfettiPrinter (Fase 3).
     implementation 'com.github.DantSu:ESCPOS-ThermalPrinter-Android:3.4.0'
+    // usb-serial-for-android: hablar con un disparador USB-serial de cajón
+    // (variante 'usb_trigger' de abrirCajon, Fase 5). CH340/FTDI/CDC/PL2303.
+    implementation 'com.github.mik3y:usb-serial-for-android:3.8.1'
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"

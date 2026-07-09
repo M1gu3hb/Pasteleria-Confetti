@@ -8,6 +8,7 @@ import android.content.IntentFilter;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.hardware.usb.UsbDevice;
+import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
 import android.os.Build;
 import android.util.Base64;
@@ -24,6 +25,11 @@ import com.dantsu.escposprinter.connection.tcp.TcpConnection;
 import com.dantsu.escposprinter.connection.usb.UsbConnection;
 import com.dantsu.escposprinter.connection.usb.UsbPrintersConnections;
 
+import com.hoho.android.usbserial.driver.UsbSerialDriver;
+import com.hoho.android.usbserial.driver.UsbSerialPort;
+import com.hoho.android.usbserial.driver.UsbSerialProber;
+
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -205,6 +211,88 @@ public class ConfettiPrinterPlugin extends Plugin {
                 call.reject("No se pudo abrir el cajón: " + mensaje(e));
             }
         });
+    }
+
+    // ---------------------------- CAJÓN por DISPARADOR USB-SERIAL ----
+    // Para un disparador de cajón que se conecta por USB (NO por la impresora):
+    // abre el primer dispositivo USB-serial, escribe los bytes de apertura y cierra.
+    // Permiso USB propio (no toca el flujo de la impresora).
+    @PluginMethod
+    public void abrirCajonUsbSerial(final PluginCall call) {
+        final String b64 = call.getString("bytesBase64");
+        final int baud = call.getInt("baudRate", 9600);
+        io.execute(() -> {
+            try {
+                Context ctx = getContext();
+                UsbManager usbManager = (UsbManager) ctx.getSystemService(Context.USB_SERVICE);
+                List<UsbSerialDriver> drivers = (usbManager != null)
+                    ? UsbSerialProber.getDefaultProber().findAllDrivers(usbManager)
+                    : null;
+                if (drivers == null || drivers.isEmpty()) {
+                    call.reject("No se encontró un disparador USB-serial de cajón.");
+                    return;
+                }
+                final UsbSerialDriver driver = drivers.get(0);
+                final UsbDevice device = driver.getDevice();
+                if (usbManager.hasPermission(device)) {
+                    escribirSerial(call, usbManager, driver, baud, b64);
+                } else {
+                    solicitarPermisoSerial(call, usbManager, driver, baud, b64, device);
+                }
+            } catch (Exception e) {
+                call.reject("Error al abrir el cajón por USB-serial: " + mensaje(e));
+            }
+        });
+    }
+
+    private void solicitarPermisoSerial(final PluginCall call, final UsbManager usbManager,
+                                        final UsbSerialDriver driver, final int baud,
+                                        final String b64, final UsbDevice device) {
+        final Context ctx = getContext();
+        BroadcastReceiver receiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context c, Intent intent) {
+                if (!ACTION_USB_PERMISSION.equals(intent.getAction())) return;
+                try { c.unregisterReceiver(this); } catch (Exception ignored) {}
+                if (!intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
+                    call.reject("Permiso de USB (cajón) denegado por el usuario.");
+                    return;
+                }
+                escribirSerial(call, usbManager, driver, baud, b64);
+            }
+        };
+        int flags = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ? PendingIntent.FLAG_MUTABLE : 0;
+        Intent intent = new Intent(ACTION_USB_PERMISSION).setPackage(ctx.getPackageName());
+        PendingIntent pi = PendingIntent.getBroadcast(ctx, 1, intent, flags);
+        IntentFilter filter = new IntentFilter(ACTION_USB_PERMISSION);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ctx.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            ctx.registerReceiver(receiver, filter);
+        }
+        usbManager.requestPermission(device, pi);
+    }
+
+    private void escribirSerial(final PluginCall call, final UsbManager usbManager,
+                                final UsbSerialDriver driver, final int baud, final String b64) {
+        UsbSerialPort port = null;
+        try {
+            UsbDeviceConnection conn = usbManager.openDevice(driver.getDevice());
+            if (conn == null) { call.reject("No se pudo abrir el disparador USB (sin permiso)."); return; }
+            port = driver.getPorts().get(0);
+            port.open(conn);
+            port.setParameters(baud, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE);
+            // Bytes de apertura: los que manden desde JS, o la patada ESC/POS por defecto.
+            byte[] bytes = (b64 != null && !b64.isEmpty())
+                ? Base64.decode(b64, Base64.DEFAULT)
+                : new byte[]{0x1B, 0x70, 0x00, 0x19, (byte) 0xFA};
+            port.write(bytes, 1000);
+            call.resolve(ok("Comando de cajón enviado por USB-serial (" + bytes.length + " bytes)."));
+        } catch (Exception e) {
+            call.reject("No se pudo enviar al disparador USB-serial: " + mensaje(e));
+        } finally {
+            try { if (port != null) port.close(); } catch (Exception ignored) {}
+        }
     }
 
     // -------------------------------------------------------- DESCONECTAR ----

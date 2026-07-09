@@ -10,10 +10,11 @@
 const KEY = 'confetti_printer_cfg';
 
 const DEFAULTS = Object.freeze({
-  modo: 'imagen',     // 'imagen' (default, preserva diseño) | 'texto' (ESC/POS plano)
-  conexion: 'usb',    // 'usb' | 'tcp'
-  ip: '',             // IP de la impresora si conexion === 'tcp'
-  puerto: 9100,       // puerto TCP ESC/POS estándar
+  modo: 'imagen',          // 'imagen' (default, preserva diseño) | 'texto' (ESC/POS plano)
+  conexion: 'usb',         // 'usb' | 'tcp'
+  ip: '',                  // IP de la impresora si conexion === 'tcp'
+  puerto: 9100,            // puerto TCP ESC/POS estándar
+  metodoCajon: 'ninguno',  // 'ninguno' | 'usb_trigger' | 'kick_impresora'
 });
 
 export function getPrinterConfig() {
