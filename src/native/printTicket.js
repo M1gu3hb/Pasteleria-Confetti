@@ -28,7 +28,7 @@ const TICKET_SELECTOR = '[data-thermal-ticket]';
 const FALLBACK_SELECTOR = '.ticket-printable';
 const RASTER_WIDTH = 576; // 80mm imprimible = 576 puntos
 
-export async function imprimirTicketNativo({ title, node: nodoDado } = {}) {
+export async function imprimirTicketNativo({ title, node: nodoDado, anchoImpresora } = {}) {
   if (!Capacitor.isNativePlatform()) return; // doble candado: nunca en navegador
   const cfg = getPrinterConfig();
   try {
@@ -39,7 +39,8 @@ export async function imprimirTicketNativo({ title, node: nodoDado } = {}) {
     if (cfg.modo === 'texto') {
       await imprimirComoTexto(node);
     } else {
-      await imprimirComoImagen(node);
+      // Honra el ancho 58/80 (config.ancho_impresora) igual que el corte térmico.
+      await imprimirComoImagen(node, anchoImpresora);
     }
   } catch (err) {
     // Error VISIBLE (no falla callado). El plugin ya devuelve mensajes claros.
@@ -65,8 +66,14 @@ export async function asegurarConexionImpresora(cfg) {
   }
 }
 
-async function imprimirComoImagen(node) {
-  const pngBase64 = await renderTicketA576(node);
+// 58mm → 384 puntos; cualquier otro (80mm default) → 576. Un solo lugar para que
+// venta/pastel y el corte usen EXACTAMENTE la misma regla de ancho (58/80).
+function anchoRaster(anchoImpresora) {
+  return Number(anchoImpresora) === 58 ? 384 : RASTER_WIDTH;
+}
+
+async function imprimirComoImagen(node, anchoImpresora) {
+  const pngBase64 = await renderTicketA576(node, anchoRaster(anchoImpresora));
   await imprimirImagenRaster(pngBase64);
   await cortar();
 }
@@ -120,8 +127,7 @@ export async function imprimirCorteTermico(node, anchoImpresora) {
   try {
     if (!node) throw new Error('No se encontró el corte para imprimir.');
     await asegurarConexionImpresora(cfg);
-    const anchoDestino = String(anchoImpresora) === '58' ? 384 : RASTER_WIDTH;
-    const png = await renderTicketA576(node, anchoDestino);
+    const png = await renderTicketA576(node, anchoRaster(anchoImpresora));
     await imprimirImagenRaster(png);
     await cortar();
   } catch (err) {

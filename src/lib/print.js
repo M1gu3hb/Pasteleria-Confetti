@@ -222,8 +222,12 @@ export function printDocument({ mode = 'ticket', title = 'Documento', widthMm } 
   // isNativePlatform() = false, así que NUNCA entra aquí y la rama de abajo
   // queda IDÉNTICA a como estaba (el flujo de Abel no cambia).
   if (Capacitor.isNativePlatform()) {
+    // Ancho de papel actual (58/80), sincronizado por ConfigProvider desde
+    // config.ancho_impresora vía setPaperWidth. Respeta también el widthMm de
+    // arriba (botones de prueba). El dispatcher lo usa para el raster (58→384).
+    const anchoImpresora = getPaperWidth();
     import('@/native/printTicket')
-      .then((m) => m.imprimirTicketNativo({ title }))
+      .then((m) => m.imprimirTicketNativo({ title, anchoImpresora }))
       .catch((err) => console.error('[print nativo] no se pudo cargar el dispatcher:', err));
     return;
   }

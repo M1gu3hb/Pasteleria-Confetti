@@ -1,5 +1,11 @@
 # BUGS_PENDING / riesgos conocidos
 
+> **Actualización de auditoría independiente (2026-07-10):** la afirmación histórica siguiente de “SIN bugs de código” queda **superada**. `CAMBIOS_V2/REPORTES/AUDITORIA_INDEPENDIENTE_POS_APK_2026-07-10.md` documenta, sin modificar código ni datos reales, hallazgos críticos de RLS/folios, hallazgos altos de concurrencia de dinero, soporte incompleto 58/80 mm y APK release sin firma. Pendiente de revisión y firma de Miguel; la auditoría no propuso ni aplicó correcciones.
+>
+> **Corrección por fases (2026-07-10):**
+> - **FASE A — 58/80 mm en venta y pastel: RESUELTA en código** (rama `apk/capacitor`, no toca dinero/RLS). Antes, `imprimirTicketNativo` rasterizaba SIEMPRE a 576 px (80 mm) ignorando `config.ancho_impresora`; el corte térmico sí honraba 58/80. Ahora `print.js` pasa `getPaperWidth()` al dispatcher y `printTicket.js` usa un helper único `anchoRaster` (58→384 px, 80→576 px) compartido por venta/pastel y corte. Evidencia: `release/muestras/{venta,pastel}_{58,80}.png` (58 = 384 px exactos, contenido completo sin recorte). Builds verdes (vite + gradlew `assembleRelease`). Navegador byte-por-byte igual. Llega al dispositivo con el deploy de Vercel de la preview (server.url), no requiere APK nuevo.
+> - Fases B (folios atómicos) / C, F, G (concurrencia de dinero) / D (RLS 0042): PREPARAR con evidencia + **firma de Miguel**; una a la vez.
+
 ## APK Android (2026-07-09) — SIN bugs de código; pendientes = pruebas físicas EN SITIO
 El proyecto APK (rama `apk/capacitor`) compila verde (vite + gradlew assembleRelease), APK firmado, navegador intacto, dinero/RLS sin tocar. **No hay bugs de código abiertos.** Lo que falta se valida CON el hardware en la visita (Camino A):
 - **Impresora Easytime 80mm:** confirmar conexión (probar USB; si no, Ethernet + IP). Ajuste posible en sitio: el `class="7"` de `res/xml/device_filter.xml` si la impresora enumera con otra clase/VID-PID.

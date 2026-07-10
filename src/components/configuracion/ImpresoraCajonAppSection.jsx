@@ -70,7 +70,7 @@ export default function ImpresoraCajonAppSection({ config, previewNativo }) {
   };
 
   const probarImpresion = () => correr('impresion', () =>
-    imprimirTicketNativo({ title: 'Prueba de impresión', node: ventaRef.current?.querySelector('.ticket-printable') }));
+    imprimirTicketNativo({ title: 'Prueba de impresión', node: ventaRef.current?.querySelector('.ticket-printable'), anchoImpresora: config?.ancho_impresora }));
   const probarCajon = () => correr('cajon', () => abrirCajon(cfg.metodoCajon));
   const probarCorte = () => correr('corte', () =>
     imprimirCorteTermico(corteRef.current?.querySelector('.corte-termico'), config?.ancho_impresora));
