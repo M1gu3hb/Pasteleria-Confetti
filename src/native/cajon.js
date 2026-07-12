@@ -1,7 +1,7 @@
 import { Capacitor } from '@capacitor/core';
 import { toast } from 'sonner';
 import { abrirCajonPorImpresora, abrirCajonUsbSerial } from '@/native/confettiPrinter';
-import { asegurarConexionImpresora } from '@/native/printTicket';
+import { conImpresora } from '@/native/printTicket';
 import { getPrinterConfig } from '@/native/printerConfig';
 
 /**
@@ -29,9 +29,9 @@ export async function abrirCajon(metodoOverride) {
   const metodo = metodoOverride || cfg.metodoCajon || 'ninguno';
   try {
     if (metodo === 'kick_impresora') {
-      // La patada va por la impresora → asegura primero su conexión.
-      await asegurarConexionImpresora(cfg);
-      await abrirCajonPorImpresora();
+      // La patada va por la impresora. FIX A: conectar → patear → desconectar (mismo ciclo de
+      // vida que la impresión, sin dejar la conexión colgada).
+      await conImpresora(cfg, () => abrirCajonPorImpresora());
     } else if (metodo === 'usb_trigger') {
       await abrirCajonUsbSerial(); // usa la patada ESC/POS por defecto en el nativo
     } else {

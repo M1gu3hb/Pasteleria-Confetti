@@ -14,6 +14,11 @@ const DEFAULTS = Object.freeze({
   conexion: 'usb',         // 'usb' | 'tcp'
   ip: '',                  // IP de la impresora si conexion === 'tcp'
   puerto: 9100,            // puerto TCP ESC/POS estándar
+  // FIX B (selección de impresora USB): la impresora ELEGIDA por el usuario (Config → Detectar).
+  // null = sin elección → el nativo cae a la primera impresora USB (byte-idéntico).
+  usbVendorId: null,       // number | null
+  usbProductId: null,      // number | null
+  usbNombre: '',           // etiqueta para mostrar la elegida en la UI
   metodoCajon: 'ninguno',  // 'ninguno' | 'usb_trigger' | 'kick_impresora'
   formatoCorte: 'pdf',     // 'pdf' (default, PDF carta actual) | 'termico' (ESC/POS)
 });

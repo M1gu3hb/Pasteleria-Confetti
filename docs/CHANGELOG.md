@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## 2026-07-12 — APK: fixes de impresión de Codex (fuga de conexión + selección de impresora) + ancho 58mm al preview [rama `apk/capacitor`]
+> Rama del APK (SEPARADA del blindaje de dinero). NO tocó dinero/RLS/BD ni el NAVEGADOR (byte-idéntico). Deploy = SOLO el preview de la rama (Vercel). Prueba física final = EN SITIO con la Easytime.
+- **FIX A — fuga de conexión (RIESGO ALTO):** antes cada impresión hacía `conectarUSB/TCP` y NUNCA `desconectar`, y el plugin nativo sobrescribía `this.connection` sin cerrar la anterior → se fugaban conexiones (fallas intermitentes tras varias impresiones). **Dos capas:**
+  - **Nativo** (`ConfettiPrinterPlugin.java`): `cerrarConexionActual()` cierra cualquier conexión previa antes de abrir otra; se llama en `abrirUsb`/`conectarTCP`/`desconectar` → nunca se acumulan. *(Toma efecto al regenerar el APK — en sitio.)*
+  - **JS** (`printTicket.js`): `conImpresora(cfg, acción)` = conectar → imprimir → **desconectar (finally)** por operación; lo usan las 3 rutas (imagen raster, corte, cajón kick_impresora) y USB/TCP. *(Vive en el preview: arregla la fuga con el APK ya instalado.)* Requisito Codex: ≥20 impresiones sin fugar; reinicio de impresora → la siguiente reconecta sola.
+- **FIX B — selección de impresora:** USB no tenía selector (usaba `selectFirstConnected`). Nuevo nativo `listarDispositivosUSB()` (marca las de clase impresora), `conectarUSB` honra la elegida (`vendorId/productId`; sin elección → primera conectada, byte-idéntico); config `usbVendorId/usbProductId/usbNombre` (localStorage); UI "Detectar impresoras USB" + picker que persiste la elección y la ruta de impresión la usa. TCP (IP/puerto) ya funcionaba. *(El detectar/elegir USB requiere el APK regenerado; TCP funciona ya.)*
+- **FIX C — ancho 58mm en el preview:** el fix de ancho (`anchoRaster` 58→384 / 80→576) para venta y pastel ya estaba en la rama (commit `753af04`) pero **no se había pusheado** → por eso el preview de Codex no lo tenía. Este push lo despliega.
+- **Robustez (review):** el picker USB ordena/etiqueta las de clase impresora (🖨️) sin ocultar las demás; se deshabilitan TODAS las pruebas mientras una corre (comparten una sola conexión nativa).
+- **Archivos:** `ConfettiPrinterPlugin.java`, `src/native/{printTicket,confettiPrinter,cajon,printerConfig}.js`, `src/components/configuracion/ImpresoraCajonAppSection.jsx`. `vite build` verde.
+- **Certificación EN SITIO (no autocertificado):** la Easytime real — 20 impresiones seguidas sin fuga, reinicio de impresora, corte físico y patada de cajón — solo se valida en la tablet con el APK regenerado.
+
 ## 2026-07-09 — APK Android (Capacitor): impresión ESC/POS nativa + cajón + corte térmico [rama `apk/capacitor`]
 > Proyecto por fases (Camino A). NO tocó dinero/RLS/BD ni el diseño de tickets; NAVEGADOR byte-por-byte igual; SIN deploy a producción. Todo lo nativo detrás de `Capacitor.isNativePlatform()`.
 - **Fase 0** diagnóstico (solo lectura). **Fase 1** cáscara Capacitor 8 que carga la web viva de Vercel (preview de rama); appId `com.mhastral.confettipos`; refuerzos (orientación/keep-awake/back). Commit `46464b5`.

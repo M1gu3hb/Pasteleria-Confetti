@@ -7,12 +7,14 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.hardware.usb.UsbConstants;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
 import android.os.Build;
 import android.util.Base64;
 
+import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -57,13 +59,17 @@ public class ConfettiPrinterPlugin extends Plugin {
     private DeviceConnection connection; // conexión activa (USB o TCP)
 
     // ---------------------------------------------------------------- USB ----
+    // FIX B (selección): conectarUSB honra la impresora ELEGIDA (vendorId/productId de la config
+    // local). Si no se especifica o no está conectada, cae a la primera impresora USB (byte-idéntico).
     @PluginMethod
     public void conectarUSB(final PluginCall call) {
+        final Integer vendorId  = call.getInt("vendorId");
+        final Integer productId = call.getInt("productId");
         io.execute(() -> {
             try {
                 Context ctx = getContext();
                 UsbManager usbManager = (UsbManager) ctx.getSystemService(Context.USB_SERVICE);
-                UsbConnection usb = UsbPrintersConnections.selectFirstConnected(ctx);
+                UsbConnection usb = buscarImpresoraUsb(ctx, usbManager, vendorId, productId);
                 if (usb == null || usbManager == null) {
                     call.reject("No se encontró ninguna impresora USB conectada.");
                     return;
@@ -72,7 +78,7 @@ public class ConfettiPrinterPlugin extends Plugin {
                 if (usbManager.hasPermission(device)) {
                     abrirUsb(call, usb);
                 } else {
-                    solicitarPermisoUsb(call, usbManager, device);
+                    solicitarPermisoUsb(call, usbManager, device, vendorId, productId);
                 }
             } catch (Exception e) {
                 call.reject("Error al conectar por USB: " + mensaje(e));
@@ -80,7 +86,70 @@ public class ConfettiPrinterPlugin extends Plugin {
         });
     }
 
-    private void solicitarPermisoUsb(final PluginCall call, final UsbManager usbManager, final UsbDevice device) {
+    // FIX B: enumera los dispositivos USB conectados para que el usuario ELIJA la impresora en Config.
+    @PluginMethod
+    public void listarDispositivosUSB(final PluginCall call) {
+        io.execute(() -> {
+            try {
+                Context ctx = getContext();
+                UsbManager usbManager = (UsbManager) ctx.getSystemService(Context.USB_SERVICE);
+                JSArray dispositivos = new JSArray();
+                if (usbManager != null) {
+                    for (UsbDevice d : usbManager.getDeviceList().values()) {
+                        JSObject o = new JSObject();
+                        o.put("nombre", nombreDispositivo(d));
+                        o.put("vendorId", d.getVendorId());
+                        o.put("productId", d.getProductId());
+                        o.put("deviceName", d.getDeviceName());
+                        // esImpresora = tiene una interfaz clase PRINTER. No se filtra (algunas ESC/POS
+                        // no se enumeran como printer-class): se marca para que la UI las ordene/etiquete.
+                        o.put("esImpresora", esImpresora(d));
+                        dispositivos.put(o);
+                    }
+                }
+                JSObject res = new JSObject();
+                res.put("dispositivos", dispositivos);
+                call.resolve(res);
+            } catch (Exception e) {
+                call.reject("No se pudieron listar los dispositivos USB: " + mensaje(e));
+            }
+        });
+    }
+
+    // Selecciona la impresora USB elegida (vendorId/productId); si no hay elección o no está
+    // conectada, cae a la primera impresora USB (comportamiento previo — byte-idéntico).
+    private UsbConnection buscarImpresoraUsb(Context ctx, UsbManager usbManager, Integer vendorId, Integer productId) {
+        if (usbManager != null && vendorId != null && productId != null) {
+            for (UsbDevice d : usbManager.getDeviceList().values()) {
+                if (d.getVendorId() == vendorId && d.getProductId() == productId) {
+                    return new UsbConnection(usbManager, d);
+                }
+            }
+        }
+        return UsbPrintersConnections.selectFirstConnected(ctx);
+    }
+
+    private String nombreDispositivo(UsbDevice d) {
+        String n = null;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            try { n = d.getProductName(); } catch (Exception ignored) {}
+        }
+        if (n == null || n.trim().isEmpty()) {
+            n = String.format("USB %04X:%04X", d.getVendorId(), d.getProductId());
+        }
+        return n;
+    }
+
+    // ¿el dispositivo expone una interfaz de clase impresora? (para ordenar/etiquetar en la UI).
+    private boolean esImpresora(UsbDevice d) {
+        for (int i = 0; i < d.getInterfaceCount(); i++) {
+            if (d.getInterface(i).getInterfaceClass() == UsbConstants.USB_CLASS_PRINTER) return true;
+        }
+        return false;
+    }
+
+    private void solicitarPermisoUsb(final PluginCall call, final UsbManager usbManager, final UsbDevice device,
+                                     final Integer vendorId, final Integer productId) {
         final Context ctx = getContext();
         BroadcastReceiver receiver = new BroadcastReceiver() {
             @Override
@@ -89,7 +158,7 @@ public class ConfettiPrinterPlugin extends Plugin {
                 try { c.unregisterReceiver(this); } catch (Exception ignored) {}
                 boolean granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false);
                 if (!granted) { call.reject("Permiso de USB denegado por el usuario."); return; }
-                UsbConnection usb = UsbPrintersConnections.selectFirstConnected(c);
+                UsbConnection usb = buscarImpresoraUsb(c, usbManager, vendorId, productId);
                 if (usb == null) { call.reject("La impresora USB se desconectó."); return; }
                 abrirUsb(call, usb);
             }
@@ -108,6 +177,7 @@ public class ConfettiPrinterPlugin extends Plugin {
 
     private void abrirUsb(final PluginCall call, final UsbConnection usb) {
         try {
+            cerrarConexionActual(); // FIX A: cierra cualquier conexión previa antes de abrir otra (evita fuga)
             usb.connect();
             this.connection = usb;
             call.resolve(ok("Impresora USB conectada."));
@@ -127,6 +197,7 @@ public class ConfettiPrinterPlugin extends Plugin {
         }
         io.execute(() -> {
             try {
+                cerrarConexionActual(); // FIX A: cierra cualquier conexión previa antes de abrir otra (evita fuga)
                 TcpConnection tcp = new TcpConnection(ip.trim(), puerto, 5000); // timeout 5s
                 tcp.connect();
                 this.connection = tcp;
@@ -300,15 +371,22 @@ public class ConfettiPrinterPlugin extends Plugin {
     public void desconectar(final PluginCall call) {
         io.execute(() -> {
             try {
-                if (this.connection != null) {
-                    this.connection.disconnect();
-                    this.connection = null;
-                }
+                cerrarConexionActual();
                 call.resolve(ok("Desconectada."));
             } catch (Exception e) {
                 call.reject("Error al desconectar: " + mensaje(e));
             }
         });
+    }
+
+    // FIX A: cierra y libera la conexión activa (USB/TCP) de forma segura. Idempotente. La llaman
+    // conectarUSB/conectarTCP (antes de abrir otra) y desconectar → nunca se acumulan conexiones.
+    private void cerrarConexionActual() {
+        DeviceConnection old = this.connection;
+        this.connection = null;
+        if (old != null) {
+            try { old.disconnect(); } catch (Exception ignored) {}
+        }
     }
 
     // ------------------------------------------------------------ helpers ----

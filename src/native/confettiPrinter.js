@@ -28,10 +28,24 @@ function exigirNativo() {
   }
 }
 
-/** Conecta la primera impresora USB conectada (permiso USB persistente por manifest). */
-export async function conectarUSB() {
+/**
+ * Conecta la impresora USB ELEGIDA (vendorId/productId de la config local). Si no se pasan (o el
+ * dispositivo no está conectado), el nativo cae a la primera impresora USB (byte-idéntico).
+ * @param {{vendorId?:number, productId?:number}} [device]
+ */
+export async function conectarUSB(device = {}) {
   exigirNativo();
-  return Native.conectarUSB();
+  const { vendorId, productId } = device || {};
+  return Native.conectarUSB({ vendorId, productId });
+}
+
+/**
+ * Lista los dispositivos USB conectados para que el usuario ELIJA la impresora en Config.
+ * @returns {Promise<{dispositivos: Array<{nombre:string, vendorId:number, productId:number, deviceName:string}>}>}
+ */
+export async function listarDispositivosUSB() {
+  exigirNativo();
+  return Native.listarDispositivosUSB();
 }
 
 /** Conecta por red (Ethernet) a `ip`, puerto 9100 por defecto. */

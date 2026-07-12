@@ -6,6 +6,7 @@ import {
   imprimirImagenRaster,
   enviarBytes,
   cortar,
+  desconectar,
 } from '@/native/confettiPrinter';
 import { getPrinterConfig } from '@/native/printerConfig';
 
@@ -35,12 +36,11 @@ export async function imprimirTicketNativo({ title, node: nodoDado, anchoImpreso
     // `node` explícito (botón de prueba en Config) o el ticket del DOM.
     const node = nodoDado || localizarTicket();
     if (!node) throw new Error('No se encontró el ticket en pantalla para imprimir.');
-    await asegurarConexionImpresora(cfg);
     if (cfg.modo === 'texto') {
-      await imprimirComoTexto(node);
+      await imprimirComoTexto(node, cfg);
     } else {
       // Honra el ancho 58/80 (config.ancho_impresora) igual que el corte térmico.
-      await imprimirComoImagen(node, anchoImpresora);
+      await imprimirComoImagen(node, anchoImpresora, cfg);
     }
   } catch (err) {
     // Error VISIBLE (no falla callado). El plugin ya devuelve mensajes claros.
@@ -62,7 +62,30 @@ export async function asegurarConexionImpresora(cfg) {
     if (!cfg.ip) throw new Error('Falta la IP de la impresora (Configuración → Impresora).');
     await conectarTCP(cfg.ip, cfg.puerto || 9100);
   } else {
-    await conectarUSB();
+    // FIX B: usa la impresora USB ELEGIDA (vendorId/productId de la config local); si no hay
+    // elección, el nativo cae a la primera impresora USB (byte-idéntico).
+    await conectarUSB({ vendorId: cfg.usbVendorId, productId: cfg.usbProductId });
+  }
+}
+
+// FIX A (fuga de conexión): desconexión que NUNCA lanza. No debe bloquear el flujo; además el nativo
+// también cierra la conexión previa al reconectar (defensa en dos capas).
+async function desconectarSeguro() {
+  try { await desconectar(); } catch { /* el próximo connect limpia igual en el nativo */ }
+}
+
+/**
+ * FIX A: ejecuta `accion` con la impresora conectada y SIEMPRE la desconecta al terminar (finally).
+ * Patrón conectar → imprimir → desconectar por operación: N impresiones seguidas no acumulan
+ * conexiones, y si la impresora se reinicia, la siguiente operación reconecta sola.
+ * Se exporta para que el cajón (kick por impresora) use el MISMO ciclo de vida.
+ */
+export async function conImpresora(cfg, accion) {
+  await asegurarConexionImpresora(cfg);
+  try {
+    return await accion();
+  } finally {
+    await desconectarSeguro();
   }
 }
 
@@ -72,10 +95,14 @@ function anchoRaster(anchoImpresora) {
   return Number(anchoImpresora) === 58 ? 384 : RASTER_WIDTH;
 }
 
-async function imprimirComoImagen(node, anchoImpresora) {
+async function imprimirComoImagen(node, anchoImpresora, cfg) {
+  // Render FUERA de la conexión (html2canvas es CPU); solo la I/O va dentro de conImpresora
+  // (conectar → imprimir → cortar → desconectar). FIX A: no deja la conexión colgada.
   const pngBase64 = await renderTicketA576(node, anchoRaster(anchoImpresora));
-  await imprimirImagenRaster(pngBase64);
-  await cortar();
+  await conImpresora(cfg, async () => {
+    await imprimirImagenRaster(pngBase64);
+    await cortar();
+  });
 }
 
 /**
@@ -126,10 +153,11 @@ export async function imprimirCorteTermico(node, anchoImpresora) {
   const cfg = getPrinterConfig();
   try {
     if (!node) throw new Error('No se encontró el corte para imprimir.');
-    await asegurarConexionImpresora(cfg);
     const png = await renderTicketA576(node, anchoRaster(anchoImpresora));
-    await imprimirImagenRaster(png);
-    await cortar();
+    await conImpresora(cfg, async () => {
+      await imprimirImagenRaster(png);
+      await cortar();
+    });
   } catch (err) {
     const msg = (err && err.message) ? err.message : 'No se pudo imprimir el corte.';
     toast.error('Corte térmico: ' + msg);
@@ -142,13 +170,16 @@ export async function imprimirCorteTermico(node, anchoImpresora) {
  * texto visible del ticket y lo manda con un reset + corte. El default es
  * IMAGEN; esto es solo la opción seleccionable (la UI llega en la Fase 6).
  */
-async function imprimirComoTexto(node) {
+async function imprimirComoTexto(node, cfg) {
   const texto = (node.innerText || node.textContent || '')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
   const enc = new TextEncoder();
   const init = [0x1B, 0x40]; // ESC @ (reset)
   const cuerpo = Array.from(enc.encode(texto + '\n\n\n'));
-  await enviarBytes(new Uint8Array([...init, ...cuerpo]));
-  await cortar();
+  // FIX A: conectar → enviar → cortar → desconectar (no deja la conexión colgada).
+  await conImpresora(cfg, async () => {
+    await enviarBytes(new Uint8Array([...init, ...cuerpo]));
+    await cortar();
+  });
 }

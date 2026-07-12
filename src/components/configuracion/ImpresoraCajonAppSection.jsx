@@ -6,6 +6,7 @@ import { Printer, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { getPrinterConfig, setPrinterConfig } from '@/native/printerConfig';
 import { imprimirTicketNativo, imprimirCorteTermico } from '@/native/printTicket';
+import { listarDispositivosUSB } from '@/native/confettiPrinter';
 import { abrirCajon } from '@/native/cajon';
 import PreCuentaTicket from '@/components/tickets/PreCuentaTicket';
 import CorteTicketTermico from '@/components/tickets/CorteTicketTermico';
@@ -51,10 +52,30 @@ export default function ImpresoraCajonAppSection({ config, previewNativo }) {
   const [cfg, setCfg] = useState(() => getPrinterConfig());
   const [probando, setProbando] = useState(null);
   const [res, setRes] = useState({});
+  // FIX B (selección de impresora USB): dispositivos detectados + estado del botón "Detectar".
+  const [dispositivosUSB, setDispositivosUSB] = useState([]);
+  const [detectandoUSB, setDetectandoUSB] = useState(false);
+  const [usbErr, setUsbErr] = useState(null);
   const ventaRef = useRef(null);
   const corteRef = useRef(null);
 
   const actualizar = (patch) => setCfg(setPrinterConfig(patch));
+
+  // FIX B: enumera las impresoras USB conectadas para elegir una (requiere el APK actualizado).
+  const detectarUSB = async () => {
+    setDetectandoUSB(true);
+    setUsbErr(null);
+    try {
+      const r = await listarDispositivosUSB();
+      const lista = Array.isArray(r?.dispositivos) ? r.dispositivos : [];
+      setDispositivosUSB(lista);
+      if (lista.length === 0) setUsbErr('No se detectaron dispositivos USB. Conecta la impresora y reintenta.');
+    } catch (e) {
+      setUsbErr((e && e.message) || 'No se pudo detectar (actualiza la app a la última versión).');
+    } finally {
+      setDetectandoUSB(false);
+    }
+  };
 
   const correr = async (key, fn) => {
     setProbando(key);
@@ -104,21 +125,75 @@ export default function ImpresoraCajonAppSection({ config, previewNativo }) {
         </div>
       )}
 
+      {/* FIX B: elegir la impresora USB (por si hay varias). "Detectar" lista las conectadas; la
+          elegida se persiste (usbVendorId/productId) y la usa la ruta de impresión. Sin elección
+          → primera conectada (byte-idéntico). "Detectar" requiere el APK actualizado. */}
+      {cfg.conexion === 'usb' && (
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" className="h-10" onClick={detectarUSB} disabled={!nativo || detectandoUSB}>
+              {detectandoUSB ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Printer className="w-4 h-4 mr-1" />}
+              Detectar impresoras USB
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              {cfg.usbNombre ? <>Elegida: <strong>{cfg.usbNombre}</strong></> : 'Sin elegir (usa la primera conectada)'}
+            </span>
+            {cfg.usbVendorId != null && (
+              <button type="button" disabled={!nativo}
+                onClick={() => actualizar({ usbVendorId: null, usbProductId: null, usbNombre: '' })}
+                className="text-xs text-muted-foreground underline hover:text-foreground">
+                Quitar elección
+              </button>
+            )}
+          </div>
+          {dispositivosUSB.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {/* Las que exponen interfaz de impresora se muestran primero y con 🖨️ (las demás
+                  siguen elegibles: algunas ESC/POS no se enumeran como printer-class). */}
+              {[...dispositivosUSB]
+                .sort((a, b) => (b.esImpresora ? 1 : 0) - (a.esImpresora ? 1 : 0))
+                .map((d) => {
+                  const elegido = cfg.usbVendorId === d.vendorId && cfg.usbProductId === d.productId;
+                  return (
+                    <button
+                      key={`${d.vendorId}:${d.productId}:${d.deviceName}`}
+                      type="button"
+                      disabled={!nativo}
+                      onClick={() => actualizar({ usbVendorId: d.vendorId, usbProductId: d.productId, usbNombre: d.nombre })}
+                      className={`min-w-[140px] h-11 px-3 rounded-xl border font-semibold text-sm transition ${
+                        elegido
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-muted text-muted-foreground hover:border-primary/40'
+                      }`}
+                    >
+                      {d.nombre}
+                      {d.esImpresora && <span className="ml-1 text-[11px] opacity-70" title="Interfaz de impresora">🖨️</span>}
+                    </button>
+                  );
+                })}
+            </div>
+          )}
+          {usbErr && <p className="text-xs text-red-600">{usbErr}</p>}
+        </div>
+      )}
+
       <Seg label="Modo de impresión" value={cfg.modo} disabled={!nativo}
         onChange={(v) => actualizar({ modo: v })}
         options={[{ v: 'imagen', t: 'Imagen (recomendado)' }, { v: 'texto', t: 'Texto ESC/POS' }]} />
-      <TestBtn label="Probar impresión" onClick={probarImpresion} running={probando === 'impresion'} res={res.impresion} disabled={!nativo} />
+      {/* Deshabilita TODAS las pruebas mientras UNA corre: comparten una sola conexión nativa
+          (this.connection); solaparlas la enredaría. */}
+      <TestBtn label="Probar impresión" onClick={probarImpresion} running={probando === 'impresion'} res={res.impresion} disabled={!nativo || probando !== null} />
 
       <Seg label="Cajón de dinero" value={cfg.metodoCajon} disabled={!nativo}
         onChange={(v) => actualizar({ metodoCajon: v })}
         options={[{ v: 'ninguno', t: 'Ninguno' }, { v: 'usb_trigger', t: 'Disparador USB' }, { v: 'kick_impresora', t: 'Kick impresora' }]} />
-      <TestBtn label="Probar cajón" onClick={probarCajon} running={probando === 'cajon'} res={res.cajon} disabled={!nativo} />
+      <TestBtn label="Probar cajón" onClick={probarCajon} running={probando === 'cajon'} res={res.cajon} disabled={!nativo || probando !== null} />
 
       <Seg label="Formato del corte de caja" value={cfg.formatoCorte} disabled={!nativo}
         onChange={(v) => actualizar({ formatoCorte: v })}
         options={[{ v: 'pdf', t: 'PDF (carta)' }, { v: 'termico', t: 'Térmico' }]} />
       <TestBtn label="Probar corte" onClick={probarCorte} running={probando === 'corte'} res={res.corte}
-        disabled={!nativo || cfg.formatoCorte !== 'termico'}
+        disabled={!nativo || probando !== null || cfg.formatoCorte !== 'termico'}
         nota={cfg.formatoCorte !== 'termico' ? 'Cambia el formato a Térmico para probar.' : null} />
 
       {/* Tickets ocultos SOLO en el APK, para que las pruebas tengan qué imprimir. */}
