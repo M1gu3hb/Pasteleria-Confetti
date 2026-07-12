@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 2026-07-12 (bis) — APK: fallback USB no-silencioso + RECOMPILACIÓN del release firmado [rama `apk/capacitor`]
+> Cierra el bloqueo de Codex: el `release/ConfettiPOS.apk` del 9-jul era ANTERIOR a los fixes (su DEX no tenía los métodos nuevos). Se recompiló desde `apk/capacitor@760e73e`.
+- **Hallazgo MEDIO (Codex) — cerrado:** si se eligió una impresora USB y YA NO está, antes se caía en SILENCIO a otra. Ahora **NO es silencioso**: nativo `dispositivoElegido()` devuelve null si la elegida no está (no cae a otra); `conectarUSB` resuelve con `fallback=true` + mensaje; JS `asegurarConexionImpresora` muestra un **toast visible** ("la elegida no está; se usó la conectada — revisa la selección"). Sin elección previa → primera conectada (byte-idéntico). Commit `760e73e`; `vite build` verde; JS desplegado al preview.
+- **RECOMPILACIÓN del APK release:** `npx cap sync android` (dist con los fixes) + `gradlew assembleRelease` (JDK 21, SDK local) → **BUILD SUCCESSFUL (1m 46s)** → `app-release-unsigned.apk` (4.31 MB). `zipalign -p 4` OK y verificado.
+- **Verificación del DEX nuevo:** `classes.dex` **SÍ contiene** `listarDispositivosUSB` (2), `cerrarConexionActual` (1), `dispositivoElegido` (2), `esImpresora` (1). (`conImpresora` es JS → llega por el preview, no va en el DEX.)
+- **server.url del APK** (baked en `assets/capacitor.config.json`) = `https://pasteleria-confetti-git-apk-capacitor-mh-astral-systems.vercel.app` (alias de la rama, con los fixes JS). appId `com.mhastral.confettipos`.
+- **Firma — la hace Miguel** (regla dura: la contraseña del keystore NO está en el config de gradle → no la maneja esta sesión). Entregado **ALINEADO SIN FIRMAR** en `release/ConfettiPOS-nuevo-alineado-SIN-FIRMAR.apk` (SHA-256 `56b74b08d6c456d50d5fbc4cfd83e93b5c0bc56f4969f36629819f609c3961a5`). Viejo respaldado en `release/ConfettiPOS_9jul_backup.apk`. Comandos exactos de firma + verify v2/v3 en el reporte de la sesión. El hash FINAL (firmado) lo registra Miguel tras firmar.
+- **Certificación EN SITIO (no autocertificado):** 20 impresiones seguidas sin fuga, reinicio de impresora → reconexión, corte físico y patada de cajón — solo en la tablet con el APK firmado instalado.
+
 ## 2026-07-12 — APK: fixes de impresión de Codex (fuga de conexión + selección de impresora) + ancho 58mm al preview [rama `apk/capacitor`]
 > Rama del APK (SEPARADA del blindaje de dinero). NO tocó dinero/RLS/BD ni el NAVEGADOR (byte-idéntico). Deploy = SOLO el preview de la rama (Vercel). Prueba física final = EN SITIO con la Easytime.
 - **FIX A — fuga de conexión (RIESGO ALTO):** antes cada impresión hacía `conectarUSB/TCP` y NUNCA `desconectar`, y el plugin nativo sobrescribía `this.connection` sin cerrar la anterior → se fugaban conexiones (fallas intermitentes tras varias impresiones). **Dos capas:**
