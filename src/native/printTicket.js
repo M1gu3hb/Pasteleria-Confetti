@@ -64,7 +64,12 @@ export async function asegurarConexionImpresora(cfg) {
   } else {
     // FIX B: usa la impresora USB ELEGIDA (vendorId/productId de la config local); si no hay
     // elección, el nativo cae a la primera impresora USB (byte-idéntico).
-    await conectarUSB({ vendorId: cfg.usbVendorId, productId: cfg.usbProductId });
+    const r = await conectarUSB({ vendorId: cfg.usbVendorId, productId: cfg.usbProductId });
+    // Hallazgo medio (Codex): si se eligió una impresora y YA NO está, el nativo usa la conectada
+    // pero DEVUELVE fallback=true → aquí se avisa VISIBLEMENTE (no silencioso) para que se re-elija.
+    if (r && r.fallback) {
+      toast.warning('Impresora: la elegida no está conectada; se usó la conectada. Revisa la selección en Configuración → Impresora.');
+    }
   }
 }
 
