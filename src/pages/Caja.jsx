@@ -10,9 +10,9 @@ import { toast } from 'sonner';
 import {
   Landmark, Search, DollarSign, CreditCard, Banknote, Smartphone,
   Receipt, TrendingUp, CheckCircle2, Layers, Scissors, Printer, FileText, ShoppingCart, Trash2,
-  DoorOpen, Lock, AlertTriangle, ShoppingBag, Pencil, Cake, RefreshCw, Loader2
+  DoorOpen, Lock, AlertTriangle, ShoppingBag, Pencil, Cake, RefreshCw, Loader2, Coins
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import PreCuentaTicket from '@/components/tickets/PreCuentaTicket';
 import CorteViewerDialog from '@/components/cortes/CorteViewerDialog';
 import CorteAutoDownloader from '@/components/cortes/CorteAutoDownloader';
@@ -37,6 +37,7 @@ import CorteAtrasadoBanner from '@/components/caja/CorteAtrasadoBanner';
 import BuscarVentaFolioCard from '@/components/caja/BuscarVentaFolioCard';
 import CancelarVentaDialog from '@/components/ventas/CancelarVentaDialog';
 import CancelarPedidoDialog from '@/components/pedidos/CancelarPedidoDialog';
+import VentaLibreDialog from '@/components/pos/VentaLibreDialog';
 import { registrarDevolucionAnticipo } from '@/utils/devolucionAnticipo';
 import { obtenerEntregasDelCorte } from '@/utils/entregasCorte';
 import PedidoPastelDetalleDialog from '@/components/pedidos/PedidoPastelDetalleDialog';
@@ -81,6 +82,9 @@ export default function Caja() {
   const [showTicketFinal, setShowTicketFinal] = useState(false);
   // FASE 2: feedback de impresión del ticket final (spinner + botón deshabilitado).
   const [imprimiendoTicketFinal, setImprimiendoTicketFinal] = useState(false);
+  // FASE 3: venta libre (Entry B) — navega a /pos precargando el ítem de monto libre.
+  const [showVentaLibreCaja, setShowVentaLibreCaja] = useState(false);
+  const navigate = useNavigate();
   const [ticketFinalData, setTicketFinalData] = useState(null);
   const [codigoBusqueda, setCodigoBusqueda] = useState('');
   const [ventaSeleccionada, setVentaSeleccionada] = useState(null);
@@ -1546,6 +1550,24 @@ export default function Caja() {
               </div>
             </button>
           </Link>
+          {/* FASE 3 — Venta libre (Entry B, modo empleado): navega a /pos con el
+              ítem precargado y el cajero cobra por el flujo normal (sin checkout
+              duplicado en Caja). */}
+          <button
+            onClick={() => setShowVentaLibreCaja(true)}
+            className="w-full p-5 rounded-2xl border-2 border-border bg-card text-left transition-all hover:bg-muted active:scale-[0.99]"
+            style={{ boxShadow: '0 2px 0 rgba(255,255,255,0.9) inset, 0 6px 18px rgba(0,0,0,0.06)' }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Coins className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <p className="font-heading font-black text-xl leading-tight">Venta libre</p>
+                <p className="text-xs text-muted-foreground">Cobra un monto sin producto (Mercado Pago, extras…)</p>
+              </div>
+            </div>
+          </button>
           <button
             onClick={intentarAbrirCierreDiario}
             disabled={verificandoMesas}
@@ -1564,6 +1586,18 @@ export default function Caja() {
           </button>
         </div>
       )}
+
+      {/* FASE 3 — Venta libre (Entry B): captura monto+nombre y navega a /pos con
+          el ítem precargado; el cobro va por el flujo COMPLETO de POS. */}
+      <VentaLibreDialog
+        open={showVentaLibreCaja}
+        onClose={() => setShowVentaLibreCaja(false)}
+        confirmLabel="Cobrar"
+        onConfirm={(item) => {
+          setShowVentaLibreCaja(false);
+          navigate('/pos', { state: { ventaLibre: item } });
+        }}
+      />
 
       {hayCaja && cajaAbierta && (
         <div className="px-4 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-sm text-emerald-700 flex items-center gap-2 flex-wrap">

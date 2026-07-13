@@ -2,6 +2,7 @@ import React from 'react';
 import { formatCurrency } from '@/utils/financialUtils';
 import { getVentaTotal } from '@/utils/ventaTotales';
 import { formatearCantidadVariable } from '@/utils/tipoVentaUtils';
+import { nombreLineaTicket } from '@/utils/nombreLineaVenta';
 import { desgloseIvaDesdeConfig } from '@/utils/ivaUtils';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -145,7 +146,7 @@ export default function PreCuentaTicket({ venta, detalles, mesa, config, codigo,
             <div key={i} style={{ marginBottom: '3px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '4px' }}>
                 <span style={{ fontWeight: 'bold', flex: 1, wordBreak: 'break-word' }}>
-                  {prefijo} {d?.producto_nombre || ''}
+                  {prefijo} {nombreLineaTicket(d)}
                 </span>
                 <span style={{ fontWeight: 'bold', whiteSpace: 'nowrap' }}>{formatCurrency(d?.subtotal)}</span>
               </div>

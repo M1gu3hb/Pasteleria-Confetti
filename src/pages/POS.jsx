@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePOSAuth } from '@/lib/POSAuthContext';
@@ -12,13 +12,14 @@ import PaymentModal from '@/components/pos/PaymentModal';
 import PreCuentaTicket from '@/components/tickets/PreCuentaTicket';
 import SafeBoundary from '@/components/common/SafeBoundary';
 import CantidadVariableDialog from '@/components/mesero/CantidadVariableDialog';
+import VentaLibreDialog from '@/components/pos/VentaLibreDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Search, ShoppingCart, AlertTriangle, DoorOpen, Printer, Loader2 } from 'lucide-react';
+import { Search, ShoppingCart, AlertTriangle, DoorOpen, Printer, Loader2, Coins } from 'lucide-react';
 import { useCajaAbierta } from '@/lib/useCajaAbierta';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { printDocument } from '@/lib/print';
 import { tipsEnabled, getPorcentajesSugeridos } from '@/utils/tipsUtils';
 import {
@@ -47,6 +48,27 @@ export default function POS() {
     propina_monto: 0, propina_porcentaje: 0, propina_tipo: 'sin_propina', propina_origen: 'tradicional',
   });
   
+  // FASE 3 — Venta libre (monto libre sin producto de catálogo).
+  // Entry A: dialog dentro de POS (push al carrito). Entry B: Caja navega a /pos
+  // con location.state.ventaLibre y POS lo siembra al montar. Ambas reusan el
+  // flujo COMPLETO: carrito → "Cobrar" → PaymentModal → handleCheckout (sin
+  // checkout duplicado, sin tocar la matemática de dinero).
+  const [showVentaLibre, setShowVentaLibre] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const ventaLibreSembrada = useRef(false);
+
+  useEffect(() => {
+    if (ventaLibreSembrada.current) return;
+    const vl = location.state?.ventaLibre;
+    if (!vl) return;
+    ventaLibreSembrada.current = true;
+    // Sembrar la venta libre en el carrito y limpiar el state (evita re-sembrar
+    // al refrescar/volver). El cajero cobra con el botón normal "Cobrar".
+    setCart((prev) => [...(Array.isArray(prev) ? prev : []), vl]);
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.state, location.pathname, navigate]);
+
   const { posUser } = usePOSAuth();
   const { sucursalEfectiva } = useTerminal();
   const { config, paquete_modo } = useConfig();
@@ -640,6 +662,14 @@ export default function POS() {
             <Input placeholder="Buscar producto..." value={search} onChange={e => setSearch(e.target.value)}
               className="pl-10 h-10" />
           </div>
+          {/* FASE 3 — Venta libre: monto sin producto de catálogo (se agrega al carrito). */}
+          <Button
+            variant="outline"
+            onClick={() => setShowVentaLibre(true)}
+            className="w-full h-10 gap-2 border-dashed transition-transform active:scale-95"
+          >
+            <Coins className="w-4 h-4" /> Venta libre (monto)
+          </Button>
           <div className="flex gap-2 overflow-x-auto pb-1">
             <Button variant={activeCategory === 'all' ? 'default' : 'outline'} size="sm"
               onClick={() => setActiveCategory('all')} className="shrink-0">
@@ -710,6 +740,18 @@ export default function POS() {
         producto={productoVariable}
         onClose={() => setProductoVariable(null)}
         onConfirm={handleConfirmVariable}
+      />
+
+      {/* FASE 3 — Venta libre (Entry A): agrega el monto al carrito; el cobro va
+          por el flujo normal (Cobrar → PaymentModal → handleCheckout). */}
+      <VentaLibreDialog
+        open={showVentaLibre}
+        onClose={() => setShowVentaLibre(false)}
+        onConfirm={(item) => {
+          setCart((prev) => [...(Array.isArray(prev) ? prev : []), item]);
+          setShowVentaLibre(false);
+          toast.success(`Venta libre agregada: ${formatCurrency(item.precio_venta)}`);
+        }}
       />
 
       <PaymentModal
