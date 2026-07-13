@@ -71,11 +71,15 @@ export default function ImpresoraTermicaSection({ ancho = '58', onChangeAncho, c
   useEffect(() => {
     if (!prueba) return;
     const tPrint = setTimeout(() => {
+      // FASE 2: printDocument ahora DEVUELVE una promesa y la rama nativa propaga
+      // el error (imprimirTicketNativo ya muestra el toast). Este botón de PRUEBA
+      // es fire-and-forget, así que un `.catch` no-op evita una "unhandled promise
+      // rejection" en el APK si la impresora falla (el usuario ya vio el toast).
       printDocument({
         mode: 'thermal',
         title: prueba === 'venta' ? 'Prueba de venta' : 'Prueba de pastel',
         widthMm: anchoActual === '80' ? 80 : 58,
-      });
+      }).catch(() => { /* el helper ya avisó con un toast */ });
     }, 180);
     const tReset = setTimeout(() => setPrueba(null), 2600);
     return () => { clearTimeout(tPrint); clearTimeout(tReset); };

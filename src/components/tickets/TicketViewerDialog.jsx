@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Printer, X } from 'lucide-react';
+import { Printer, X, Loader2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useConfig } from '@/lib/ConfigContext';
 import { printDocument } from '@/lib/print';
@@ -16,6 +16,8 @@ export default function TicketViewerDialog({ venta, open, onClose }) {
   const [detalles, setDetalles] = useState([]);
   const [mesa, setMesa] = useState(null);
   const [loading, setLoading] = useState(false);
+  // FASE 2: feedback de impresión (spinner + botón deshabilitado mientras imprime).
+  const [imprimiendo, setImprimiendo] = useState(false);
 
   useEffect(() => {
     if (!open || !venta?.id) return;
@@ -36,8 +38,18 @@ export default function TicketViewerDialog({ venta, open, onClose }) {
     return () => { cancelled = true; };
   }, [open, venta]);
 
-  const handlePrint = () => {
-    printDocument({ mode: 'thermal', title: `Ticket-${venta?.folio || ''}` });
+  const handlePrint = async () => {
+    if (imprimiendo) return; // evita doble impresión por doble clic
+    setImprimiendo(true);
+    try {
+      // FASE 2: `await` cubre todo el tiempo real de impresión (el helper devuelve
+      // la promesa nativa). Si falla, el helper ya avisó con un toast.
+      await printDocument({ mode: 'thermal', title: `Ticket-${venta?.folio || ''}` });
+    } catch (err) {
+      console.error('[TicketViewer] imprimir:', err);
+    } finally {
+      setImprimiendo(false);
+    }
   };
 
   return (
@@ -46,8 +58,16 @@ export default function TicketViewerDialog({ venta, open, onClose }) {
         <DialogHeader className="no-print px-5 pt-4 pb-3 border-b sticky top-0 bg-white z-10 flex-row items-center justify-between">
           <DialogTitle className="font-heading">Ticket · {venta?.folio}</DialogTitle>
           <div className="flex gap-2">
-            <Button size="sm" onClick={handlePrint}>
-              <Printer className="w-4 h-4 mr-1" /> Imprimir
+            <Button
+              size="sm"
+              onClick={handlePrint}
+              disabled={imprimiendo}
+              aria-busy={imprimiendo}
+              className="transition-transform active:scale-95"
+            >
+              {imprimiendo
+                ? (<><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Imprimiendo…</>)
+                : (<><Printer className="w-4 h-4 mr-1" /> Imprimir</>)}
             </Button>
             <Button size="sm" variant="outline" onClick={onClose}>
               <X className="w-4 h-4" />

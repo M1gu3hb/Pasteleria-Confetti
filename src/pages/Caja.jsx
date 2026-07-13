@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import {
   Landmark, Search, DollarSign, CreditCard, Banknote, Smartphone,
   Receipt, TrendingUp, CheckCircle2, Layers, Scissors, Printer, FileText, ShoppingCart, Trash2,
-  DoorOpen, Lock, AlertTriangle, ShoppingBag, Pencil, Cake, RefreshCw
+  DoorOpen, Lock, AlertTriangle, ShoppingBag, Pencil, Cake, RefreshCw, Loader2
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import PreCuentaTicket from '@/components/tickets/PreCuentaTicket';
@@ -79,6 +79,8 @@ export default function Caja() {
   // En Esencial y Operativo no hay flujo de mesero/cocina ⇒ no hay cobros pendientes
   const isCajaDirecta = paquete_modo === 'esencial' || paquete_modo === 'operativo';
   const [showTicketFinal, setShowTicketFinal] = useState(false);
+  // FASE 2: feedback de impresión del ticket final (spinner + botón deshabilitado).
+  const [imprimiendoTicketFinal, setImprimiendoTicketFinal] = useState(false);
   const [ticketFinalData, setTicketFinalData] = useState(null);
   const [codigoBusqueda, setCodigoBusqueda] = useState('');
   const [ventaSeleccionada, setVentaSeleccionada] = useState(null);
@@ -2127,16 +2129,26 @@ export default function Caja() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowTicketFinal(false)}>Cerrar</Button>
             <Button
-              onClick={() => {
+              onClick={async () => {
+                if (imprimiendoTicketFinal) return; // evita doble impresión por doble clic
+                setImprimiendoTicketFinal(true);
                 try {
-                  printDocument({ mode: 'thermal', title: `Ticket-${ticketFinalData?.venta?.folio || ''}` });
+                  // FASE 2: `await` cubre todo el tiempo real de impresión (el helper
+                  // devuelve la promesa nativa). Si falla, el helper ya avisó con toast.
+                  await printDocument({ mode: 'thermal', title: `Ticket-${ticketFinalData?.venta?.folio || ''}` });
                 } catch (err) {
                   console.error('[Caja] imprimir ticket:', err);
-                  toast.error('No se pudo iniciar la impresión');
+                } finally {
+                  setImprimiendoTicketFinal(false);
                 }
               }}
+              disabled={imprimiendoTicketFinal}
+              aria-busy={imprimiendoTicketFinal}
+              className="transition-transform active:scale-95"
             >
-              <Printer className="w-4 h-4 mr-1" />Imprimir
+              {imprimiendoTicketFinal
+                ? (<><Loader2 className="w-4 h-4 mr-1 animate-spin" />Imprimiendo…</>)
+                : (<><Printer className="w-4 h-4 mr-1" />Imprimir</>)}
             </Button>
           </DialogFooter>
         </DialogContent>

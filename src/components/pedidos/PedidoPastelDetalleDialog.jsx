@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { CheckCircle2, PackageCheck, XCircle, Pencil, Printer, MessageCircle, Banknote, Mail, ImageIcon, StickyNote, Mic, User } from 'lucide-react';
+import { CheckCircle2, PackageCheck, XCircle, Pencil, Printer, MessageCircle, Banknote, Mail, ImageIcon, StickyNote, Mic, User, Loader2 } from 'lucide-react';
 import { ESTADOS_PEDIDO, buildWhatsAppLink, buildMailtoLink } from '@/utils/pedidoPastelUtils';
 import TicketPastelConfetti from './TicketPastelConfetti';
 import { useConfig } from '@/lib/ConfigContext';
@@ -116,6 +116,8 @@ export default function PedidoPastelDetalleDialog({ pedido, open, onClose }) {
   const esPastelero = adminRole === 'pastelero';
   // FASE 4 — aviso antes de marcar "Entregado" (sale de la lista de pendientes).
   const [confirmarEntrega, setConfirmarEntrega] = useState(false);
+  // FASE 2: estado de impresión para dar feedback (spinner) mientras imprime.
+  const [imprimiendo, setImprimiendo] = useState(false);
 
   if (!pedido) return null;
   const est = ESTADOS_PEDIDO[pedido.estado] || ESTADOS_PEDIDO.pendiente;
@@ -175,16 +177,23 @@ export default function PedidoPastelDetalleDialog({ pedido, open, onClose }) {
     }
   };
 
-  const imprimir = () => {
+  const imprimir = async () => {
+    if (imprimiendo) return; // evita doble impresión por doble clic
+    setImprimiendo(true);
     try {
       // Térmico 58/80mm vía helper (iframe + @page). Imprime SOLO el
       // TicketPastelConfetti (.ticket-printable) renderizado abajo. Sirve igual
       // para pastel personalizado y para pedido de catálogo web (mismo diálogo).
       // En iPad esto abre el diálogo AirPrint de iOS; en Android su framework/RawBT.
-      printDocument({ mode: 'thermal', title: `Pedido ${pedido.folio || ''}`.trim() });
+      // FASE 2: `await` cubre TODO el tiempo real de impresión (en el APK, hasta
+      // que el plugin ESC/POS termina imagen + corte); el spinner no "miente".
+      await printDocument({ mode: 'thermal', title: `Pedido ${pedido.folio || ''}`.trim() });
     } catch (err) {
+      // El helper de impresión (nativo) ya muestra el toast del error y re-lanza.
+      // Aquí solo dejamos rastro y restauramos el botón en el `finally`.
       console.error('[PedidoPastel] imprimir:', err);
-      toast.error('No se pudo iniciar la impresión');
+    } finally {
+      setImprimiendo(false);
     }
   };
 
@@ -329,8 +338,16 @@ export default function PedidoPastelDetalleDialog({ pedido, open, onClose }) {
               </a>
             </Button>
           )}
-          <Button variant="outline" className="h-11" onClick={imprimir}>
-            <Printer className="w-4 h-4 mr-1.5" />Imprimir
+          <Button
+            variant="outline"
+            className="h-11 transition-transform active:scale-95"
+            onClick={imprimir}
+            disabled={imprimiendo}
+            aria-busy={imprimiendo}
+          >
+            {imprimiendo
+              ? (<><Loader2 className="w-4 h-4 mr-1.5 animate-spin" />Imprimiendo…</>)
+              : (<><Printer className="w-4 h-4 mr-1.5" />Imprimir</>)}
           </Button>
         </div>
         {/* Historial de abonos — Fase 4 */}

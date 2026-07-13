@@ -115,37 +115,45 @@ function waitImages(doc) {
   });
 }
 
+// FASE 2 (feedback de impresión): devuelve una PROMESA que se resuelve cuando el
+// print del iframe ya se disparó (o cuando no hay nada que imprimir), y rechaza si
+// preparar el iframe o `win.print()` falla. Así el spinner del botón refleja el
+// estado real. La lógica de render del navegador queda IDÉNTICA (solo se envuelve
+// en la promesa): mismo iframe offscreen, mismo CSS, mismo resultado impreso.
 function printTicketViaIframe(title) {
-  // 1) Localizar el ticket en el DOM. Si no hay nada, abortar limpio.
-  let nodes = document.querySelectorAll(TICKET_SELECTOR);
-  if (nodes.length === 0) nodes = document.querySelectorAll(FALLBACK_SELECTOR);
-  const source = nodes.length > 0 ? nodes[nodes.length - 1] : null;
-  if (!source) {
-    console.warn('[print] No se encontró contenido imprimible.');
-    return;
-  }
+  return new Promise((resolve, reject) => {
+    // 1) Localizar el ticket en el DOM. Si no hay nada, resolver limpio (nada que
+    //    imprimir no es un error).
+    let nodes = document.querySelectorAll(TICKET_SELECTOR);
+    if (nodes.length === 0) nodes = document.querySelectorAll(FALLBACK_SELECTOR);
+    const source = nodes.length > 0 ? nodes[nodes.length - 1] : null;
+    if (!source) {
+      console.warn('[print] No se encontró contenido imprimible.');
+      resolve();
+      return;
+    }
 
-  // 2) Iframe OFFSCREEN VISIBLE — con tamaño real para que Chrome Android
-  //    renderice correctamente. NO width:0/height:0/visibility:hidden.
-  const iframe = document.createElement('iframe');
-  iframe.setAttribute('aria-hidden', 'true');
-  iframe.style.position = 'fixed';
-  iframe.style.left = '-10000px';
-  iframe.style.top = '0';
-  iframe.style.width = `${PAPER_WIDTH_MM}mm`;
-  iframe.style.minHeight = '100mm';
-  iframe.style.border = '0';
-  iframe.style.visibility = 'visible';
-  iframe.style.background = 'white';
-  document.body.appendChild(iframe);
+    // 2) Iframe OFFSCREEN VISIBLE — con tamaño real para que Chrome Android
+    //    renderice correctamente. NO width:0/height:0/visibility:hidden.
+    const iframe = document.createElement('iframe');
+    iframe.setAttribute('aria-hidden', 'true');
+    iframe.style.position = 'fixed';
+    iframe.style.left = '-10000px';
+    iframe.style.top = '0';
+    iframe.style.width = `${PAPER_WIDTH_MM}mm`;
+    iframe.style.minHeight = '100mm';
+    iframe.style.border = '0';
+    iframe.style.visibility = 'visible';
+    iframe.style.background = 'white';
+    document.body.appendChild(iframe);
 
-  const cleanup = () => {
-    try { document.body.removeChild(iframe); } catch (e) { /* ya removido */ }
-  };
+    const cleanup = () => {
+      try { document.body.removeChild(iframe); } catch (e) { /* ya removido */ }
+    };
 
-  // 3) HTML completo del ticket dentro del iframe (solo el ticket, no el POS)
-  const safeTitle = String(title || 'Ticket').replace(/[<>]/g, '');
-  const html = `<!DOCTYPE html>
+    // 3) HTML completo del ticket dentro del iframe (solo el ticket, no el POS)
+    const safeTitle = String(title || 'Ticket').replace(/[<>]/g, '');
+    const html = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8" />
@@ -156,28 +164,35 @@ function printTicketViaIframe(title) {
 <body>${source.outerHTML}</body>
 </html>`;
 
-  try {
-    const doc = iframe.contentDocument || iframe.contentWindow.document;
-    doc.open();
-    doc.write(html);
-    doc.close();
+    try {
+      const doc = iframe.contentDocument || iframe.contentWindow.document;
+      doc.open();
+      doc.write(html);
+      doc.close();
 
-    // 4) Esperar logo/imágenes y disparar print SOLO del iframe.
-    waitImages(doc).then(() => {
-      try {
-        const win = iframe.contentWindow;
-        win.focus();
-        win.print();
-      } catch (err) {
-        console.error('[print] Falló iframe.print():', err);
-      }
-      // Diferimos cleanup para que la cola de impresión termine.
-      setTimeout(cleanup, 1500);
-    });
-  } catch (err) {
-    console.error('[print] Falló preparar iframe:', err);
-    cleanup();
-  }
+      // 4) Esperar logo/imágenes y disparar print SOLO del iframe.
+      waitImages(doc).then(() => {
+        let printErr = null;
+        try {
+          const win = iframe.contentWindow;
+          win.focus();
+          win.print();
+        } catch (err) {
+          printErr = err;
+          console.error('[print] Falló iframe.print():', err);
+        }
+        // Diferimos cleanup para que la cola de impresión termine.
+        setTimeout(cleanup, 1500);
+        // El print ya se entregó al navegador/SO (o falló). Resolvemos/rechazamos
+        // aquí: el diálogo/servicio de impresión del SO toma el relevo.
+        if (printErr) reject(printErr); else resolve();
+      });
+    } catch (err) {
+      console.error('[print] Falló preparar iframe:', err);
+      cleanup();
+      reject(err);
+    }
+  });
 }
 
 function printLetterFallback(mode, title) {
@@ -185,32 +200,46 @@ function printLetterFallback(mode, title) {
   // SOLO se usa para el PDF de corte de caja (mode === 'letter'),
   // que NO es un ticket sino un documento carta de varias secciones
   // donde el CSS de @page A4 ya está configurado en index.css.
-  const html = document.documentElement;
-  const prevMode = html.getAttribute('data-print-mode');
-  const prevTitle = document.title;
+  //
+  // FASE 2: devuelve una PROMESA que se resuelve cuando `afterprint` dispara
+  // (o por el failsafe de 1.5s). Comportamiento de impresión IDÉNTICO; solo se
+  // envuelve para que el botón pueda esperar. No rechaza (window.print de carta
+  // no lanza async; un fallo raro queda en consola y el failsafe resuelve).
+  return new Promise((resolve) => {
+    const html = document.documentElement;
+    const prevMode = html.getAttribute('data-print-mode');
+    const prevTitle = document.title;
 
-  html.setAttribute('data-print-mode', mode);
-  document.title = title;
+    html.setAttribute('data-print-mode', mode);
+    document.title = title;
 
-  const cleanup = () => {
-    if (prevMode) html.setAttribute('data-print-mode', prevMode);
-    else html.removeAttribute('data-print-mode');
-    document.title = prevTitle;
-    window.removeEventListener('afterprint', cleanup);
-  };
-  window.addEventListener('afterprint', cleanup);
+    let settled = false;
+    const cleanup = () => {
+      if (settled) return;
+      settled = true;
+      if (prevMode) html.setAttribute('data-print-mode', prevMode);
+      else html.removeAttribute('data-print-mode');
+      document.title = prevTitle;
+      window.removeEventListener('afterprint', cleanup);
+      resolve();
+    };
+    window.addEventListener('afterprint', cleanup);
 
-  setTimeout(() => {
-    try { window.print(); } catch (err) { console.error('[print] window.print:', err); }
-    setTimeout(cleanup, 1500);
-  }, 80);
+    setTimeout(() => {
+      try { window.print(); } catch (err) { console.error('[print] window.print:', err); }
+      setTimeout(cleanup, 1500);
+    }, 80);
+  });
 }
 
+// FASE 2: `printDocument` ahora DEVUELVE una promesa en las TRES ramas, para que
+// quien imprime (el botón) pueda mostrar un spinner que dure TODO el tiempo real
+// de impresión y reciba el error si falla. Los llamadores que no la esperan
+// (fire-and-forget) siguen funcionando igual: ignoran la promesa devuelta.
 export function printDocument({ mode = 'ticket', title = 'Documento', widthMm } = {}) {
   // 'letter' = PDF de corte de caja (legacy, página completa con CSS A4)
   if (mode === 'letter') {
-    printLetterFallback(mode, title);
-    return;
+    return printLetterFallback(mode, title);
   }
   // Override puntual de ancho (opcional). Normalmente el ancho lo mantiene
   // ConfigProvider vía setPaperWidth(config.ancho_impresora).
@@ -226,13 +255,16 @@ export function printDocument({ mode = 'ticket', title = 'Documento', widthMm } 
     // config.ancho_impresora vía setPaperWidth. Respeta también el widthMm de
     // arriba (botones de prueba). El dispatcher lo usa para el raster (58→384).
     const anchoImpresora = getPaperWidth();
-    import('@/native/printTicket')
-      .then((m) => m.imprimirTicketNativo({ title, anchoImpresora }))
-      .catch((err) => console.error('[print nativo] no se pudo cargar el dispatcher:', err));
-    return;
+    // RETORNA la promesa nativa: se resuelve cuando la impresión ESC/POS
+    // realmente terminó (imagen + corte), o RECHAZA con el error del plugin.
+    // `imprimirTicketNativo` ya muestra el toast del error y RE-LANZA, así que
+    // NO tragamos el error aquí (nada de `.catch` que lo silencie): el spinner
+    // del botón termina en el estado real y el fallo se propaga.
+    return import('@/native/printTicket')
+      .then((m) => m.imprimirTicketNativo({ title, anchoImpresora }));
   }
 
   // Cualquier otro modo (incluido 'thermal' y 'ticket') imprime térmico
   // (58/80mm según config) vía iframe offscreen visible.
-  printTicketViaIframe(title);
+  return printTicketViaIframe(title);
 }

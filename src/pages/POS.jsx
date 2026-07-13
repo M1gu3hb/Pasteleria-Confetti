@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Search, ShoppingCart, AlertTriangle, DoorOpen, Printer } from 'lucide-react';
+import { Search, ShoppingCart, AlertTriangle, DoorOpen, Printer, Loader2 } from 'lucide-react';
 import { useCajaAbierta } from '@/lib/useCajaAbierta';
 import { Link } from 'react-router-dom';
 import { printDocument } from '@/lib/print';
@@ -591,12 +591,20 @@ export default function POS() {
     }
   };
 
-  const handlePrintTicket = () => {
+  // FASE 2: feedback de impresión (spinner + botón deshabilitado mientras imprime).
+  const [imprimiendo, setImprimiendo] = useState(false);
+
+  const handlePrintTicket = async () => {
+    if (imprimiendo) return; // evita doble impresión por doble clic
+    setImprimiendo(true);
     try {
-      printDocument({ mode: 'thermal', title: `Ticket-${ticketFinal?.venta?.folio || ''}` });
+      // `await` cubre todo el tiempo real de impresión (el helper devuelve la
+      // promesa nativa). Si falla, el helper ya avisó con un toast y re-lanzó.
+      await printDocument({ mode: 'thermal', title: `Ticket-${ticketFinal?.venta?.folio || ''}` });
     } catch (e) {
       console.error('[POS] Error al imprimir:', e);
-      toast.error('No se pudo iniciar la impresión.');
+    } finally {
+      setImprimiendo(false);
     }
   };
 
@@ -742,8 +750,15 @@ export default function POS() {
             <Button variant="outline" onClick={() => { setShowTicket(false); setTicketFinal(null); }}>
               Cerrar
             </Button>
-            <Button onClick={handlePrintTicket}>
-              <Printer className="w-4 h-4 mr-1" /> Imprimir
+            <Button
+              onClick={handlePrintTicket}
+              disabled={imprimiendo}
+              aria-busy={imprimiendo}
+              className="transition-transform active:scale-95"
+            >
+              {imprimiendo
+                ? (<><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Imprimiendo…</>)
+                : (<><Printer className="w-4 h-4 mr-1" /> Imprimir</>)}
             </Button>
           </DialogFooter>
         </DialogContent>
