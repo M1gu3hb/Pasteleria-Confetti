@@ -29,6 +29,29 @@ function exigirNativo() {
 }
 
 /**
+ * FASE 4 — GUARD DE CAPACIDAD. El JS se actualiza por Vercel y puede correr sobre un
+ * APK cuyo Java es MÁS VIEJO que este JS. `isNativePlatform()` NO basta: un método
+ * nativo que aún no existe en ese APK rechaza con "not implemented/UNIMPLEMENTED". Para
+ * los métodos opcionales/nuevos se envuelve con este helper: si el nativo no lo trae,
+ * se DEGRADA con un fallback compatible en vez de crashear.
+ *
+ * (El troceo de la imagen NO necesita guard: vive DENTRO de `imprimirImagenRaster`
+ * —mismo nombre/firma de siempre—, así que un APK viejo simplemente hace el envío
+ * monolítico anterior, sin romperse; al reconstruir el APK (Fase 5) empieza a trocear.)
+ */
+async function conFallbackNativo(fn, fallback) {
+  try {
+    return await fn();
+  } catch (e) {
+    const msg = String((e && e.message) || e || '');
+    if (/not implemented|unimplemented|no such method|not available|is not a function|undefined is not/i.test(msg)) {
+      return fallback;
+    }
+    throw e;
+  }
+}
+
+/**
  * Conecta la impresora USB ELEGIDA (vendorId/productId de la config local). Si no se pasan (o el
  * dispositivo no está conectado), el nativo cae a la primera impresora USB (byte-idéntico).
  * @param {{vendorId?:number, productId?:number}} [device]
@@ -45,7 +68,9 @@ export async function conectarUSB(device = {}) {
  */
 export async function listarDispositivosUSB() {
   exigirNativo();
-  return Native.listarDispositivosUSB();
+  // Guard de capacidad: en un APK viejo sin este método, degradar a lista vacía
+  // (la Config no muestra dispositivos a elegir y el connect cae a la 1ª USB).
+  return conFallbackNativo(() => Native.listarDispositivosUSB(), { dispositivos: [] });
 }
 
 /** Conecta por red (Ethernet) a `ip`, puerto 9100 por defecto. */

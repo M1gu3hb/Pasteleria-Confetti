@@ -54,6 +54,14 @@ public class ConfettiPrinterPlugin extends Plugin {
 
     private static final String ACTION_USB_PERMISSION = "com.mhastral.confettipos.USB_PERMISSION";
     private static final int MAX_RASTER_WIDTH = 576; // 80mm @ 203dpi = 576 puntos
+    // FASE 4: filas por BANDA de raster. Cada banda se manda como su PROPIO GS v 0
+    // para que quepa en el buffer de imagen del cabezal (la Easytime desborda con un
+    // raster monolítico alto → ticket incompleto + sin corte). 255 es el valor más
+    // conservador: la altura cabe en un solo byte (yL, sin el borde yL=0 de 256) y se
+    // mantiene <=256 (límite empírico de impresoras sensibles). Confirmable EN SITIO
+    // (Fase 5): subir a 256/257 es cambiar solo esta constante. En simulación 255/256/257
+    // reconstruyen idéntico (ver scripts/fase4_raster_bandas_sim.mjs).
+    private static final int BAND_HEIGHT_DOTS = 255;
 
     private final ExecutorService io = Executors.newSingleThreadExecutor();
     private DeviceConnection connection; // conexión activa (USB o TCP)
@@ -243,6 +251,16 @@ public class ConfettiPrinterPlugin extends Plugin {
     // ---------------------------------------- IMAGEN RASTER (576 puntos) ----
     // Lo usa la Fase 4 (modo IMAGEN): recibe el ticket ya renderizado como PNG/JPEG
     // en base64 y lo manda como raster ESC/POS. NO rediseña nada: solo rasteriza.
+    //
+    // FASE 4 — TROCEO EN BANDAS (fix del ticket de pastel incompleto + sin corte):
+    // antes se mandaba TODA la imagen como UN SOLO GS v 0 monolítico; en un ticket
+    // ALTO (pastel ~1031px) el buffer de imagen de la Easytime se DESBORDA → imprime
+    // incompleto y el corte se descarta. Ahora se parte el bitmap en bandas verticales
+    // de <=BAND_HEIGHT_DOTS filas y cada banda se manda como su PROPIO GS v 0, con
+    // flush (send) por banda para que el cabezal la imprima antes de la siguiente
+    // (DantSu 3.4.0 NO auto-trocea con printImage → el troceo es MANUAL). El resultado
+    // impreso es IDÉNTICO: bandas contiguas, sin gap ni línea extra. Tras esto, el JS
+    // llama cortar() SIEMPRE (garantía de corte), ya no condicionado a un raster gigante.
     @PluginMethod
     public void imprimirImagenRaster(final PluginCall call) {
         final String b64 = call.getString("imagenBase64");
@@ -250,19 +268,39 @@ public class ConfettiPrinterPlugin extends Plugin {
         io.execute(() -> {
             DeviceConnection c = this.connection;
             if (c == null || !c.isConnected()) { call.reject("No hay impresora conectada."); return; }
+            Bitmap bmp = null;
             try {
                 byte[] img = Base64.decode(quitarPrefijoDataUri(b64), Base64.DEFAULT);
-                Bitmap bmp = BitmapFactory.decodeByteArray(img, 0, img.length);
+                bmp = BitmapFactory.decodeByteArray(img, 0, img.length);
                 if (bmp == null) { call.reject("La imagen no se pudo decodificar."); return; }
                 bmp = escalarAAncho(bmp, MAX_RASTER_WIDTH);
+
                 EscPosPrinterCommands cmd = new EscPosPrinterCommands(c);
                 cmd.connect();
                 cmd.reset();
-                cmd.printImage(EscPosPrinterCommands.bitmapToBytes(bmp, false));
-                c.send();
-                call.resolve(ok("Imagen enviada (" + bmp.getWidth() + "x" + bmp.getHeight() + ")."));
+
+                final int ancho = bmp.getWidth();
+                final int alto = bmp.getHeight();
+                int bandas = 0;
+                // Cada banda: <=BAND_HEIGHT_DOTS filas → su propio GS v 0 (cabe en el
+                // buffer del cabezal). Se rasteriza con el MISMO bitmapToBytes(false),
+                // así cada banda es byte-idéntica a como se mandaría suelta.
+                for (int y = 0; y < alto; y += BAND_HEIGHT_DOTS) {
+                    int bh = Math.min(BAND_HEIGHT_DOTS, alto - y);
+                    Bitmap banda = Bitmap.createBitmap(bmp, 0, y, ancho, bh);
+                    try {
+                        cmd.printImage(EscPosPrinterCommands.bitmapToBytes(banda, false));
+                        c.send(); // flush por banda: la impresora imprime cada banda antes de la siguiente
+                    } finally {
+                        if (banda != bmp) banda.recycle(); // libera la banda (memoria acotada en RK3399)
+                    }
+                    bandas++;
+                }
+                call.resolve(ok("Imagen enviada (" + ancho + "x" + alto + ", " + bandas + " bandas)."));
             } catch (Exception e) {
                 call.reject("No se pudo imprimir la imagen: " + mensaje(e));
+            } finally {
+                if (bmp != null && !bmp.isRecycled()) bmp.recycle();
             }
         });
     }
