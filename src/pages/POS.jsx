@@ -29,7 +29,7 @@ import {
   calcularCostoVariable,
 } from '@/utils/tipoVentaUtils';
 import { validarStockParaCobro, mensajeFaltanteStock } from '@/utils/inventarioValidation';
-import { generarFolioVenta } from '@/utils/pedidoPastelUtils';
+import { crearVentaDirecta } from '@/utils/crearVentaDirecta';
 
 export default function POS() {
   const [cart, setCart] = useState([]);
@@ -57,6 +57,10 @@ export default function POS() {
   const location = useLocation();
   const navigate = useNavigate();
   const ventaLibreSembrada = useRef(false);
+  // FASE D (v1.1.1) — clave de idempotencia del checkout ATÓMICO (crear_venta_directa_tx):
+  // estable por intento, se limpia al éxito; un reintento reusa la clave → la RPC deduplica
+  // (no hay doble venta). El folio ya NO se genera en el cliente: lo da la RPC (atómico).
+  const ventaIdemKeyRef = useRef(null);
 
   useEffect(() => {
     if (ventaLibreSembrada.current) return;
@@ -288,55 +292,29 @@ export default function POS() {
         }
       }
 
-      const folio = await generarFolioVenta(
-        sucursalEfectiva?.sucursal_id || '',
-        sucursalEfectiva?.folio_prefijo || sucursalEfectiva?.sucursal_nombre?.charAt(0) || 'X'
-      );
-      const costoTotal = cart.reduce((s, i) => s + (Number(i?.costo) || 0) * (Number(i?.cantidad) || 0), 0);
-      const utilidad = total - costoTotal;
-      const margen = calculateMargin(total, costoTotal);
-
-      // Asociar al corte abierto (cierre_diario) actual
+      // Asociar al corte abierto (cierre_diario) actual.
       const corteAbiertoId = cajaAbierta?.id || null;
 
-      // IMPORTANTE: `total` = venta real SIN propina (no infla utilidad/ventas).
-      // La propina se guarda en propina_monto y se cobra aparte en paymentData.
-      const venta = await base44.entities.Venta.create({
-        folio,
-        fecha_apertura: new Date().toISOString(),
-        fecha_cierre: new Date().toISOString(),
-        tipo_venta: 'mostrador',
-        estado: 'pagada',
-        subtotal: total,
-        total,
-        propina_monto: Number(propina?.propina_monto) || 0,
-        propina_porcentaje: Number(propina?.propina_porcentaje) || 0,
-        propina_tipo: propina?.propina_tipo || 'sin_propina',
-        propina_origen: propina?.propina_origen || 'tradicional',
-        costo_total_snapshot: costoTotal,
-        utilidad_bruta_snapshot: utilidad,
-        margen_snapshot: margen,
-        usuario_cajero_id: posUser?.id,
-        usuario_cajero_nombre: posUser?.nombre,
-        corte_caja_id: corteAbiertoId,
-        // FASE 2B — sucursal estampada desde la fuente única (sucursalEfectiva).
-        sucursal_id: sucursalEfectiva.sucursal_id,
-        sucursal_nombre: sucursalEfectiva.sucursal_nombre || '',
-        ...paymentData,
-      });
+      // FASE II-B.2 (R2): la venta directa se crea ATÓMICAMENTE (cabecera + detalle) vía
+      // crear_venta_directa_tx — folio atómico + idempotencia DENTRO de la RPC. Byte-idéntico:
+      // persiste las MISMAS columnas reales (propina/snapshots ya los descartaba la whitelist).
+      // Clave de idempotencia estable por intento (dedup de reintentos); se limpia al éxito.
+      if (!ventaIdemKeyRef.current) {
+        ventaIdemKeyRef.current = globalThis.crypto?.randomUUID?.()
+          || `venta-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      }
 
-      // Snapshot de detalles para el ticket (lo construimos en paralelo)
+      // Snapshot de detalles para el ticket + payloads para la RPC.
+      const detallePayloads = [];
       const detallesParaTicket = [];
 
-      // HOTFIX POS→Cocina (Restaurante Pro / "Para llevar"):
-      // Solo en Restaurante Pro recolectamos los items que requieren preparación
-      // (area_preparacion cocina/barra/ambos) para mandarlos a Cocina como uno o
-      // varios pedidos "Para llevar" (uno por estación, igual que Mesero). En
+      // HOTFIX POS→Cocina (Restaurante Pro / "Para llevar"): recolectamos (pass 1) los items
+      // que requieren preparación; los pedidos a Cocina se crean tras la venta (pass 2). En
       // Esencial/Operativo este array queda vacío y NUNCA se crea PedidoPreparacion.
       // `esPro` se calcula arriba con paquete_modo del context (fuente canónica).
       const itemsParaCocina = [];
 
-      // Create sale details
+      // PASS 1 — construir cada línea (sin venta_id: lo asigna la RPC) + ticket + cocina.
       for (const item of cart) {
         const esVariable =
           item?.tipo_venta === TIPO_VENTA.VARIABLE_MEDIDA ||
@@ -353,8 +331,8 @@ export default function POS() {
         const margenLinea = calculateMargin(subtotalLinea, costoLinea);
 
         // Payload base de DetalleVenta — precio_fijo y variable comparten estructura.
+        // (venta_id lo asigna la RPC al insertar; aquí aún no existe la venta.)
         const detallePayload = {
-          venta_id: venta.id,
           producto_id: item.producto_id,
           producto_nombre: item.nombre,
           cantidad: item.cantidad,
@@ -382,8 +360,8 @@ export default function POS() {
           detallePayload.cantidad_base_consumo = Number(item.cantidad_base_consumo) || 0;
         }
 
-        const detalle = await base44.entities.DetalleVenta.create(detallePayload);
-        detallesParaTicket.push(detalle || { ...detallePayload });
+        detallePayloads.push(detallePayload);
+        detallesParaTicket.push({ ...detallePayload });
 
         // HOTFIX POS→Cocina: si es Pro y el producto requiere preparación,
         // lo sumamos a "Para llevar". Tomamos el área REAL del producto original
@@ -417,6 +395,32 @@ export default function POS() {
             });
           }
         }
+      }
+
+      // Crear venta + detalle en UNA transacción (folio atómico + idempotencia DENTRO).
+      const _resVenta = await crearVentaDirecta({
+        cabecera: { subtotal: total, total, tipo_venta: 'mostrador' },
+        detalle: detallePayloads,
+        pago: paymentData,
+        corteCajaId: corteAbiertoId,
+        sucursal: sucursalEfectiva,
+        posUser,
+        idempotencyKey: ventaIdemKeyRef.current,
+      });
+      const venta = { id: _resVenta.ventaId };
+      const folio = _resVenta.folio;
+      const detalleIds = Array.isArray(_resVenta.detalleIds) ? _resVenta.detalleIds : [];
+      detallesParaTicket.forEach((d, _k) => { d.venta_id = _resVenta.ventaId; d.id = detalleIds[_k]; });
+
+      // PASS 2 — descuento de inventario + Cocina. SALTAR en un HIT idempotente (la venta y su
+      // inventario YA se registraron en el intento previo → no re-descontar stock ni duplicar).
+      if (!_resVenta.idempotentHit) {
+      for (let _i = 0; _i < cart.length; _i++) {
+        const item = cart[_i];
+        const detalle = { id: detalleIds[_i] };
+        const esVariable =
+          item?.tipo_venta === TIPO_VENTA.VARIABLE_MEDIDA ||
+          item?.tipo_venta === TIPO_VENTA.PORCION_CONTENEDOR;
 
         // ====== Discount inventory ======
         if (esVariable) {
@@ -584,6 +588,7 @@ export default function POS() {
           console.error('[POS] No se pudo crear pedido(s) Para llevar para Cocina:', e);
         }
       }
+      } // fin del bloque !idempotentHit (descuento de inventario + Cocina)
 
       queryClient.invalidateQueries({ queryKey: ['ingredientes_all'] });
       queryClient.invalidateQueries({ queryKey: ['ventas_hoy'] });
@@ -602,6 +607,9 @@ export default function POS() {
 
       setCart([]);
       setShowPayment(false);
+      // Éxito: la próxima venta genera una clave de idempotencia nueva. (En un fallo NO se
+      // limpia → un reintento reusa la misma clave y la RPC deduplica, sin doble venta.)
+      ventaIdemKeyRef.current = null;
       // Reset propina para la próxima venta
       setPropina({ propina_monto: 0, propina_porcentaje: 0, propina_tipo: 'sin_propina', propina_origen: 'tradicional' });
       toast.success(`Venta ${folio} cobrada: ${formatCurrency(total)}`);
