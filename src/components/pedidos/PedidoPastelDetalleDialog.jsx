@@ -48,7 +48,7 @@ function AbonosHistorial({ pedidoId }) {
 
 // FASE 4 — Nota de voz en el detalle: reproductor del audio + transcripción
 // editable (se guarda como nota interna del pedido). Sustituye el placeholder.
-function NotaVozEnDetalle({ pedido }) {
+function NotaVozEnDetalle({ pedido, puedeEditar = true }) {
   const queryClient = useQueryClient();
   const original = pedido?.nota_voz_transcripcion || '';
   const [texto, setTexto] = useState(original);
@@ -84,10 +84,12 @@ function NotaVozEnDetalle({ pedido }) {
         value={texto}
         onChange={(e) => setTexto(e.target.value)}
         rows={2}
-        placeholder="Transcripción de la nota de voz (editable)"
+        readOnly={!puedeEditar}
+        placeholder={puedeEditar ? 'Transcripción de la nota de voz (editable)' : 'Transcripción de la nota de voz'}
         className="text-sm"
       />
-      {dirty && (
+      {/* FASE 1 — guardar la transcripción es escritura (UPDATE): oculto para el pastelero (RLS). */}
+      {puedeEditar && dirty && (
         <Button size="sm" onClick={guardar} disabled={guardando} className="h-8">
           {guardando ? 'Guardando…' : 'Guardar transcripción'}
         </Button>
@@ -104,10 +106,14 @@ export default function PedidoPastelDetalleDialog({ pedido, open, onClose }) {
   const [accion, setAccion] = useState(false);
   const { cajaAbierta } = useCajaAbierta();
   const { hayCorteAtrasado } = useCorteAtrasado();
-  const { sucursalEfectiva } = useTerminal();
+  const { sucursalEfectiva, adminRole } = useTerminal();
   const { posUser } = usePOSAuth();
   const [showPago, setShowPago] = useState(false);
   const [showCancelar, setShowCancelar] = useState(false);
+  // FASE 1 — el pastelero es SOLO LECTURA sobre pedidos (su RLS rechaza INSERT/UPDATE/DELETE):
+  // se ocultan las acciones de escritura (confirmar/pago/entregado/editar/cancelar/guardar nota).
+  // Se dejan las de lectura/externas (ver ticket, WhatsApp, correo, imprimir). Otros roles: idéntico.
+  const esPastelero = adminRole === 'pastelero';
   // FASE 4 — aviso antes de marcar "Entregado" (sale de la lista de pendientes).
   const [confirmarEntrega, setConfirmarEntrega] = useState(false);
 
@@ -257,12 +263,14 @@ export default function PedidoPastelDetalleDialog({ pedido, open, onClose }) {
 
             {/* FASE 4 — reproductor del audio + transcripción editable (sustituye
                 el placeholder "próximamente"). */}
-            <NotaVozEnDetalle pedido={pedido} />
+            <NotaVozEnDetalle pedido={pedido} puedeEditar={!esPastelero} />
           </div>
         )}
 
         {/* Acciones */}
         <div className="grid grid-cols-2 gap-2 no-print">
+          {/* FASE 1 — acciones de ESCRITURA (RLS del pastelero las rechaza): ocultas para pastelero. */}
+          {!esPastelero && (<>
           {pedido.estado === 'pendiente' && (
             <Button disabled={accion} onClick={() => cambiarEstado('confirmado', { fecha_confirmacion: new Date().toISOString() })} className="h-11">
               <CheckCircle2 className="w-4 h-4 mr-1.5" />Confirmar
@@ -307,6 +315,8 @@ export default function PedidoPastelDetalleDialog({ pedido, open, onClose }) {
               <XCircle className="w-4 h-4 mr-1.5" />Cancelar pedido
             </Button>
           )}
+          </>)}
+          {/* Lectura/externas (sin escritura a BD): visibles para todos, incl. pastelero. */}
           <Button variant="outline" className="h-11" asChild>
             <a href={buildWhatsAppLink(pedido)} target="_blank" rel="noopener noreferrer">
               <MessageCircle className="w-4 h-4 mr-1.5" />WhatsApp

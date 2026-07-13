@@ -1,6 +1,7 @@
 import React from 'react';
 import { Calendar, Phone, Cake } from 'lucide-react';
 import { ESTADOS_PEDIDO } from '@/utils/pedidoPastelUtils';
+import { badgeSucursal } from '@/utils/coloresSucursal';
 
 const fmt = (n) => `$${(Number(n) || 0).toFixed(2)}`;
 
@@ -45,12 +46,7 @@ export default function PedidoPastelCard({ pedido, onVer, mostrarSucursal }) {
             </span>
           )}
           {mostrarSucursal && pedido.sucursal_nombre && (
-            <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${
-              pedido.sucursal_nombre.includes('Xochimilco') ? 'bg-blue-50 text-blue-700 border-blue-200' :
-              pedido.sucursal_nombre.includes('Topilejo')   ? 'bg-green-50 text-green-700 border-green-200' :
-              pedido.sucursal_nombre.includes('Gregorio')   ? 'bg-amber-50 text-amber-700 border-amber-200' :
-              'bg-slate-50 text-slate-600 border-slate-200'
-            }`}>
+            <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${badgeSucursal(pedido.sucursal_nombre)}`}>
               {pedido.sucursal_nombre}
             </span>
           )}

@@ -14,11 +14,12 @@ import PedidoPastelCard from '@/components/pedidos/PedidoPastelCard';
 import PedidoPastelDetalleDialog from '@/components/pedidos/PedidoPastelDetalleDialog';
 import { useConfig } from '@/lib/ConfigContext';
 import { ESTADOS_PEDIDO } from '@/utils/pedidoPastelUtils';
+import { paletaSucursal } from '@/utils/coloresSucursal';
 
 // Página de gestión de Pedidos de Pastel Personalizado (Fase 3).
 // Filtrada por sucursal efectiva (dueño global = todas).
 export default function PedidosPastel() {
-  const { sucursalEfectiva } = useTerminal();
+  const { sucursalEfectiva, adminRole } = useTerminal();
   const { hayCaja } = useCajaAbierta();
   const { config } = useConfig();
   const sucId = sucursalEfectiva?.sucursal_id || null;
@@ -28,10 +29,36 @@ export default function PedidosPastel() {
   const [filtroOrigen, setFiltroOrigen] = useState('todos');
   const [pedidoVer, setPedidoVer] = useState(null);
 
+  // FASE 1 — modo pastelero: ve TODAS las sucursales (sucId=null). Tabs para filtrar por una.
+  const esPastelero = adminRole === 'pastelero';
+  const [sucursalTab, setSucursalTab] = useState('todas');
+
+  // Sucursales activas (dinámicas, ordenadas) para los tabs — solo el pastelero las necesita.
+  const { data: sucursalesRaw } = useQuery({
+    // Clave PROPIA (no 'sucursales_activas' a secas): otro componente usa esa clave con un queryFn
+    // distinto (sin ordenar) → colisión de caché defeatearía el orden por orden_visual. Convención
+    // del repo: sufijo por pantalla (p.ej. 'sucursales_activas_webpublica').
+    queryKey: ['sucursales_activas_pedidos_pastel'],
+    queryFn: async () => {
+      const list = await base44.entities.Sucursal.filter({ activa: true });
+      const arr = Array.isArray(list) ? list : [];
+      arr.sort((a, b) => (Number(a?.orden_visual) || 0) - (Number(b?.orden_visual) || 0));
+      return arr;
+    },
+    enabled: esPastelero,
+    staleTime: 60000,
+  });
+  const sucursales = Array.isArray(sucursalesRaw) ? sucursalesRaw : [];
+
+  // HALLAZGO 2 (límite 100): cuando el pastelero elige UNA sucursal, la query trae ESA sucursal
+  // (100 suyos, por ID) en vez de filtrar en memoria sobre 100 GLOBALES (que podría ocultar pedidos
+  // si hay muchos). Para el resto de roles `sucIdQuery === sucId` → byte-idéntico.
+  const sucIdQuery = (esPastelero && sucursalTab !== 'todas') ? sucursalTab : sucId;
+
   const { data: pedidosRaw, isLoading } = useQuery({
-    queryKey: ['pedidos_pastel', sucId],
-    queryFn: () => sucId
-      ? base44.entities.PedidoPastel.filter({ sucursal_id: sucId }, 'fecha_entrega', 100)
+    queryKey: ['pedidos_pastel', sucIdQuery],
+    queryFn: () => sucIdQuery
+      ? base44.entities.PedidoPastel.filter({ sucursal_id: sucIdQuery }, 'fecha_entrega', 100)
       : base44.entities.PedidoPastel.list('fecha_entrega', 100),
     placeholderData: (prev) => prev,
     staleTime: 5000,
@@ -53,6 +80,9 @@ export default function PedidosPastel() {
       // Solo pastel_personalizado. Pedidos legacy sin tipo_pedido se tratan
       // como personalizados (default histórico).
       if (p.tipo_pedido === 'productos_catalogo') return false;
+      // FASE 1 — filtro por sucursal (modo pastelero), por sucursal_id (robusto, NO por nombre).
+      // 'todas' no filtra. La query ya trae solo esa sucursal; esto es cinturón+tirantes.
+      if (esPastelero && sucursalTab !== 'todas' && p.sucursal_id !== sucursalTab) return false;
       // Estado: por defecto solo activos (sin entregado/cancelado)
       if (filtroEstado === 'activos') {
         if (p.estado === 'entregado' || p.estado === 'cancelado') return false;
@@ -73,7 +103,7 @@ export default function PedidosPastel() {
       }
       return true;
     });
-  }, [pedidos, busqueda, filtroEstado, filtroFecha, filtroOrigen]);
+  }, [pedidos, busqueda, filtroEstado, filtroFecha, filtroOrigen, esPastelero, sucursalTab]);
 
   return (
     <div className="space-y-4">
@@ -87,7 +117,9 @@ export default function PedidosPastel() {
           <h1 className="text-xl font-display font-bold">Pedidos de Pastel</h1>
           <SucursalBadge sucursalEfectiva={sucursalEfectiva} />
         </div>
-        {hayCaja ? (
+        {/* FASE 1 — el pastelero es SOLO LECTURA (su RLS rechaza crear/editar pedidos):
+            se oculta "Nuevo pedido" para no mostrarle un botón que va a fallar. */}
+        {!esPastelero && (hayCaja ? (
           <Link to="/pedidos-pastel/nuevo">
             <Button className="h-11 px-5 w-full sm:w-auto"
               style={{ background: 'linear-gradient(135deg, hsl(330,70%,55%) 0%, hsl(330,70%,42%) 100%)' }}>
@@ -99,8 +131,39 @@ export default function PedidosPastel() {
             onClick={() => toast.error('Abre la caja para crear pedidos de pastel.')}>
             <Plus className="w-5 h-5 mr-1.5" />Nuevo pedido (caja cerrada)
           </Button>
-        )}
+        ))}
       </div>
+
+      {/* FASE 1 — Tabs de sucursal SOLO en modo pastelero (lee todas las sucursales).
+          Patrón visual de los tabs del mostrador (POS.jsx) + color por sucursal (helper).
+          Responsive: overflow-x-auto para teléfono/tablet/POS. */}
+      {esPastelero && (
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          <Button
+            variant={sucursalTab === 'todas' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setSucursalTab('todas')}
+            className="shrink-0"
+          >
+            Todas
+          </Button>
+          {sucursales.map((s) => {
+            const activo = sucursalTab === s.id;
+            const pal = paletaSucursal(s.nombre);
+            return (
+              <Button
+                key={s.id}
+                variant="outline"
+                size="sm"
+                onClick={() => setSucursalTab(s.id)}
+                className={`shrink-0 ${activo ? pal.activo : pal.badge}`}
+              >
+                {s.nombre}
+              </Button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Filtros */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-2">
