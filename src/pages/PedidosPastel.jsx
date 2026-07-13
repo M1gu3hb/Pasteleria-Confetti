@@ -51,15 +51,29 @@ export default function PedidosPastel() {
   const sucursales = Array.isArray(sucursalesRaw) ? sucursalesRaw : [];
 
   // HALLAZGO 2 (límite 100): cuando el pastelero elige UNA sucursal, la query trae ESA sucursal
-  // (100 suyos, por ID) en vez de filtrar en memoria sobre 100 GLOBALES (que podría ocultar pedidos
-  // si hay muchos). Para el resto de roles `sucIdQuery === sucId` → byte-idéntico.
+  // (por ID) en vez de filtrar en memoria sobre 100 GLOBALES. Para el resto de roles
+  // `sucIdQuery === sucId` → mismo alcance de sucursal que hoy.
   const sucIdQuery = (esPastelero && sucursalTab !== 'todas') ? sucursalTab : sucId;
 
+  // FASE B (v1.1.1): quitar el techo de 100 que ocultaba pedidos ACTIVOS. Antes se traían 100
+  // (orden fecha_entrega) y el estado se filtraba EN MEMORIA → un activo con fecha_entrega lejana
+  // quedaba fuera de la ventana de 100. Ahora el estado se filtra EN EL SERVIDOR:
+  //  - 'activos' (default) → `$nin [entregado, cancelado]` (negativo, casa EXACTO con el filtro en
+  //    memoria 'activos') → trae TODOS los activos sin importar la fecha, ninguno oculto.
+  //  - un estado concreto → ese estado.  - 'todos' → sin filtro de estado.
+  // + límite holgado (500) de respaldo: los activos reales de una pastelería caben de sobra. El
+  // filtro en memoria (`filtrados`) queda como cinturón+tirantes. El adaptador soporta $nin (línea 78).
+  const estadoCriteria =
+    filtroEstado === 'activos' ? { estado: { $nin: ['entregado', 'cancelado'] } }
+    : (filtroEstado !== 'todos' ? { estado: filtroEstado } : {});
+
   const { data: pedidosRaw, isLoading } = useQuery({
-    queryKey: ['pedidos_pastel', sucIdQuery],
-    queryFn: () => sucIdQuery
-      ? base44.entities.PedidoPastel.filter({ sucursal_id: sucIdQuery }, 'fecha_entrega', 100)
-      : base44.entities.PedidoPastel.list('fecha_entrega', 100),
+    queryKey: ['pedidos_pastel', sucIdQuery, filtroEstado],
+    queryFn: () => base44.entities.PedidoPastel.filter(
+      { ...(sucIdQuery ? { sucursal_id: sucIdQuery } : {}), ...estadoCriteria },
+      'fecha_entrega',
+      500,
+    ),
     placeholderData: (prev) => prev,
     staleTime: 5000,
     // MINI-FIX notificaciones — refresca cada 15s para que un pedido web nuevo

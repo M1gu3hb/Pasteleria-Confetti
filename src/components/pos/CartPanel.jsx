@@ -34,6 +34,9 @@ export default function CartPanel({ items, onUpdateQty, onRemove, total, onCheck
             const esMedida = tipo === 'variable_medida';
             const esPorcion = tipo === 'porcion_contenedor';
             const esVariable = esMedida || esPorcion;
+            // FASE A (v1.1.1): la venta libre es un MONTO FIJO → sin +/- (un $100 no
+            // debe volverse $200 al tocar "+"). Marca transitoria del carrito.
+            const esVentaLibre = item?.es_venta_libre === true;
             const etiquetaVar = esMedida
               ? `${Number(item?.cantidad_variable) || 0} ${item?.unidad_variable || ''}`
               : esPorcion
@@ -62,8 +65,8 @@ export default function CartPanel({ items, onUpdateQty, onRemove, total, onCheck
                   )}
                   {item.notas && <p className="text-[10px] text-primary/70 truncate">📝 {item.notas}</p>}
                 </div>
-                {/* Variables: sin +/- (cada línea es independiente). Solo trash. */}
-                {!esVariable && (
+                {/* Variables y venta libre: sin +/- (monto/línea fijo). Solo trash. */}
+                {!esVariable && !esVentaLibre && (
                   <div className="flex items-center gap-1">
                     <Button variant="outline" size="icon" className="h-7 w-7"
                       onClick={() => onUpdateQty(idx, item.cantidad - 1)}>

@@ -201,11 +201,12 @@ function printLetterFallback(mode, title) {
   // que NO es un ticket sino un documento carta de varias secciones
   // donde el CSS de @page A4 ya está configurado en index.css.
   //
-  // FASE 2: devuelve una PROMESA que se resuelve cuando `afterprint` dispara
-  // (o por el failsafe de 1.5s). Comportamiento de impresión IDÉNTICO; solo se
-  // envuelve para que el botón pueda esperar. No rechaza (window.print de carta
-  // no lanza async; un fallo raro queda en consola y el failsafe resuelve).
-  return new Promise((resolve) => {
+  // FASE 2: devuelve una PROMESA que se resuelve cuando `afterprint` dispara (o por el
+  // failsafe de 1.5s). Comportamiento de impresión IDÉNTICO; solo se envuelve.
+  // FASE C (v1.1.1): ahora RECHAZA si `window.print()` lanza (antes se registraba en
+  // consola pero la promesa RESOLVÍA como éxito → feedback falso). Réplica del patrón de
+  // la rama térmica. Sin fallo, resuelve normal por afterprint/failsafe. CSS @page sin tocar.
+  return new Promise((resolve, reject) => {
     const html = document.documentElement;
     const prevMode = html.getAttribute('data-print-mode');
     const prevTitle = document.title;
@@ -214,6 +215,7 @@ function printLetterFallback(mode, title) {
     document.title = title;
 
     let settled = false;
+    let printErr = null;
     const cleanup = () => {
       if (settled) return;
       settled = true;
@@ -221,12 +223,12 @@ function printLetterFallback(mode, title) {
       else html.removeAttribute('data-print-mode');
       document.title = prevTitle;
       window.removeEventListener('afterprint', cleanup);
-      resolve();
+      if (printErr) reject(printErr); else resolve();
     };
     window.addEventListener('afterprint', cleanup);
 
     setTimeout(() => {
-      try { window.print(); } catch (err) { console.error('[print] window.print:', err); }
+      try { window.print(); } catch (err) { printErr = err; console.error('[print] window.print:', err); }
       setTimeout(cleanup, 1500);
     }, 80);
   });

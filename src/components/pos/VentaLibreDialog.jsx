@@ -51,6 +51,10 @@ export default function VentaLibreDialog({ open, onClose, onConfirm, confirmLabe
       area_preparacion: 'ninguno',                    // nunca dispara pedido de cocina
       cantidad: 1,
       notas: '',
+      // FASE A (v1.1.1): marca de UI transitoria. Bloquea los +/- del carrito para
+      // que un monto fijo ($100) no se vuelva $200 por accidente. NO es columna real
+      // → la whitelist de columnas del checkout (pickColumns) la descarta; no persiste.
+      es_venta_libre: true,
     };
     onConfirm?.(item);
     reset();

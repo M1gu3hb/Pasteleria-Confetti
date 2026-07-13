@@ -70,19 +70,23 @@ export default function ImpresoraTermicaSection({ ancho = '58', onChangeAncho, c
   // que la prueba respete el ancho SELECCIONADO aunque aún no se guarde.
   useEffect(() => {
     if (!prueba) return;
+    let vivo = true;
+    // FASE C (v1.1.1): el reset del botón depende de la PROMESA real de impresión, NO de
+    // un timer fijo. Antes se reseteaba a los 2.6s aunque la impresión tardara ~1min
+    // (feedback falso). Ahora `finally` resetea al RESOLVER/RECHAZAR la promesa; `vivo`
+    // evita setState tras desmontar. Mientras `prueba` esté activo el botón está disabled.
     const tPrint = setTimeout(() => {
-      // FASE 2: printDocument ahora DEVUELVE una promesa y la rama nativa propaga
-      // el error (imprimirTicketNativo ya muestra el toast). Este botón de PRUEBA
-      // es fire-and-forget, así que un `.catch` no-op evita una "unhandled promise
-      // rejection" en el APK si la impresora falla (el usuario ya vio el toast).
       printDocument({
         mode: 'thermal',
         title: prueba === 'venta' ? 'Prueba de venta' : 'Prueba de pastel',
         widthMm: anchoActual === '80' ? 80 : 58,
-      }).catch(() => { /* el helper ya avisó con un toast */ });
+      })
+        .catch(() => { /* el helper ya avisó con un toast */ })
+        .finally(() => { if (vivo) setPrueba(null); });
     }, 180);
-    const tReset = setTimeout(() => setPrueba(null), 2600);
-    return () => { clearTimeout(tPrint); clearTimeout(tReset); };
+    // Failsafe LARGO (60s) por si la promesa NUNCA resolviera (no el 2.6s viejo, que mentía).
+    const tFailsafe = setTimeout(() => { if (vivo) setPrueba(null); }, 60000);
+    return () => { vivo = false; clearTimeout(tPrint); clearTimeout(tFailsafe); };
   }, [prueba, anchoActual]);
 
   return (

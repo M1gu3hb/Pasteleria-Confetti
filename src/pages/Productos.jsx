@@ -300,11 +300,10 @@ export default function Productos() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowFicha(false)}>Cerrar</Button>
             <Button onClick={() => {
-              try {
-                printDocument({ mode: 'letter', title: `Ficha-${fichaProducto?.nombre || 'producto'}` });
-              } catch (err) {
-                console.error('[Productos] imprimir ficha:', err);
-              }
+              // FASE C (v1.1.1): printLetterFallback ahora RECHAZA si window.print() lanza,
+              // así que se maneja la promesa (el try/catch síncrono no atrapaba el rechazo async).
+              printDocument({ mode: 'letter', title: `Ficha-${fichaProducto?.nombre || 'producto'}` })
+                .catch((err) => console.error('[Productos] imprimir ficha:', err));
             }}>
               <Printer className="w-4 h-4 mr-1" /> Imprimir
             </Button>
