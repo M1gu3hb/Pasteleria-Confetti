@@ -288,3 +288,75 @@ Orden recomendado, de menor a mayor riesgo:
 **Ninguno de los cambios aplicados hoy altera la experiencia del personal:** no cambian pantallas, pasos,
 textos, el PIN de 4 dígitos, ni obligan a volver a iniciar sesión. Son índices y una reescritura
 semánticamente equivalente de expresiones RLS.
+
+---
+
+## 7. Fase 9 — Edge Function `transcribir-nota-voz` ENDURECIDA (aplicada)
+
+Desplegada **versión 3**, `verify_jwt=true` conservado. Contrato con el frontend intacto:
+`{ audioUrl }` → `{ transcript, ok, error }`, siempre HTTP 200, degradación con gracia.
+`NotaVozRecorder.jsx` **no se tocó**.
+
+### Hallazgo nuevo durante las pruebas
+**`OPENAI_API_KEY` no está configurada en el proyecto.** La función respondía `no_key` antes de
+cualquier otra cosa: la transcripción con Whisper **nunca ha funcionado en producción**; el POS
+siempre cayó a la transcripción de Web Speech (que es la base y sí funciona en Chrome/Android).
+Esto hace que este despliegue sea de **riesgo cero hoy** — y que el endurecimiento ya esté puesto
+para cuando Miguel configure el secreto.
+
+### Cambios
+| # | Antes | Ahora |
+|---|---|---|
+| SSRF | `fetch(audioUrl)` con la URL del cliente | URL validada **y reconstruida** desde el nombre de objeto; nunca se hace fetch de la cadena recibida |
+| MIME | ninguno | `audio/webm`, `audio/mp4`, `audio/ogg` — por extensión **y** por `Content-Type` real |
+| Tamaño | ninguno | 10 MB, validado por `Content-Length` y tras leer el cuerpo (máx. real hoy: 438 KB) |
+| Timeout | ninguno | `AbortController`: 15 s descarga, 60 s OpenAI |
+| CORS | `*` | allowlist: producción, preview del APK, previews `pasteleria-confetti*.vercel.app`, `localhost` en dev |
+| Errores OpenAI | devolvía `detail` (300 chars) | sólo `openai_<status>` |
+| Logs | podían incluir la URL | mensajes fijos, sin URL, JWT, API key ni audio |
+
+Orden deliberado: la validación de URL corre **antes** de mirar `OPENAI_API_KEY`, para que la entrada
+maliciosa se rechace exista o no el secreto (y para que las defensas sean verificables).
+
+### Evidencia de pruebas (contra la función desplegada)
+- **14/14** vectores rechazados con `invalid_audio_url`: metadata de AWS (`169.254.169.254`),
+  `localhost`, host externo, host con sufijo (`...supabase.co.evil.com`), **otro proyecto Supabase**,
+  otro bucket (`uploads`), path `authenticated`, traversal, extensión `.exe`, credenciales embebidas,
+  puerto 22, `http`, `file://`, `gopher://`.
+- **2/2** audios reales existentes aceptados por la validación (llegan a `no_key`). No se modificó ni
+  borró ningún objeto.
+- JWT ausente → **401** en plataforma. JWT inválido → **401**.
+- CORS: 4 orígenes legítimos reciben `Access-Control-Allow-Origin`; 3 atacantes (`evil.com`,
+  otro proyecto Vercel, sufijo `...vercel.app.evil.com`) quedan **sin cabecera** → bloqueados.
+- Logs posteriores: sólo método/status/endpoint. Sin URL, JWT, API key ni contenido de audio.
+- `npm run build` → **exit 0**. `npm run lint` → 39 errores, **todos preexistentes** en `src/`
+  (imports sin usar); toqué **0 archivos** de `src/`.
+
+### Rollback
+Redesplegar la v1, que está íntegra en git: `git show 9b36aa5:supabase/functions/transcribir-nota-voz/index.ts`.
+
+### PENDIENTE DE APROBACIÓN — rate limit (no implementado a propósito)
+Un contador en memoria sería falso: el runtime de Edge Functions escala a varias instancias y pierde
+el estado en arranques en frío. Un atacante lo evade sin esfuerzo. Requiere persistencia.
+
+Propuesta (requiere crear **una** tabla nueva → me detengo aquí como se pidió):
+
+```sql
+-- esquema privado, NO expuesto por PostgREST
+create schema if not exists rl;
+create table rl.edge_rate (
+  clave      text        not null,   -- p.ej. 'transcribir:'||auth_uid
+  ventana    timestamptz not null,   -- inicio del bucket (p.ej. truncado a minuto)
+  intentos   int         not null default 1,
+  primary key (clave, ventana)
+);
+```
+La función la consultaría con `service_role` mediante un RPC `rl.consumir(clave, limite, ventana)`
+que incrementa y devuelve si se excedió. Límite sugerido: **10 transcripciones / usuario / hora**
+(hoy hay 8 notas de voz en total en el bucket, así que es holgadísimo).
+Alternativa sin tabla: rate limit por IP en el borde (Cloudflare/Vercel), fuera de Supabase.
+
+> Nota relevante: `verify_jwt=true` significa "JWT válido del proyecto", **no** "usuario autenticado".
+> La propia clave `anon` (que está en el bundle por diseño) es un JWT válido. Por eso el rate limit
+> importa: sin él, cualquiera con la anon key puede invocar la función. El endurecimiento de arriba
+> ya elimina el SSRF y acota el gasto por llamada, pero no el número de llamadas.
