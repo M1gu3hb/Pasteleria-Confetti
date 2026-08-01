@@ -360,3 +360,66 @@ Alternativa sin tabla: rate limit por IP en el borde (Cloudflare/Vercel), fuera 
 > La propia clave `anon` (que está en el bundle por diseño) es un JWT válido. Por eso el rate limit
 > importa: sin él, cualquiera con la anon key puede invocar la función. El endurecimiento de arriba
 > ya elimina el SSRF y acota el gasto por llamada, pero no el número de llamadas.
+
+---
+
+## 8. Fase 1 — Polling de caja eliminado (aplicada en rama, NO en producción)
+
+### Causa raíz (confirmada)
+`useCajaAbierta` y `useCorteAtrasado` compartían queryKey **pero cada uno registraba su propio
+`refetchInterval: 8000`**. React Query crea un temporizador por **observador**, y hay 6 puntos de
+montaje. Con 3–4 observadores montados el intervalo efectivo caía a ~2 s. Además la consulta era
+`select('*')` de las **50 últimas filas globales**, con el filtro por sucursal **en el cliente**.
+
+### Qué se hizo
+Nuevo módulo `src/lib/cajaEstado.js`:
+- Filtro en PostgreSQL: `sucursal_id` + `estado='abierto'` + compat `tipo_corte`, `ORDER BY created_at DESC`, **`LIMIT 1`**.
+- Sólo las 10 columnas que consumen los call-sites (verificadas por grep), no `select('*')`.
+- Consulta separada y pequeña para el último cierre (`fondoEsperado`), con `staleTime` largo.
+- **UN solo temporizador por sucursal**, a nivel de módulo y con refcount → deja de escalar con el
+  número de componentes montados. Respaldo de 30 s.
+- Refresco inmediato en `visibilitychange` y `online`.
+- `useCorteAtrasado` **deriva** de `useCajaAbierta`: cero consultas y cero temporizadores propios.
+
+Se conserva el queryKey `['cortes_caja_estado', sucId]`, así que los `invalidateQueries` existentes de
+`Caja.jsx` siguen surtiendo efecto **inmediato** al abrir/cerrar caja (prefix-match). **`Caja.jsx` no se
+tocó** (CANDADO 1 intacto).
+
+### Por qué NO Realtime todavía
+La publicación `supabase_realtime` está **vacía**: ninguna tabla emite eventos. Encenderlo exige
+`ALTER PUBLICATION` en producción + validar el canal en el WebView de la tablet, que no se puede hacer
+desde aquí. Queda `suscribirRealtimeCaja()` escrito y **desactivado** en `cajaEstado.js`.
+
+### Por qué es seguro alargar el intervalo
+`crear_venta_directa_tx` **ya revalida el corte de forma atómica** en Postgres:
+`SIN_SESION`, `SUCURSAL_AJENA`, `CORTE_INEXISTENTE`, `CORTE_NO_ABIERTO`, `CORTE_SUCURSAL_NO_COINCIDE`.
+El frontend nunca autoriza una venta por caché: el peor caso de un respaldo más largo es que la UI
+tarde en enterarse, no que se registre una venta con la caja cerrada.
+
+### Invariante verificado antes de colapsar las consultas
+`select sucursal_id, count(*) ... where estado='abierto'` → **1 corte abierto por cada sucursal** (3/3).
+Y el último cierre de cada sucursal ya caía dentro de la ventana de 50 (13/16/18), así que
+`fondoEsperado` **no cambia**.
+
+### Evidencia
+| | Antes | Después |
+|---|---|---|
+| Plan | `Seq Scan` sobre `cortes_caja`, 86 filas leídas, sort, 7 buffers | **`Index Scan using idx_cortes_sucursal_estado_created`**, 1 fila, 5 buffers |
+| Filas devueltas | 50 | 1 |
+| Ancho de fila | 238 | 114 |
+| Temporizadores | 1 por observador (~6) | **1 por sucursal** |
+| Intervalo efectivo | ~2 s | 30 s |
+
+Prueba diferencial `scripts/fase1_caja_estado_verify.mjs`: **12/12 casos** y **181/181 minutos** del
+barrido del borde de medianoche `America/Mexico_City` dan resultado **idéntico** a la implementación
+anterior para `cajaAbierta`, `corteAtrasado` y `fondoEsperado`.
+
+Baseline: `build` exit 0 (igual) · `lint` 39 errores (igual, preexistentes) ·
+`typecheck` **1249 vs 1251** (2 menos, ningún error nuevo en los archivos tocados).
+
+### Pendiente de validación en tablet
+La reducción real de llamadas sólo se puede medir cuando esto llegue a las tablets. **No está en
+producción**: vive en la rama, cuyo despliegue de Vercel es un *preview* (`target: null`), no producción.
+
+### Rollback
+`git revert` del commit de Fase 1 — son 3 archivos de frontend, sin cambios de base de datos.

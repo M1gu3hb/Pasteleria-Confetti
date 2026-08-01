@@ -1,6 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
-import { useTerminal } from '@/lib/TerminalContext';
+import { useCajaAbierta } from '@/lib/useCajaAbierta';
 
 /**
  * PARTE F — Detección de corte ATRASADO por sucursal.
@@ -14,6 +12,22 @@ import { useTerminal } from '@/lib/TerminalContext';
  * - "Hoy" = día calendario en America/Mexico_City (UTC-6, sin DST desde 2023).
  * - Si el corte abierto es de HOY mismo → NO bloquea.
  * - NO cierra nada automáticamente: solo detecta y devuelve el corte.
+ *
+ * CAMBIO DE RENDIMIENTO (2026-08-01):
+ *  Antes este hook lanzaba su PROPIO useQuery con refetchInterval:8000 sobre
+ *  la misma queryKey que useCajaAbierta. React Query crea un temporizador por
+ *  OBSERVADOR, así que eran dos timers por pantalla (y ~6 puntos de montaje
+ *  entre ambos hooks) → intervalo efectivo ~2 s sobre cortes_caja.
+ *
+ *  Ahora DERIVA de useCajaAbierta y no ejecuta ninguna consulta propia.
+ *  Es correcto porque sólo puede existir UN corte abierto por sucursal
+ *  (regla de negocio del propio POS, verificada en producción: 1 corte
+ *  abierto en cada una de las 3 sucursales). El corte atrasado, si existe,
+ *  ES esa misma caja abierta cuando su apertura es anterior a hoy.
+ *
+ *  La lógica de fecha (CANDADO 2: medianoche America/Mexico_City) y el orden
+ *  de campos `fecha_apertura || fecha_inicio || created_date` se conservan
+ *  idénticos.
  */
 
 // Inicio del día (00:00) de México para una fecha dada, devuelto como
@@ -31,34 +45,23 @@ export function obtenerInicioDiaMexico(date = new Date()) {
 }
 
 export function useCorteAtrasado() {
-  const { sucursalEfectiva } = useTerminal();
-  const sucId = sucursalEfectiva?.sucursal_id || null;
+  // Misma fuente de verdad que la caja: sin consulta ni temporizador propios.
+  const { cajaAbierta } = useCajaAbierta();
 
-  // Reusa exactamente la queryKey de useCajaAbierta → mismo caché, sin fetch extra.
-  const { data: cortes } = useQuery({
-    queryKey: ['cortes_caja_estado', sucId],
-    queryFn: () => base44.entities.CorteCaja.list('-created_date', 50),
-    refetchInterval: 8000,
-    staleTime: 4000,
-    gcTime: 30 * 60 * 1000,
-    placeholderData: (prev) => prev,
-    enabled: !!sucId,
-  });
-
-  const safeCortes = Array.isArray(cortes) ? cortes : [];
   const inicioHoyMX = obtenerInicioDiaMexico(new Date());
 
-  const corteAtrasado = sucId
-    ? (safeCortes.find(c => {
-        if (!c || c.sucursal_id !== sucId) return false;
-        if (c.estado !== 'abierto') return false;
-        if (c.tipo_corte && c.tipo_corte !== 'cierre_diario') return false;
-        const aperturaIso = c.fecha_apertura || c.fecha_inicio || c.created_date;
-        if (!aperturaIso) return false;
-        const t = new Date(aperturaIso).getTime();
-        return Number.isFinite(t) && t < inicioHoyMX;
-      }) || null)
-    : null;
+  const corteAtrasado = (() => {
+    const c = cajaAbierta;
+    if (!c) return null;
+    // Guardas conservadas del filtro original (defensivas: la consulta ya
+    // acota estado y tipo_corte en PostgreSQL).
+    if (c.estado && c.estado !== 'abierto') return null;
+    if (c.tipo_corte && c.tipo_corte !== 'cierre_diario') return null;
+    const aperturaIso = c.fecha_apertura || c.fecha_inicio || c.created_date;
+    if (!aperturaIso) return null;
+    const t = new Date(aperturaIso).getTime();
+    return Number.isFinite(t) && t < inicioHoyMX ? c : null;
+  })();
 
   return { corteAtrasado, hayCorteAtrasado: !!corteAtrasado };
 }
