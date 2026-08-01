@@ -47,10 +47,8 @@ const COLS_ABIERTA =
 // Sólo lo que necesita `fondoEsperado`.
 const COLS_CIERRE = 'id,estado,tipo_corte,dinero_dejado_en_caja,created_at';
 
-// Intervalo de respaldo. No es la vía principal de actualización: abrir/cerrar
-// caja invalida al instante, y volver al foco refresca. 30 s acota la ventana
-// en la que otra tablet podría no verse reflejada.
-export const INTERVALO_RESPALDO_MS = 30_000;
+// El temporizador de respaldo y la invalidación viven en `cajaRefresco.js`
+// (sin dependencia de Supabase, para poder verificarlos en Node).
 
 // El adaptador expone created_date como alias de created_at; los consumidores
 // (p. ej. useCorteAtrasado) lo usan. Se conserva idéntico.
@@ -103,51 +101,6 @@ export async function fetchUltimoCierre(sucursalId) {
   if (error) throw new Error(`[cortes_caja] ${error.message}`);
   const row = Array.isArray(data) ? data[0] : null;
   return row ? decorar(row) : null;
-}
-
-// ── Refresco centralizado: UN temporizador por sucursal ──────────────────
-// Con refcount: monten los componentes que monten, sólo existe un intervalo y
-// un juego de listeners por sucursal. Esto es lo que elimina el efecto
-// "N observadores = N timers" que provocaba el polling de ~2 s.
-const registros = new Map(); // sucursalId -> { refs, timer, onFocus, onOnline }
-
-export function registrarRefrescoCaja(sucursalId, queryClient) {
-  if (!sucursalId || !queryClient) return () => {};
-
-  let reg = registros.get(sucursalId);
-  if (!reg) {
-    const invalidar = () => {
-      queryClient.invalidateQueries({ queryKey: ['cortes_caja_estado', sucursalId] });
-    };
-    // Al volver del background / recuperar red: refresco inmediato.
-    const onFocus = () => { if (document.visibilityState === 'visible') invalidar(); };
-    const onOnline = () => invalidar();
-
-    document.addEventListener('visibilitychange', onFocus);
-    window.addEventListener('online', onOnline);
-
-    reg = {
-      refs: 0,
-      timer: setInterval(invalidar, INTERVALO_RESPALDO_MS),
-      onFocus,
-      onOnline,
-    };
-    registros.set(sucursalId, reg);
-  }
-
-  reg.refs += 1;
-
-  return () => {
-    const r = registros.get(sucursalId);
-    if (!r) return;
-    r.refs -= 1;
-    if (r.refs <= 0) {
-      clearInterval(r.timer);
-      document.removeEventListener('visibilitychange', r.onFocus);
-      window.removeEventListener('online', r.onOnline);
-      registros.delete(sucursalId);
-    }
-  };
 }
 
 /**

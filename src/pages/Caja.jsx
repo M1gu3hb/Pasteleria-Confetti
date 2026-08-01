@@ -1264,7 +1264,21 @@ export default function Caja() {
       toast.success('Caja abierta. Ya puedes cobrar.');
     } catch (err) {
       console.error('[Caja] handleAbrirCaja:', err);
-      toast.error('No se pudo abrir la caja');
+      // Carrera real entre dos dispositivos: la validación de arriba es
+      // read-then-create (TOCTOU). Desde la migración 0052 existe un índice
+      // único parcial que garantiza UNA caja abierta por sucursal, así que la
+      // perdedora recibe 23505. Se muestra EXACTAMENTE el mismo mensaje que ya
+      // veía el personal en ese caso; no es un mensaje ni un paso nuevo.
+      const esDuplicado =
+        err?.code === '23505' ||
+        /duplicate key value|ux_cortes_una_caja_abierta/i.test(err?.message || '');
+      if (esDuplicado) {
+        toast.error('Ya existe una caja abierta en esta sucursal. Ciérrala antes de abrir otra.');
+        invalidarCajaQueries();
+        setShowAbrirCaja(false);
+      } else {
+        toast.error('No se pudo abrir la caja');
+      }
     } finally {
       setAccionLoading(false);
     }

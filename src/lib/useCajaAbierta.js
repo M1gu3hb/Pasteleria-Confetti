@@ -1,7 +1,8 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef, useEffect } from 'react';
 import { useTerminal } from '@/lib/TerminalContext';
-import { fetchCajaAbierta, fetchUltimoCierre, registrarRefrescoCaja } from '@/lib/cajaEstado';
+import { fetchCajaAbierta, fetchUltimoCierre } from '@/lib/cajaEstado';
+import { registrarRefrescoCaja, KEY_CAJA_ABIERTA, KEY_ULTIMO_CIERRE } from '@/lib/cajaRefresco';
 
 /**
  * Hook compartido — fuente ÚNICA de verdad para "¿hay caja abierta?".
@@ -54,7 +55,7 @@ export function useCajaAbierta() {
   }, [sucId, queryClient]);
 
   const { data: caja, isPending, isLoading, isFetching, isError, refetch } = useQuery({
-    queryKey: ['cortes_caja_estado', sucId],
+    queryKey: KEY_CAJA_ABIERTA(sucId),
     queryFn: () => fetchCajaAbierta(sucId),
     enabled: !!sucId,
     // Sin refetchInterval por observador: el refresco lo centraliza
@@ -68,7 +69,7 @@ export function useCajaAbierta() {
   // Consulta separada y pequeña, sólo para fondoEsperado. Cambia rara vez (al
   // cerrar caja), y ese momento ya invalida por prefijo.
   const { data: ultimoCierreData } = useQuery({
-    queryKey: ['cortes_caja_estado', sucId, 'ultimo_cierre'],
+    queryKey: KEY_ULTIMO_CIERRE(sucId),
     queryFn: () => fetchUltimoCierre(sucId),
     enabled: !!sucId,
     refetchInterval: false,
