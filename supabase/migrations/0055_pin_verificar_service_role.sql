@@ -1,0 +1,15 @@
+-- 0055 — Verificación de PIN server-side, sólo service_role (ADITIVO).
+-- APLICADA en producción el 2026-08-01.
+--
+-- Sustituye el uso de `login_pos` desde el cliente. Diferencia clave: login_pos
+-- es EXECUTE para anon y DEVUELVE el correo derivado del UUID
+-- (`<id>@pos.confetti.local`), que es justo la pieza que hace posible atacar
+-- /auth/v1/token. Aquí el correo NO sale nunca al cliente: lo consume la Edge
+-- Function para generateLink y se descarta.
+--
+-- login_pos NO se toca todavía: sigue viva para la etapa compatible. Se revoca
+-- en el cutover, tras MIGUEL_OK_AUTH_TABLETS.
+--
+-- Rollback: DROP FUNCTION public.rl_pin_verificar(uuid,text), public.rl_pin_handle(uuid),
+--           app_private.pin_verificar(uuid,text), app_private.pin_handle(uuid);
+-- (cuerpo idéntico al aplicado; ver docs/CIERRE_AUDITORIA_CONFETTI_2026-08-01.md)
