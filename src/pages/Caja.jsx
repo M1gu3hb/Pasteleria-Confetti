@@ -234,7 +234,8 @@ export default function Caja() {
   // que no puede truncarse. La lógica de reparto venta↔corte NO cambia.
   const {
     data: ventasHoyRaw,
-    isSuccess: ventasCorteCargadas,
+    isFetched: ventasCorteFetched,
+    isPlaceholderData: ventasCortePlaceholder,
     refetch: refetchVentasCorte,
   } = useQuery({
     queryKey: ['ventas_pagadas_caja', cajaAbierta?.id ?? null],
@@ -243,6 +244,11 @@ export default function Caja() {
     placeholderData: (prev) => prev,
     staleTime: 5000,
   });
+  // OJO: `isSuccess` NO sirve aquí. Con `placeholderData` React Query lo pone en
+  // true mientras sirve los datos del corte ANTERIOR (la queryKey lleva el id
+  // del corte, así que al cambiar de corte hay un intervalo con datos ajenos).
+  // Sólo damos por cargado lo que se haya traído para ESTE corte.
+  const ventasCorteCargadas = ventasCorteFetched && !ventasCortePlaceholder;
   const ventasHoy = Array.isArray(ventasHoyRaw) ? ventasHoyRaw : [];
 
   const { data: gastosRaw } = useQuery({
@@ -1355,11 +1361,21 @@ export default function Caja() {
         setAccionLoading(false);
         return;
       }
-      const ventasEnServidor = await contarVentasDelCorte(cajaAbierta.id).catch(() => null);
-      if (ventasEnServidor !== null && ventasEnServidor > 0 && Number(resumen.numVentas) === 0) {
-        console.error('[Caja] cierre abortado: servidor reporta', ventasEnServidor,
-          'ventas y el resumen calculó 0');
-        toast.error('No se pudieron leer las ventas de este corte. No se cerró la caja para no guardar totales en cero. Actualiza e inténtalo de nuevo.');
+      // FALLA CERRADA a propósito: si la verificación NO se puede hacer, no se
+      // cierra. Antes esto usaba `.catch(() => null)` y se saltaba la comprobación
+      // justo en el escenario "no se pueden leer las ventas", que es exactamente
+      // el que produjo los ceros. Es preferible pedir un reintento a guardar un
+      // corte irrecuperable.
+      let ventasEnServidor = null;
+      try {
+        ventasEnServidor = await contarVentasDelCorte(cajaAbierta.id);
+      } catch (e) {
+        console.error('[Caja] no se pudo verificar ventas del corte:', e);
+      }
+      if (ventasEnServidor === null || (ventasEnServidor > 0 && Number(resumen.numVentas) === 0)) {
+        console.error('[Caja] cierre abortado. servidor=', ventasEnServidor,
+          'resumen.numVentas=', resumen.numVentas);
+        toast.error('No se pudieron leer las ventas de este corte. No se cerró la caja para no guardar totales en cero. Revisa la conexión e inténtalo de nuevo.');
         refetchVentasCorte();
         queryClient.invalidateQueries({ queryKey: ['ventas_pagadas_caja'] });
         setAccionLoading(false);

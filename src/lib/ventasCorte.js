@@ -46,8 +46,19 @@ export async function fetchVentasDelCorte(corte) {
   if (!corte?.id) return [];
   await ensureSession();
 
-  const aperturaIso = corte.fecha_apertura || corte.fecha_inicio || corte.created_date;
+  const aperturaCruda = corte.fecha_apertura || corte.fecha_inicio || corte.created_date;
   const sucId = corte.sucursal_id || null;
+
+  // Postgres devuelve '2026-08-08 14:48:38.678+00' — con ESPACIO y '+', que en
+  // una query string son ambiguos (el '+' se decodifica como espacio). Se
+  // normaliza a ISO ('...T14:48:38.678Z') para que el filtro viaje sin
+  // ambigüedad. Si la fecha no fuera parseable se omite el fallback en vez de
+  // mandar un filtro roto.
+  let aperturaIso = null;
+  if (aperturaCruda) {
+    const t = new Date(aperturaCruda).getTime();
+    if (Number.isFinite(t)) aperturaIso = new Date(t).toISOString();
+  }
 
   // (a) OR (b) resuelto en PostgREST.
   const condiciones = [`corte_caja_id.eq.${corte.id}`];
@@ -64,19 +75,33 @@ export async function fetchVentasDelCorte(corte) {
   // objetos sin tipar, así que el contrato para los consumidores no cambia.
   /** @type {any[]} */
   const filas = [];
-  for (let desde = 0; ; desde += PAGINA) {
-    const { data, error } = await supabase
+  // La condición de parada se apoya en el TOTAL que reporta el servidor
+  // (`count: 'exact'`), no en "la página vino a medias". Parar por página
+  // incompleta sólo sería correcto mientras el tope de filas del servidor sea
+  // >= PAGINA; si algún día bajara, truncaríamos en silencio otra vez — que es
+  // justo el fallo que este módulo existe para eliminar.
+  let total = null;
+  let desde = 0;
+  for (;;) {
+    const { data, error, count } = await supabase
       .from('ventas')
-      .select(COLS)
+      .select(COLS, { count: 'exact' })
       .eq('estado', 'pagada')
       .or(condiciones.join(','))
       .order('fecha_cierre', { ascending: true, nullsFirst: false })
       .range(desde, desde + PAGINA - 1);
     if (error) throw new Error(`[ventas_corte] ${error.message}`);
+    if (total === null) total = Number(count) || 0;
     const page = Array.isArray(data) ? data : [];
     filas.push(...page);
-    // Si la página no vino llena, ya no hay más.
-    if (page.length < PAGINA) break;
+    // Página vacía: el servidor ya no tiene más (evita bucle infinito).
+    if (page.length === 0) break;
+    // Avanzar por lo REALMENTE recibido, no por PAGINA: si el servidor devuelve
+    // menos filas de las pedidas (su tope es menor), saltar de PAGINA en PAGINA
+    // dejaría huecos y volveríamos a perder ventas.
+    desde += page.length;
+    // Ya reunimos todo lo que el servidor dice que existe.
+    if (filas.length >= total) break;
   }
 
   // El adaptador exponía created_date como alias; se conserva por si algún
