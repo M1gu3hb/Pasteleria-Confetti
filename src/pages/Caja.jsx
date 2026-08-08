@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
+import { fetchVentasDelCorte, contarVentasDelCorte } from '@/lib/ventasCorte';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePOSAuth } from '@/lib/POSAuthContext';
 import { useConfig } from '@/lib/ConfigContext';
@@ -223,12 +224,30 @@ export default function Caja() {
   });
   const entregasDelDia = Array.isArray(entregasCorteRaw) ? entregasCorteRaw : [];
 
-  const { data: ventasHoyRaw } = useQuery({
-    queryKey: ['ventas_pagadas_caja'],
-    queryFn: () => base44.entities.Venta.filter({ estado: 'pagada' }),
+  // INCIDENTE 2026-07-30 → 2026-08-08: antes esto era
+  //   Venta.filter({ estado: 'pagada' })
+  // sin límite, sin orden y sin filtro por corte. PostgREST corta en 1,000
+  // filas y, al no haber ORDER BY, devolvía las 1,000 MÁS ANTIGUAS. Cuando
+  // Xochimilco superó las 1,000 ventas pagadas (2026-07-30 01:08:55) las ventas
+  // del día dejaron de llegar: el resumen daba 0 y el cierre GUARDABA 0.
+  // Ahora la consulta va acotada al corte y paginada (ver ventasCorte.js), así
+  // que no puede truncarse. La lógica de reparto venta↔corte NO cambia.
+  const {
+    data: ventasHoyRaw,
+    isFetched: ventasCorteFetched,
+    isPlaceholderData: ventasCortePlaceholder,
+    refetch: refetchVentasCorte,
+  } = useQuery({
+    queryKey: ['ventas_pagadas_caja', cajaAbierta?.id ?? null],
+    queryFn: () => fetchVentasDelCorte(cajaAbierta),
+    enabled: !!cajaAbierta?.id,
     placeholderData: (prev) => prev,
     staleTime: 5000,
   });
+  // OJO: `isSuccess` NO sirve aquí. Con `placeholderData` React Query lo pone en
+  // true mientras sirve los datos del corte ANTERIOR (la queryKey lleva el id
+  // del corte). Sólo damos por cargado lo que se haya traído para ESTE corte.
+  const ventasCorteCargadas = ventasCorteFetched && !ventasCortePlaceholder;
   const ventasHoy = Array.isArray(ventasHoyRaw) ? ventasHoyRaw : [];
 
   const { data: gastosRaw } = useQuery({
@@ -1314,6 +1333,36 @@ export default function Caja() {
         setAccionLoading(false);
         return;
       }
+      // ── GUARDA ANTI-CEROS (incidente 2026-07-30 → 2026-08-08) ──────────
+      // El corte se guardaba con los totales que hubiera calculado el cliente,
+      // sin comprobar que la lista de ventas se hubiera cargado de verdad. Si
+      // venía vacía o truncada, se escribían CEROS sobre un día con ventas
+      // reales (pasó en 10 cortes, 79,530 sin reflejar).
+      // FALLA CERRADA: si la verificación contra el servidor no se puede hacer,
+      // NO se cierra. Es preferible pedir un reintento a guardar un corte
+      // irrecuperable.
+      if (!ventasCorteCargadas) {
+        toast.error('Aún no se cargaron las ventas del corte. Espera unos segundos e inténtalo de nuevo.');
+        refetchVentasCorte();
+        setAccionLoading(false);
+        return;
+      }
+      let ventasEnServidor = null;
+      try {
+        ventasEnServidor = await contarVentasDelCorte(cajaAbierta.id);
+      } catch (e) {
+        console.error('[Caja] no se pudo verificar ventas del corte:', e);
+      }
+      if (ventasEnServidor === null || (ventasEnServidor > 0 && Number(resumen.numVentas) === 0)) {
+        console.error('[Caja] cierre abortado. servidor=', ventasEnServidor,
+          'resumen.numVentas=', resumen.numVentas);
+        toast.error('No se pudieron leer las ventas de este corte. No se cerró la caja para no guardar totales en cero. Revisa la conexión e inténtalo de nuevo.');
+        refetchVentasCorte();
+        queryClient.invalidateQueries({ queryKey: ['ventas_pagadas_caja'] });
+        setAccionLoading(false);
+        return;
+      }
+
       const fechaCierreIso = new Date().toISOString();
       const data = {
         tipo_corte: 'cierre_diario',
