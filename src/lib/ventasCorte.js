@@ -91,17 +91,26 @@ export async function fetchVentasDelCorte(corte) {
       .order('fecha_cierre', { ascending: true, nullsFirst: false })
       .range(desde, desde + PAGINA - 1);
     if (error) throw new Error(`[ventas_corte] ${error.message}`);
-    if (total === null) total = Number(count) || 0;
+    // OJO: `Number(count) || 0` sería una trampa. Si el count no llegara
+    // (cabecera content-range ausente por un proxy), total valdría 0 y el corte
+    // de abajo pararía tras la PRIMERA página: truncación silenciosa otra vez,
+    // que es justo lo que este módulo existe para impedir. Si no hay count
+    // fiable se deja en null y se pagina hasta que una página venga corta.
+    if (total === null && Number.isFinite(Number(count))) total = Number(count);
     const page = Array.isArray(data) ? data : [];
     filas.push(...page);
     // Página vacía: el servidor ya no tiene más (evita bucle infinito).
+    // Es TAMBIÉN la única condición de parada cuando no hay count fiable:
+    // parar en "página corta" sería incorrecto si el tope del servidor fuese
+    // menor que PAGINA (con tope 500 truncaría a 500). Cuesta una petición de
+    // más y a cambio no puede truncar nunca.
     if (page.length === 0) break;
     // Avanzar por lo REALMENTE recibido, no por PAGINA: si el servidor devuelve
     // menos filas de las pedidas (su tope es menor), saltar de PAGINA en PAGINA
     // dejaría huecos y volveríamos a perder ventas.
     desde += page.length;
     // Ya reunimos todo lo que el servidor dice que existe.
-    if (filas.length >= total) break;
+    if (total !== null && filas.length >= total) break;
   }
 
   // El adaptador exponía created_date como alias; se conserva por si algún
@@ -129,5 +138,9 @@ export async function contarVentasDelCorte(corteId) {
     .eq('corte_caja_id', corteId)
     .eq('estado', 'pagada');
   if (error) throw new Error(`[ventas_corte_count] ${error.message}`);
-  return count || 0;
+  // `count || 0` sería fallar ABIERTO: un count ausente (sin cabecera
+  // content-range) se volvería 0 y el cierre no distinguiría "este corte no
+  // tiene ventas" de "no pude verificar" — exactamente el agujero por el que
+  // se escribieron los ceros. Devolvemos null y el caller aborta el cierre.
+  return Number.isFinite(Number(count)) ? Number(count) : null;
 }

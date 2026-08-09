@@ -236,6 +236,7 @@ export default function Caja() {
     data: ventasHoyRaw,
     isFetched: ventasCorteFetched,
     isPlaceholderData: ventasCortePlaceholder,
+    isError: ventasCorteError,
     refetch: refetchVentasCorte,
   } = useQuery({
     queryKey: ['ventas_pagadas_caja', cajaAbierta?.id ?? null],
@@ -248,7 +249,12 @@ export default function Caja() {
   // true mientras sirve los datos del corte ANTERIOR (la queryKey lleva el id
   // del corte, así que al cambiar de corte hay un intervalo con datos ajenos).
   // Sólo damos por cargado lo que se haya traído para ESTE corte.
-  const ventasCorteCargadas = ventasCorteFetched && !ventasCortePlaceholder;
+  // `isFetched` es true también cuando el fetch FALLÓ (React Query lo define
+  // como dataUpdateCount>0 || errorUpdateCount>0), y con status 'error' NO se
+  // aplica placeholderData — así que sin `!isError` una consulta agotada tras
+  // sus reintentos se reportaba como "cargada" con la lista vacía.
+  const ventasCorteCargadas =
+    ventasCorteFetched && !ventasCortePlaceholder && !ventasCorteError;
   const ventasHoy = Array.isArray(ventasHoyRaw) ? ventasHoyRaw : [];
 
   const { data: gastosRaw } = useQuery({
@@ -1372,7 +1378,12 @@ export default function Caja() {
       } catch (e) {
         console.error('[Caja] no se pudo verificar ventas del corte:', e);
       }
-      if (ventasEnServidor === null || (ventasEnServidor > 0 && Number(resumen.numVentas) === 0)) {
+      // Se compara CANTIDAD contra cantidad, no sólo "cero". Una carga PARCIAL
+      // (el servidor tiene 26 y el cliente sólo 12) también corrompe el corte y
+      // antes pasaba la guarda por no ser exactamente 0. El resumen puede tener
+      // MÁS (incluye las ventas en tránsito sin corte_caja_id, que el conteo no
+      // cuenta), pero nunca MENOS que las ya ligadas al corte.
+      if (ventasEnServidor === null || ventasEnServidor > Number(resumen.numVentas || 0)) {
         console.error('[Caja] cierre abortado. servidor=', ventasEnServidor,
           'resumen.numVentas=', resumen.numVentas);
         toast.error('No se pudieron leer las ventas de este corte. No se cerró la caja para no guardar totales en cero. Revisa la conexión e inténtalo de nuevo.');
