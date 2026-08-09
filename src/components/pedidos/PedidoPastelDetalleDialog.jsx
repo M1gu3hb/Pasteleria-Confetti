@@ -102,7 +102,6 @@ function NotaVozEnDetalle({ pedido, puedeEditar = true }) {
         placeholder={puedeEditar ? 'Transcripción de la nota de voz (editable)' : 'Transcripción de la nota de voz'}
         className="text-sm"
       />
-      {/* FASE 1 — guardar la transcripción es escritura (UPDATE): oculto para el pastelero (RLS). */}
       {puedeEditar && dirty && (
         <Button size="sm" onClick={guardar} disabled={guardando} className="h-8">
           {guardando ? 'Guardando…' : 'Guardar transcripción'}
@@ -124,9 +123,12 @@ export default function PedidoPastelDetalleDialog({ pedido: pedidoProp, open, on
   const { posUser } = usePOSAuth();
   const [showPago, setShowPago] = useState(false);
   const [showCancelar, setShowCancelar] = useState(false);
-  // FASE 1 — el pastelero es SOLO LECTURA sobre pedidos (su RLS rechaza INSERT/UPDATE/DELETE):
-  // se ocultan las acciones de escritura (confirmar/pago/entregado/editar/cancelar/guardar nota).
-  // Se dejan las de lectura/externas (ver ticket, WhatsApp, correo, imprimir). Otros roles: idéntico.
+  // El pastelero ya NO es solo lectura (migración 0060, autorizada por Miguel):
+  // puede editar la nota y avanzar el estado (confirmar / entregar). Lo que su RLS
+  // sigue rechazando —cobrar, editar el pedido completo (precios) y cancelar— se
+  // mantiene oculto para no ofrecerle botones que van a fallar. Su alcance real lo
+  // impone el trigger trg_guard_pastelero_alcance en la base, no esta bandera.
+  // Otros roles: idéntico a antes.
   const esPastelero = adminRole === 'pastelero';
   // FASE 4 — aviso antes de marcar "Entregado" (sale de la lista de pendientes).
   const [confirmarEntrega, setConfirmarEntrega] = useState(false);
@@ -313,20 +315,24 @@ export default function PedidoPastelDetalleDialog({ pedido: pedidoProp, open, on
 
             {/* FASE 4 — reproductor del audio + transcripción editable (sustituye
                 el placeholder "próximamente"). */}
-            <NotaVozEnDetalle pedido={pedido} puedeEditar={!esPastelero} />
+            {/* 0060 — el pastelero YA puede editar la nota (política
+                pos_pastelero_update_pedidos + trigger de alcance). */}
+            <NotaVozEnDetalle pedido={pedido} />
           </div>
         )}
 
         {/* Acciones */}
         <div className="grid grid-cols-2 gap-2 no-print">
-          {/* FASE 1 — acciones de ESCRITURA (RLS del pastelero las rechaza): ocultas para pastelero. */}
-          {!esPastelero && (<>
+          {/* 0060 — el pastelero ya puede AVANZAR el estado (confirmar / entregar):
+              su RLS lo permite y el trigger trg_guard_pastelero_alcance acota qué
+              columnas y qué transiciones. Sigue OCULTO lo que su RLS rechaza:
+              cobrar, editar el pedido completo (precios) y cancelar. */}
           {pedido.estado === 'pendiente' && (
             <Button disabled={accion} onClick={() => cambiarEstado('confirmado', { fecha_confirmacion: new Date().toISOString() })} className="h-11">
               <CheckCircle2 className="w-4 h-4 mr-1.5" />Confirmar
             </Button>
           )}
-          {!finalizado && pedido.estado !== 'pagado' && (
+          {!esPastelero && !finalizado && pedido.estado !== 'pagado' && (
             <Button
               variant="outline"
               disabled={!cajaAbierta}
@@ -353,19 +359,18 @@ export default function PedidoPastelDetalleDialog({ pedido: pedidoProp, open, on
               )}
             </div>
           )}
-          {!finalizado && !esCatalogo && (
+          {!esPastelero && !finalizado && !esCatalogo && (
             <Button variant="outline" disabled={accion} className="h-11"
               onClick={() => { onClose?.(); navigate(`/pedidos-pastel/nuevo?id=${pedido.id}`); }}>
               <Pencil className="w-4 h-4 mr-1.5" />Editar
             </Button>
           )}
-          {!finalizado && (
+          {!esPastelero && !finalizado && (
             <Button variant="outline" disabled={accion} className="h-11 border-red-300 text-red-600 hover:bg-red-50"
               onClick={() => setShowCancelar(true)}>
               <XCircle className="w-4 h-4 mr-1.5" />Cancelar pedido
             </Button>
           )}
-          </>)}
           {/* Lectura/externas (sin escritura a BD): visibles para todos, incl. pastelero. */}
           <Button variant="outline" className="h-11" asChild>
             <a href={buildWhatsAppLink(pedido)} target="_blank" rel="noopener noreferrer">

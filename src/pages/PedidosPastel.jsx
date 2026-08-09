@@ -131,8 +131,9 @@ export default function PedidosPastel() {
           <h1 className="text-xl font-display font-bold">Pedidos de Pastel</h1>
           <SucursalBadge sucursalEfectiva={sucursalEfectiva} />
         </div>
-        {/* FASE 1 — el pastelero es SOLO LECTURA (su RLS rechaza crear/editar pedidos):
-            se oculta "Nuevo pedido" para no mostrarle un botón que va a fallar. */}
+        {/* El pastelero puede editar la nota y avanzar estados (0060), pero SIGUE sin
+            poder CREAR pedidos (la política nueva es sólo FOR UPDATE): "Nuevo pedido"
+            se mantiene oculto para no ofrecerle un botón que va a fallar. */}
         {!esPastelero && (hayCaja ? (
           <Link to="/pedidos-pastel/nuevo">
             <Button className="h-11 px-5 w-full sm:w-auto"

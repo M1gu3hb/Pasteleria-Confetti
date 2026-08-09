@@ -1,14 +1,17 @@
 # BUGS_PENDING / riesgos conocidos
 
-## ABIERTO (2026-08-09) — el rol `pastelero` NO puede ESCRIBIR en pedidos
-Es un bug **distinto** al de la nota (ese ya está arreglado para todos). Verificado en vivo: con la
-sesión del pastelero se **leen** 229 pedidos, pero cualquier `UPDATE` afecta **0 filas**.
-- **Origen:** `0037_rol_pastelero.sql` (**2026-06-30**, commit `17a3210`). Su propio comentario dice
+## RESUELTO (2026-08-09) — el rol `pastelero` NO podía ESCRIBIR en pedidos
+Verificado en vivo: con la sesión del pastelero se **leían** 229 pedidos, pero cualquier `UPDATE`
+afectaba **0 filas**.
+- **Origen:** `0037_rol_pastelero.sql` (**2026-06-30**, commit `17a3210`). Su propio comentario decía
   *"Solo lectura: no toca INSERT/UPDATE/DELETE (esos siguen bajo `pos_scope_pedidos`)"* — la
   suposición falla porque el pastelero tiene `sucursal_id = NULL`, así que `sucursal_id = pos_sucursal()`
-  evalúa a NULL (no a true) y la política de escritura nunca lo deja pasar.
-- **Pendiente:** política de UPDATE acotada para el pastelero. Toca **aislamiento RLS** → se prepara
-  con evidencia y la **firma Miguel** antes de aplicar.
+  evalúa a NULL (no a true) y la política de escritura nunca lo dejaba pasar.
+- **Resuelto** por la migración `0060` (política `FOR UPDATE` + trigger de alcance: nota y avance de
+  estado; nada de dinero). Aplicada en Supabase; **el frontend sigue en la rama de trabajo**, así que
+  en producción todavía no cambia nada visible. Evidencia: `scripts/pastelero_alcance_evidencia.sql`
+  (12/12, transacciones revertidas) y `scripts/pastelero_alcance_verify.mjs` (31/31).
+- **Falta:** que Miguel firme el cambio de RLS y dé luz verde al despliegue del frontend.
 
 ## ABIERTO (2026-08-09) — hallazgos de revisión aún sin cerrar
 - `CorteAutoDownloader.jsx` empareja las ventas del PDF **sólo por ventana de tiempo**, sin filtrar por

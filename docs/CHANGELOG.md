@@ -1,5 +1,26 @@
 # CHANGELOG
 
+## 2026-08-09 (bis) — el rol `pastelero` ya puede editar la nota y avanzar estados (0060) [rama de trabajo, NO desplegado]
+> Alcance autorizado por Miguel: *"nota más avanzar estados"*. **Aplicado en Supabase; el frontend se queda en `claude/audit-optimize-pos-confetti-dbkff1`** — el POS en producción sigue ocultándole los botones, así que la política por sí sola no cambia nada de lo que ve nadie.
+
+- **Bug confirmado en producción** (sonda con la sesión real del pastelero, transacción revertida): `pos_is_pastelero()=true`, `pos_sucursal()=NULL`, **LEE 229 pedidos**, `UPDATE` de la nota → **0 filas**.
+- **Causa raíz:** `pos_scope_pedidos` (ALL) exige `pos_is_admin() OR sucursal_id = pos_sucursal()`. El pastelero tiene `sucursal_id = NULL`, así que esa igualdad da **NULL, no TRUE**, y `pos_is_admin()` es false: ninguna política de escritura lo admitía. Leer sí podía, por su política propia `pos_pastelero_select_pedidos`.
+- **Desde cuándo:** `0037_rol_pastelero.sql` (**2026-06-30**, commit `17a3210`). Su propio comentario decía *"Solo lectura: no toca INSERT/UPDATE/DELETE (esos siguen bajo `pos_scope_pedidos`)"* — cierto para caja, que sí tiene sucursal; falso para un rol sin sucursal.
+- **Arreglo (`0060`)**: política `pos_pastelero_update_pedidos` (FOR UPDATE) + trigger `trg_guard_pastelero_alcance` que acota **columnas y transiciones**:
+  - PUEDE: `nota_voz_transcripcion`; `pendiente → confirmado`; `→ entregado` **sólo sin saldo pendiente**; y sellar `fecha_confirmacion` / `fecha_entrega_real` **únicamente en su transición**.
+  - NO PUEDE: precios, kilos, extras, cliente, sucursal, anticipos/saldos, cancelar, marcar pagado, crear ni borrar pedidos.
+  - El trigger es **NO-OP para el resto de roles** (early return): caja, administrador y dueño se comportan byte-idéntico.
+  - La regla "sin saldo" usa la **misma precedencia que la pantalla** (`saldo_pendiente` y, si fuera null, `resta`), de modo que los **68 pedidos reales con `saldo_pendiente=0` y `resta>0`** (saldados por abonos, con el campo legacy sin actualizar) se siguen pudiendo entregar, igual que hoy.
+- **Frontend:** en el diálogo de detalle se le devuelven al pastelero **Guardar nota**, **Confirmar** y **Entregado**; siguen ocultos **Registrar pago**, **Editar** y **Cancelar** (y **Nuevo pedido** en la lista), porque su RLS los sigue rechazando y no se le muestran botones que van a fallar.
+- **Defecto colateral encontrado y corregido** (`Sidebar.jsx`): dueño **y pastelero** abren sesión Supabase **global**, pero al salir sólo se restauraba la sesión de la terminal si venías de **dueño**. Tras salir el pastelero, la tablet seguía autenticada como pastelero mientras la interfaz decía "Empleado" — con la sucursal equivocada para RLS y, desde 0060, con permiso de escritura sobre pedidos. Ahora se restaura en **ambos** casos.
+- **Evidencia contra la base real** (`scripts/pastelero_alcance_evidencia.sql`, transacciones revertidas, **0 filas persistidas** — se verificó después: 229 pedidos, 25 pendientes, 0 filas de prueba): **12/12**. Incluye que el `DELETE` sigue devolviendo 0 filas y que el `INSERT` se rechaza con **SQLSTATE 42501** (con todas las columnas NOT NULL puestas, para que el rechazo pruebe la RLS y no un not-null).
+- **Pruebas de lógica** (`scripts/pastelero_alcance_verify.mjs`): **31/31**, incluida la comprobación cruzada de que **ningún botón visible para el pastelero corresponde a una escritura que la base vaya a rechazar**.
+- **Revisión de código** sobre este cambio: 7 hallazgos, todos atendidos — dos pruebas de evidencia que no podían fallar, la sesión colgada del `Sidebar`, la migración no re-ejecutable (`create policy` sin `drop ... if exists`), el fallback de `resta` inalcanzable y las referencias de documentación.
+- `vite build` verde; lint **39 = línea base**; typecheck **1249 = línea base**; las 5 suites en verde.
+
+### Sobre "la nota nunca se guarda" (aclaración de Miguel: le pasa a CUALQUIER usuario)
+Es un bug **distinto** del anterior y **ya está desplegado en producción** (commit `f2e9ae8`). Verificado además contra la base con la sesión de un usuario normal (administrador), en transacción revertida: `UPDATE` → **1 fila**, y el valor leído después es el nuevo. La escritura **siempre** llegó; lo que fallaba era que el diálogo mostraba una instantánea congelada.
+
 ## 2026-08-09 — P0 dinero: el cierre de caja ya no puede guardar CEROS + la nota de pastel ya se guarda [rama `migracion/supabase`]
 > Dos incidentes de producción, ambos cerrados. El recálculo de los cortes rotos y la matemática del dinero requieren la **firma de Miguel** (no se autocertifican).
 

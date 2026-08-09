@@ -171,7 +171,14 @@ export default function Sidebar({ collapsed, onToggle }) {
   // En dispositivo de dueño no hay empleado virtual: solo se cierra la sesión.
   const handleSalirAdmin = async () => {
     try {
-      const wasDueno = esDueno; // capturar antes de que salirAdmin() lo limpie
+      // Capturar ANTES de que salirAdmin() limpie adminRole.
+      // Dueño y pastelero abren sesión Supabase GLOBAL (ver handleAdminSuccess);
+      // el administrador no toca la sesión. Al salir hay que devolver la terminal
+      // a SU sesión scoped en los DOS casos. Antes sólo se hacía para el dueño:
+      // tras salir el pastelero, la tablet seguía autenticada como pastelero
+      // mientras la UI decía "Empleado" — con la sucursal equivocada para RLS y,
+      // desde 0060, con permiso de escritura sobre pedidos.
+      const wasSesionGlobal = esDueno || esPastelero;
       salirAdmin();
       if (modoDuenoDispositivo) {
         // Dispositivo de dueño → cerrar la sesión Supabase del dueño;
@@ -180,10 +187,10 @@ export default function Sidebar({ collapsed, onToggle }) {
         logout();
         return;
       }
-      // Terminal física: si veníamos de una sesión de DUEÑO (global), volver a
-      // la sesión TERMINAL (scoped) antes de operar como empleado. Para
+      // Terminal física: si veníamos de una sesión GLOBAL (dueño o pastelero),
+      // volver a la sesión TERMINAL (scoped) antes de operar como empleado. Para
       // administrador no hubo cambio de sesión, así que no hay nada que restaurar.
-      if (wasDueno && terminal?.sucursal_id) {
+      if (wasSesionGlobal && terminal?.sucursal_id) {
         await loginTerminal(terminal.sucursal_id);
       }
       login({
