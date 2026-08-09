@@ -44,8 +44,15 @@ import { supabase, ensureSession } from '@/api/supabaseClient';
 const COLS_ABIERTA =
   'id,folio,estado,tipo_corte,sucursal_id,sucursal_nombre,fecha_apertura,fecha_inicio,created_at,usuario_apertura_nombre';
 
-// Sólo lo que necesita `fondoEsperado`.
-const COLS_CIERRE = 'id,estado,tipo_corte,dinero_dejado_en_caja,created_at';
+// Sólo lo que necesita `fondoEsperado` — MÁS `sucursal_id`.
+// `sucursal_id` NO es decorativo aquí: useCajaAbierta descarta el placeholder y
+// la memoria de sesión cuando la fila no es de la sucursal activa, y esa
+// comprobación se hace sobre ESTE campo. Sin él, `undefined === '<uuid>'` era
+// siempre false: el placeholder no se aplicaba nunca y la memoria del último
+// cierre quedaba muerta, de modo que en cualquier ventana en la que la consulta
+// no hubiera resuelto todavía `fondoEsperado` valía 0 — y ese número se graba
+// en `fondo_esperado_apertura` / `diferencia_apertura` al abrir caja.
+const COLS_CIERRE = 'id,estado,tipo_corte,sucursal_id,dinero_dejado_en_caja,created_at';
 
 // El temporizador de respaldo y la invalidación viven en `cajaRefresco.js`
 // (sin dependencia de Supabase, para poder verificarlos en Node).

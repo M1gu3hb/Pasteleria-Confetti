@@ -218,6 +218,37 @@ chk('corte atrasado: el corte de OTRA sucursal no bloquea',
 chk('corte atrasado: el corte de LA MISMA sucursal sí cuenta',
   corteAtrasadoDe(cajaA, 'suc-A') === cajaA);
 
+// ── E. Las guardas por sucursal necesitan que la COLUMNA venga ──────────
+// Las guardas de arriba comparan `fila.sucursal_id === sucId`. Si la consulta
+// no PIDE esa columna, la comparación es `undefined === '<uuid>'`, siempre
+// false: el placeholder no se aplica nunca y la memoria de sesión queda muerta,
+// así que `fondoEsperado` cae a 0 en cualquier ventana en la que la consulta no
+// haya resuelto — y ese 0 se graba en fondo_esperado_apertura /
+// diferencia_apertura al abrir caja. Es DINERO, y pasó de verdad:
+// COLS_CIERRE no incluía sucursal_id.
+{
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../src/lib/cajaEstado.js', import.meta.url), 'utf8');
+  const cols = (nombre) => {
+    const m = src.match(new RegExp(nombre + "\\s*=\\s*\n?\\s*'([^']+)'"));
+    return m ? m[1].split(',').map((c) => c.trim()) : [];
+  };
+  const abierta = cols('COLS_ABIERTA');
+  const cierre = cols('COLS_CIERRE');
+  let eOk = 0, eFail = 0;
+  const chk = (n, cond) => { cond ? eOk++ : eFail++; console.log(`${cond ? 'PASS' : '*** FAIL ***'}  ${n}`); };
+  chk('columnas: se pudo leer COLS_ABIERTA', abierta.length > 0);
+  chk('columnas: se pudo leer COLS_CIERRE', cierre.length > 0);
+  chk('columnas: COLS_ABIERTA pide sucursal_id (lo exige la guarda anti-fuga)',
+    abierta.includes('sucursal_id'));
+  chk('columnas: COLS_CIERRE pide sucursal_id (si no, fondoEsperado cae a 0)',
+    cierre.includes('sucursal_id'));
+  chk('columnas: COLS_CIERRE sigue trayendo dinero_dejado_en_caja',
+    cierre.includes('dinero_dejado_en_caja'));
+  console.log(`columnas necesarias para las guardas: ${eOk} PASS, ${eFail} FAIL`);
+  if (eFail) fail += eFail;
+}
+
 console.log(`\ncasos: ${ok} PASS, ${fail} FAIL`);
 console.log(`borde medianoche MX (181 minutos): ${bordeOk} PASS, ${bordeFail} FAIL`);
 console.log(`fuga entre sucursales: ${cOk} PASS, ${cFail} FAIL`);
