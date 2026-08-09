@@ -26,7 +26,7 @@ en el worktree `C:/Pasteleria Confetti/pos-fix`; sólo pasa a `migracion/supabas
 ## 🚨 URGENTE
 
 ### 1. Fase 1 — Desbloquear el canal del APK
-Las tablets del POS usan el **APK**, y su `server.url` apunta al **preview de la rama `apk/capacitor`**, que está **20 commits por detrás** de producción. Por ese canal **no ha llegado ninguna corrección de frontend**: ni el cierre en cero, ni la nota, ni el arreglo del dueño.
+Las tablets del POS usan el **APK**, y su `server.url` apunta al **preview de la rama `apk/capacitor`**, que es **ancestro estricto** de producción (se quedó en `9b36aa5`, del 2026-07-13). Por ese canal **no ha llegado ninguna corrección de frontend**: ni el cierre en cero, ni la nota, ni el arreglo del dueño. *(No cites un número de commits: cambia con cada push. Comprueba con `git rev-list --count origin/apk/capacitor..origin/migracion/supabase`.)*
 
 **No es un riesgo latente: está fallando ahora.** Verificado en navegador el 2026-08-09 contra el corte real abierto
 `CONF-A-C044`: por el canal del APK el Resumen muestra **$0.00 y 0 tickets** con **17 ventas y $5,735** reales, y

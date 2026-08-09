@@ -31,7 +31,7 @@ Resuelve: cobrar, llevar pedidos de pastel personalizado, controlar caja (apertu
 - Bloques de la auditoría nunca abiertos: políticas `USING true`, vistas `security_invoker=false`, Storage/imágenes, cutover de Auth, limpieza de la fachada Base44.
 
 **Qué está roto / bloqueado:**
-- **El APK de las tablets carga el preview de `apk/capacitor`, 20 commits por detrás de producción.** Por ahí no llega ninguna corrección de frontend. **Es lo más urgente.** No es un riesgo latente: verificado en navegador el 2026-08-09, por ese canal Xochimilco ve **$0.00 y 0 tickets** con 17 ventas reales y **no puede cerrar caja** (el trigger `0058` rechaza el cierre en cero y el mensaje "actualiza la aplicación" no puede cumplirse desde el APK). Ver `HANDOFF.md` §4.
+- **El APK de las tablets carga el preview de `apk/capacitor`, que es ancestro estricto de producción** (se quedó en `9b36aa5`, del 2026-07-13). Por ahí no llega ninguna corrección de frontend. **Es lo más urgente.** No es un riesgo latente: verificado en navegador el 2026-08-09, por ese canal Xochimilco ve **$0.00 y 0 tickets** con 17 ventas reales y **no puede cerrar caja** (el trigger `0058` rechaza el cierre en cero y el mensaje "actualiza la aplicación" no puede cumplirse desde el APK). Ver `HANDOFF.md` §4.
 - **P0 DINERO ABIERTO — truncación PARCIAL sin detectar ni reparar.** `CONF-A-C032` tiene **$1,420 sin reflejar** y estaba mal clasificado como "descuadre de otra causa". El trigger `0058` **no** lo habría impedido: sólo rechaza `total_general = 0`. Ver `docs/BUGS_PENDING.md`.
 - **La suite `scripts/cierre_caja_verify.mjs` excluye ese folio por nombre**, así que **da verde encima del dinero no reflejado**. Se corrige en la Fase 2.4.
 
@@ -205,7 +205,8 @@ INCIDENTE_CIERRE_EN_CERO_2026-08-08}.md`:
 `CONF-A-C032` es la **misma** truncación en forma **parcial** (no "otra causa") y sigue **sin reparar** ($1,420);
 `0058` **sólo** cubre `total_general = 0`; la causa raíz es la ventana de 1.000 **acotada a la sucursal**, y el proxy
 "N más antiguas del corte" **da falsos positivos**; `apk/capacitor` **no tiene commits propios** (la dirección que hay
-que hacer no es la que prohíbe `CLAUDE.md`); son **20** commits de retraso; Abel **no** es un dueño global.
+que hacer no es la que prohíbe `CLAUDE.md`); **no se cita un número de commits de retraso** (caduca: se dijo 18,
+eran 20, y al día siguiente 21 — lo estable es "ancestro estricto"); Abel **no** es un dueño global.
 Sin cambios de código de aplicación. Regla nueva en `CLAUDE.md`: **exclusiones por nombre en tests**.
 
 **Histórico — 2026-08-09** — commit `3a90e3c` en `migracion/supabase`.

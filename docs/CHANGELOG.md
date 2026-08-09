@@ -6,6 +6,12 @@
 > (comprobado: `3a90e3c` y `04bd33c` sirven el mismo bundle y el mismo `sw.js`).
 >
 > Primera fase del **plan de reparación integral** aprobado por Miguel. Fases 0→7 en `HANDOFF.md` §10.
+>
+> **Addendum (mismo día, tras la revisión de Miguel):** (1) se añade una **nota al pie fechada** a
+> `supabase/migrations/0057_recalculo_cortes_en_cero.sql` —**sin tocar el SQL**— porque quien lea la migración suelta
+> se llevaba la afirmación falsa de su cabecera; (2) se **retira el número de commits de retraso** de toda la
+> documentación (se dijo 18, eran 20 al corregirlo y 21 al día siguiente) y se sustituye por la propiedad estable:
+> **`apk/capacitor` es ancestro estricto**. Ver **D-33**.
 
 ### Qué estaba mal y por qué importa
 
@@ -44,7 +50,8 @@ cortes pequeños**, y barrer los 111 cortes con él habría "reparado" cortes sa
 idéntico en ambas ramas. Lo que `CLAUDE.md` prohíbe es `apk/capacitor` → producción; lo que hace falta es
 **producción → `apk/capacitor`**, un **fast-forward puro que no toca producción**. Son operaciones distintas.
 
-**F) Menores:** son **20** commits de retraso (no 18); Abel tiene `sucursal_id` = Xochimilco y **no** es un dueño
+**F) Menores:** **no se cita un número de commits de retraso** — la doc decía 18, eran 20 al escribirlo y 21 al día
+siguiente; lo estable y verificable es que `apk/capacitor` es **ancestro estricto**. Abel tiene `sucursal_id` = Xochimilco y **no** es un dueño
 global (aunque `pos_is_admin()` le da alcance global por rol); y **no se citan hashes de bundle** — `HANDOFF.md`
 afirmaba que `3a90e3c` servía `index-DOafkEZU.js` y en vivo servía `index-B5y-Tcrd.js`. **Cítense commits.**
 
@@ -60,7 +67,7 @@ afirmaba que `3a90e3c` servía `index-DOafkEZU.js` y en vivo servía `index-B5y-
 
 ### Cambios en documentación
 - **`HANDOFF.md`** — bloque de correcciones en cabecera; §2.2 con la tabla de los tres modelos de ventana y el alcance
-  real de `0058`; §3 con una fila nueva para la truncación parcial; **§4 reescrita** (20 commits, sin hashes, las dos
+  real de `0058`; §3 con una fila nueva para la truncación parcial; **§4 reescrita** (ancestro estricto, sin cifras ni hashes, las dos
   direcciones del merge, evidencia de navegador); §5 con dos P0 nuevos; §8 con la corrección sobre Abel; §10 con el
   plan de fases 0→7.
 - **`PROJECT_CONTEXT.md`** — §2 (qué está roto), §7 (`cortes_caja`), §8 (flujo de cierre), §9 (D-23 tachada + 2

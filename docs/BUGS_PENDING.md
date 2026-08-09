@@ -73,8 +73,9 @@
   - **Topilejo (587) y San Gregorio (499)** siguen por debajo de 1.000 ventas pagadas: desde el APK cierran bien
     **por ahora**, y se romperán solas al cruzar el umbral.
 - **Causa:** `capacitor.config.ts` (presente en **ambas** ramas, idéntico) tiene `server.url` = preview de la rama
-  `apk/capacitor`, y esa rama está **20 commits por detrás** de producción (`apk/capacitor` = `9b36aa5`;
-  `migracion/supabase` = `04bd33c`). *No se citan hashes de bundle: caducan y ya provocaron una afirmación falsa.*
+  `apk/capacitor`, y esa rama se quedó en `9b36aa5` (2026-07-13) mientras producción siguió avanzando.
+  *No se citan ni hashes de bundle ni número de commits de retraso: ambos caducan y ambos ya provocaron
+  afirmaciones falsas en esta documentación. Lo estable es que `apk/capacitor` es **ancestro estricto**.*
 - **Dato que cambia el riesgo:** `apk/capacitor` **no tiene ni un commit propio** — es **ancestro estricto** de
   producción (`git log origin/migracion/supabase..origin/apk/capacitor` → vacío). Por tanto **`migracion/supabase` →
   `apk/capacitor` es un fast-forward puro que NO toca producción**. Lo que `CLAUDE.md` prohíbe es la dirección

@@ -65,11 +65,18 @@ premisa** y **convertirla en una exención de test**.
   fast-forward puro que no toca producción**. Se elige esta segunda para desbloquear las tablets (Fase 1) y se deja
   repuntar `server.url` para la Fase 7. Ambas siguen requiriendo OK de Miguel.
 
-### D-33 · 2026-08-09 — En la documentación se citan commits, no hashes de bundle
-- **Razón:** `HANDOFF.md` afirmaba que producción servía `index-DOafkEZU.js`; se comprobó en vivo que el commit citado
-  (`3a90e3c`) servía `index-B5y-Tcrd.js`. El hash caduca en el siguiente build y produce afirmaciones falsas.
-- **Consecuencia:** los hashes se usan **para verificar en el momento** (¿el bundle servido trae el cambio?), nunca
-  como referencia escrita. En los documentos se cita el **commit**.
+### D-33 · 2026-08-09 — En la documentación no se escriben cifras que caducan
+- **Razón:** dos afirmaciones falsas nacieron de escribir un dato volátil como si fuera permanente.
+  1. **Hashes de bundle.** `HANDOFF.md` afirmaba que producción servía `index-DOafkEZU.js`; en vivo, el commit citado
+     (`3a90e3c`) servía `index-B5y-Tcrd.js`. El hash cambia en el siguiente build.
+  2. **Número de commits de retraso del APK.** La doc decía **18**; eran **20** al corregirla y **21** al día
+     siguiente. Cambia con cada push a producción.
+- **Consecuencia:** ambos se usan **para verificar en el momento**, nunca como referencia escrita.
+  - En vez de un hash → se cita el **commit**, y se comprueba el bundle servido buscando dentro un **marcador del
+    código nuevo** (p. ej. `ventas_corte_count`).
+  - En vez de un número de commits → se afirma la propiedad **estable**: `apk/capacitor` es **ancestro estricto** de
+    `migracion/supabase`. Se comprueba con
+    `git log origin/migracion/supabase..origin/apk/capacitor` (vacío = ancestro estricto).
 
 ### D-24 · 2026-08-09 — "La nota no se guarda": arreglar en el diálogo, no en los 3 call-sites
 - **Razón:** los tres sitios que abren el diálogo le pasaban una instantánea congelada. Arreglar el diálogo cubre los tres y no toca ningún handler de guardado.

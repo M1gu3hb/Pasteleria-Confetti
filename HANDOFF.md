@@ -20,7 +20,8 @@
 >    111 cortes con él habría "reparado" cortes sanos — es decir, habría metido dinero mal.
 > 4. **`apk/capacitor` no tiene commits propios**: lo que hace falta es **producción → `apk/capacitor`**, que **no**
 >    es la dirección que `CLAUDE.md` prohíbe. Ver §4.
-> 5. Menores: son **20** commits de retraso (no 18); Abel tiene `sucursal_id` = Xochimilco (**no** es un dueño
+> 5. Menores: **no se cita un número de commits de retraso** — la doc decía 18, eran 20, y al día siguiente eran 21;
+>    lo estable es que `apk/capacitor` es **ancestro estricto**. Abel tiene `sucursal_id` = Xochimilco (**no** es un dueño
 >    global); y **no se citan hashes de bundle** (el `index-DOafkEZU.js` que citaba este archivo **nunca** fue el de
 >    `3a90e3c`: ese commit servía `index-B5y-Tcrd.js`). **Cita commits, no hashes de bundle.**
 
@@ -145,12 +146,19 @@ El APK carga la web viva desde una URL fija que está **baked** en `capacitor.co
 server.url = https://pasteleria-confetti-git-apk-capacitor-mh-astral-systems.vercel.app
 ```
 
-Eso es el **preview de la rama `apk/capacitor`**, y esa rama está **20 commits por detrás** de producción:
+Eso es el **preview de la rama `apk/capacitor`**, y esa rama es **ancestro estricto** de producción: se quedó en
+`9b36aa5` (2026-07-13) y producción ha seguido avanzando.
 
 ```
 apk/capacitor      = 9b36aa5   "chore(apk): version 1.1.1"   (2026-07-13)
-migracion/supabase = 04bd33c                                  (2026-08-09)
+migracion/supabase = va por delante; compruébalo, no lo cites de memoria:
+  git rev-list --count origin/apk/capacitor..origin/migracion/supabase
 ```
+
+> **No escribas el número de commits de retraso en la documentación.** Cambia con cada commit y envejece mal (llegó a
+> decir 18 cuando eran 20, y 20 cuando eran 21). Lo que **sí** es estable y es lo que importa: **`apk/capacitor` es
+> ancestro estricto de `migracion/supabase`** — sin commits propios — así que el fast-forward es limpio. Verifícalo
+> con `git log origin/migracion/supabase..origin/apk/capacitor` (vacío = ancestro estricto).
 
 > **No cites hashes de bundle en esta documentación.** La versión anterior de este archivo decía que producción
 > servía `index-DOafkEZU.js`; se comprobó en vivo que `3a90e3c` servía `index-B5y-Tcrd.js`. Los hashes caducan y
