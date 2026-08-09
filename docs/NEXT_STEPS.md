@@ -1,74 +1,81 @@
-# NEXT_STEPS
+# NEXT_STEPS.md — Qué sigue (POS Confetti)
 
-Última actualización: 2026-06-27 (POS+Web migrados y VALIDADOS; **bot 60 días COMPLETO e impecable**; próxima fase = **Vercel + MEJORAS**; cutover pendiente = lunes).
-
-## APK Android — próximos pasos (2026-07-09) [rama `apk/capacitor`]
-Todo el CÓDIGO del APK está hecho y auditado (fases 0,1,3,4,5,corte,6,7). Falta lo de Miguel / en sitio:
-1. **Instalar y probar en la tablet (Camino A):** copiar `C:\Pasteleria Confetti\release\ConfettiPOS.apk` por USB a la Higole, instalar (orígenes desconocidos + "instalar de todos modos"), abrir y seguir el **protocolo de `release/usb/LEEME_instalacion.txt`**: login PIN + navegación igual; en Config → Operación → "Impresora y cajón (app)" elegir/probar conexión (USB/Ethernet), modo Imagen, cajón y corte térmico hasta ✅; imprimir un ticket real de venta y uno de pastel; si el WebView se ve raro, actualizar Android System WebView.
-2. **Tras validar en sitio y con OK de Miguel:** fusionar `apk/capacitor` → `migracion/supabase` (fast-forward) y **repuntar `server.url` a producción** (`pasteleria-confetti.vercel.app`) — recompilar/refirmar el APK apuntando a producción — para que las tablets carguen producción CON el código nativo. Resguardar el keystore (`release/keystore/`) antes de nada.
-3. (Opcional) Resolver los pendientes de `BUGS_PENDING.md` que aparezcan en sitio (VID/PID del cajón, emoji 🚚, clase USB de la impresora).
-
-## 🟢 ESTADO ACTUAL (lee esto primero)
-- **POS y Web migrados, independientes y VALIDADOS al 100% como estaban en Base44.** Fases 0-5 del POS firmadas + WEB-0..3 + flujo cruzado.
-- **Bot de pruebas largas (60 días) COMPLETO:** 60/60 días limpios · cuadres corte↔libro **180/180** (con doble conteo) · folios **180/180** sin colisión bajo concurrencia · pedidos web **30/30** a sucursal correcta · RLS **18/18** sin fugas · **0 bugs reales · 0 fallos de automatización**. Evidencia: `Bot pruebas/bot-pruebas/reportes/run60/RESUMEN_EJECUTIVO_60_DIAS.md`.
-- **Listo para producción EN LO QUE ABEL YA USABA.** El **CUTOVER NO se ha hecho** — Abel se instala el **LUNES**; hasta entonces sigue en **Base44**.
-- **Imágenes `media.base44.com`: NO tocar.** Se mantienen para la demo; al independizar, recrear/descargar las MISMAS (Base44 o Gemini), nunca quitarlas. Cutover de imágenes = después.
-
-## ▶️ PRÓXIMA FASE = MEJORAS (en orden) → ver `docs/MEJORAS_POST_VALIDACION.md`
-El plan completo de las 5 fases vive en **`docs/PLAN_FASES_MEJORAS.md`** (fuente de verdad).
-- **#1 Vercel (FASE 2): ✅ HECHO** — POS `pasteleria-confetti` (env vars + Production Branch `migracion/supabase` + producción) y **Web** (proyecto nuevo, env vars, Vercel Authentication OFF) en producción, verificados. (Miguel, panel.)
-- **FASE 2 confirmaciones en vivo: HECHAS** — I1 saldo web=0 confirmado (pastel Y catálogo; anticipo bloqueado; "Entregado" libre); producto Web Pública→web (precio/descripción) reflejan de inmediato.
-- **▶️ FASE 3 (dinero) EN CURSO — sub-paso #1 HECHO (checkpoint):** migración **0022** = pedidos web nacen con `saldo_pendiente=total_final` (cobrables). Verificado en vivo (anticipo $200 registrado, saldo $420→$220, entra al corte). ⚠️ destapó bug pre-existente `DetalleVenta producto_id=''` (ver `BUGS_PENDING (i)`). **Pendiente: revisión de Miguel del #1 antes de seguir** con #2 (anticipos catálogo→corte), #3 (mixto), #4 (cancelación-con-anticipo→devolución), #5 (tipo/motivo cancelación pedido), #6 (entrega en corte). Orden y alcance en `docs/PLAN_FASES_MEJORAS.md`.
+> **Actualizado: 2026-08-09** · commit `3a90e3c` en `migracion/supabase` (= producción).
+> Lee antes `HANDOFF.md` y `PROJECT_CONTEXT.md`. El histórico de fases anteriores está al final.
 
 ---
 
-> Nota de terminología: Miguel redefinió **Fase 5 = Validación de FIDELIDAD** (POS migrado vs Base44 vivo).
-> El **bot de paridad** pasa a ser "al final" (con la Web ya migrada), no Fase 5.
+## 🚨 URGENTE
 
-> Repo/working tree estable: `C:\Pasteleria Confetti\pos` (clon de
-> `M1gu3hb/Pasteleria-Confetti@migracion/supabase`). El scratchpad de la sesión anterior era temporal.
+### 1. Resolver el APK de las tablets — **requiere decisión de Miguel**
+Las tablets del POS usan el **APK**, y su `server.url` apunta al **preview de la rama `apk/capacitor`**, que está **18 commits por detrás** de producción. Por ese canal **no ha llegado ninguna corrección de frontend**: ni el cierre en cero, ni la nota, ni el arreglo del dueño.
 
-## ✅ DECISIÓN DE MIGUEL TOMADA: Opción A (cuenta terminal por sucursal)
-Modelo exacto (fuente de verdad = el código actual, replicado): terminal=localStorage; empleado sin
-PIN sobre la sesión terminal (scoped por RLS); administrador=PIN que **desbloquea UI sobre la sesión
-terminal** (mismo alcance de sucursal, exige `sucursal==terminal`); dueño=PIN que abre **sesión global**
-(`pos_is_admin`). Ver `DECISIONS.md` y la sección de esta sesión en `CHANGELOG.md`.
+Quien opere desde el APK **todavía tiene el bug del cierre en cero en el cliente**; sólo lo protege el trigger `0058` de la base.
 
-## ✅ FASE 4 — CERRADA (firmada por Miguel)
-Wiring de auth (6 archivos + `ConfigContext` + `entitiesAdapter`) + migraciones 0015/0016. Auth real
-(terminal/admin/dueño), RLS scoped, adversarial 31/31, `_pin` no persiste, dueño entra y restaura terminal.
+**Opciones (pregúntaselas a Miguel, NO decidas tú):**
+- (a) Poner `apk/capacitor` a la altura de `migracion/supabase`.
+- (b) Repuntar el `server.url` del APK a producción y regenerar/firmar el APK.
+- (c) Ambas.
 
-## ✅ GATE DE AISLAMIENTO — RESUELTO (sesión cont. 2)
-- **GATE-1:** `/login-pos`/`POSLogin` **RETIRADO** (era el hueco: un admin abría sesión global por ahí). No era load-bearing. Borrados ruta + componente + deps huérfanas.
-- **GATE-2:** sellado de actor VERIFICADO = usa `posUser` → admin real al elevar (no centinela). Bug `_pin`→sessionStorage corregido.
-- **GATE-3:** migración **0016** reproduce los auth.users de operadores (idempotente, NO-OP en staging).
-- **GATE-4:** adversarial **31/31** incluyendo "validar PIN de admin NO escala la sesión; admin-B confinado a A".
-- **GATE-5 (re-smoke UI del fix `_pin`):** 4/4 por UI — empleado abre caja + vende; admin eleva (sesión sigue terminal, `posUser`=admin real); admin de otra sucursal rechazado; dueño entra (usa `_pin`, funciona tras el strip) → global → al salir restaura terminal. **`posUser` sin `_pin`** en ambas elevaciones. 0 errores.
+`CLAUDE.md` prohíbe fusionar o repuntar sin su OK explícito.
 
-## ✅ FASE 5 — Validación de FIDELIDAD: HECHA y **APROBADA por Miguel**
-El POS migrado es FIEL a Base44 (solo-lectura MCP). Detalle en `CHANGELOG.md` (cont. 3).
-- **BLOQUE A** (maestros): **0 diffs** — sucursales 3, categorías 8, productos 20, usuarios 33, config (precio_kilo_global=140, ratio=7, propinas_activas=false, extras/rellenos) idénticos.
-- **BLOQUE B** (pantallas/flujos vs MD 03): todo conforme (POS+Otros, Caja+CANDADO 3+cola web filtrada, Ventas cancel/devolver, Productos sin sync, PedidosPastel entregar saldo 0, Dashboard).
-- **BLOQUE C** (corte real línea por línea): **14/14 campos idénticos** en CONF-C-C073 (con abono efectivo → doble conteo presente e idéntico) y CONF-A-C03358 (sin abono). Harness `scripts/fase5_corte_fidelity.mjs`.
+### 2. Confirmar con Abel que ya ve los cambios
+Aunque se despliegue, **la tablet tiene que recargar** (service worker PWA). Ya provocó una recaída real: `CONF-A-C042` se rompió **un día después** del primer despliegue porque la tablet seguía con el bundle viejo.
 
-> **POS migrado, independiente y fiel a Base44 — Fases 0-5 COMPLETAS y aprobadas.** Solo queda pendiente, al final de todo, el BOT de pruebas agresivas (concurrencia, PDFs de corte) — vive en otro proyecto de Miguel.
+---
 
-## ✅ WEB-0 y WEB-1 — HECHAS (migración de la Web; ver repo web `M1gu3hb/Pasteleria-Confetti-web-`)
-- **WEB-0** (recon + andamiaje): repo web privado creado + andamiaje pusheado. Web = catálogo público mobile-first; Opción A (misma Supabase, anon key + RLS; el puente Base44 desaparece). 2 GAPs detectados.
-- **WEB-1** (fixes de DB, en ESTE repo POS — esquema = fuente única): **0017 `web_pedido_folio_trigger`** (GAP1: trigger BEFORE INSERT en `pedidos` origen='web'/folio NULL → `siguiente_folio` vía SECURITY DEFINER; folio sigue NOT NULL, anon sin execute directo) y **0018 `web_uploads_bucket`** (GAP2: bucket `web-uploads` público/no-listable, 5MB, solo imágenes; anon INSERT solo ahí; `uploads` del POS authenticated-only intacto). Verificado **anon 11/11** + folio `PP-A-0001` asignado + **regresión POS limpia**. Harness `scripts/web1_gaps_verify.mjs`.
+## 🟠 IMPORTANTE
 
-## ✅ WEB-2 y WEB-3 — HECHAS (validadas; pendiente solo import Vercel de Miguel)
-WEB-2 (port de la capa de datos) y WEB-3 (validación end-to-end POS↔web) **completas**. Esquema web = migraciones **0019/0020/0021** en ESTE repo POS; el port y los smokes en el repo web. WEB-3: pedido web visible y fiel en el POS (badge 🌐 WEB, "Creado por Web Confetti", imagen de referencia) + aislamiento por sucursal; edición de producto en el POS reflejada de inmediato en el catálogo web (misma fila, sin sync); sin diffs vs Base44. Ver repo web `docs/CHANGELOG.md` y este `CHANGELOG.md` (cont. 4). **Siguiente:** import Vercel (Miguel) + bot de pruebas agresivas (al final). _Notas del plan original abajo (referencia)._
-- ⚠️ **PUNTO DE FIDELIDAD CRÍTICO (cambio de LÓGICA, no plomería):** la web Base44 filtra/bloquea la sucursal por **`sucursales_disponibles` (NOMBRES)**; el esquema compartido usa **`sucursal_ids` (IDs)** y `catalogo_publico` expone `sucursal_ids`. Reescribir la disponibilidad para matchear por **ID** (vacío/null = global). **Un find-replace lo rompe en silencio** — verificar con un producto limitado a 1 sucursal.
-- ✅ **Folio en pantalla Gracias — RESUELTO (migración 0019, en ESTE repo POS).** RPC `crear_pedido_web(payload jsonb) → text` SECURITY DEFINER que inserta el pedido y **devuelve el folio**; el web usa `rpc('crear_pedido_web', {payload})` en vez de `insert`. Reaplica los candados del WITH CHECK anon, whitelist de columnas, valida requeridos + sucursal activa, reutiliza el trigger 0017 (un solo generador). anon: solo EXECUTE, sin SELECT. Verificado (folio real devuelto, web/pendiente, 42501 en SELECT directo, inválidos rechazados). Ver DECISIONS #22.
+### 3. Envolver el árbol de rutas en `ErrorBoundary`
+`ErrorBoundary.jsx` ya existe y **no lo usa nadie**. Sin él, cualquier throw en render apaga la app entera en las 3 sucursales — que es exactamente lo que pasó con el `Illegal invocation`. Cambio **aditivo**: envolver `AppLayout` y mostrar un fallback con botón de recarga.
 
-## PENDIENTES HUMANOS DE MIGUEL
-- Import **Vercel** del **repo web** (`Pasteleria-Confetti-web-`, rama `migracion/supabase`, env `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` = mismo Supabase) y del POS.
-- Rotar api_key Base44 `847df…`.
-- ~~Decidir el mecanismo de folio para Gracias~~ → **RESUELTO** (0019 RPC `crear_pedido_web`).
+### 4. Arreglar la sesión colgada al recargar
+Tras recargar tras haber usado dueño/pastelero, la sesión Supabase puede seguir siendo la **global** mientras la UI dice "Modo empleado". Archivos: `TerminalGate.jsx:88`, `supabaseClient.js:84`.
 
-## CUTOVER (futuro, no ahora)
-- Sembrar `folio_contador.ultimo_numero` por (tipo, sucursal) con el MÁXIMO folio existente (evitar colisión con históricos).
-- Los 3 productos "prueba" ("prueba 1/2/suscursal") NO van al catálogo real de Abel.
-- 🔴 **BLOQUEANTE DE CUTOVER — fotos de producto del catálogo (Flag WEB-2):** las imágenes de producto que muestra la web pública vienen de **`productos.imagen_url`**, que aún apunta a **`media.base44.com`** (el CDN de Base44). Cargan hoy porque Base44 sigue vivo. **Antes de apagar Base44** hay que **re-hospedar esas imágenes en Supabase Storage y actualizar `productos.imagen_url`**; si no, el catálogo público de la web **pierde las fotos**. Es migración de DATOS del POS (no del repo web). Ver `BUGS_PENDING.md`.
-- Borrar las 2 imágenes de prueba residuales de los smokes WEB-2/WEB-3 en `web-uploads/pedidos/` (`db92b1c3-…png`, `74aa34e2-…png`) por Storage dashboard / service_role. Ver BUGS_PENDING (h).
+### 5. Normalizar la tilde del rol donde deja al dueño sin funciones
+- `MobileAdminRadialMenu.jsx:189` — menú radial de tablet.
+- `Registros.jsx:48` — eliminar cortes.
+- `LimpiarSeccionButton.jsx:40` — limpiar sección.
+- `Configuracion.jsx:470` — rol en blanco en Usuarios POS.
+- `ReiniciarSistemaSection.jsx:31` — sección inalcanzable.
+
+> ⚠️ **NO toques `ModalPinAdmin.jsx:18`**: es el único punto que exige la tilde a propósito. Normaliza en el código, **nunca en el dato**: si el rol de la base pasa a `dueno`, el dueño se queda fuera del sistema.
+
+### 6. Desplegar el frontend del pastelero
+La migración `0060` **ya está aplicada** en Supabase, pero el frontend que le devuelve los botones (Guardar nota / Confirmar / Entregado) **sigue en la rama de trabajo**. Requiere la firma de Miguel sobre el cambio de RLS.
+
+---
+
+## 🟡 DESPUÉS
+
+7. `CorteAutoDownloader`: filtrar por sucursal y `corte_caja_id`, no sólo por ventana de tiempo.
+8. `SidebarContent` declarado dentro de `Sidebar`: sacarlo fuera (hoy remonta el subárbol y puede borrar el PIN a medio teclear).
+9. `AccesoDuenoGate`: no pasar `_pin` a `activarAdmin`.
+10. Acotar los `filter()` sin límite del adaptador.
+11. Bloques nunca abiertos de la auditoría: 6 políticas `USING true`, 3 vistas `security_invoker=false`, grants y RPCs; Storage/imágenes; endurecimiento adicional del Edge Function de audio; renombrar la fachada Base44; **borrar `poc-auth-magiclink`** (por dashboard o CLI: el MCP no borra funciones).
+
+---
+
+## 💡 IDEAS FUTURAS
+
+12. **Realtime del estado de caja**: `suscribirRealtimeCaja()` está **escrito y desactivado**; la publicación `supabase_realtime` está vacía y encenderla es DDL en producción + validación en tablet.
+13. Cutover de Auth a `generateLink` + `verifyOtp` (PoC validado 8/8), gated en `MIGUEL_OK_AUTH_TABLETS`.
+14. Enrolamiento de terminales por dispositivo.
+15. Bajar la línea base de `lint` (39) y `typecheck` (1249) — hoy sólo se vigila que no suba.
+
+---
+
+## Gates humanos pendientes (Miguel)
+
+- **`MIGUEL_OK_AUTH_TABLETS`** — cutover de Auth en tablets.
+- **`MIGUEL_OK_CIERRE_CONFETTI`** — cierre definitivo del proyecto.
+- **Firma** de la matemática del dinero y del aislamiento RLS (incluida la `0060` del pastelero).
+- **Decisión sobre el APK** (punto 1).
+- **Rotar la api_key de Base44** `847df…`, que sigue viva en la app de Abel.
+- Decidir qué hacer con `ADMIN_1234`, que quedó como un segundo `dueño` **desactivado**.
+
+---
+
+## Histórico (fases ya cerradas)
+
+Fases 0–5 de la migración Base44 → Supabase: **completas y firmadas**. WEB-0 a WEB-3: hechas. Bot de paridad de 60 días: 60/60 días limpios. Detalle en `docs/CHANGELOG.md` y en los reportes de `docs/`.

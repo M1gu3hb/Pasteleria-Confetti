@@ -1,5 +1,45 @@
 # CHANGELOG
 
+## 2026-08-09 (cierre de sesión) — Documentación viva puesta al día + HANDOFF para traspaso
+
+### Cambios realizados
+- **`HANDOFF.md` (NUEVO, raíz)** — documento de traspaso: todo lo hecho en esta etapa, estado real de producción, el problema del APK, bugs abiertos confirmados, la lección de las pruebas, cómo verificar en navegador cuando la sesión no tiene salida a internet, accesos e IDs necesarios.
+- **`PROJECT_CONTEXT.md` — REESCRITO.** Estaba fechado en 2026-06-27 y hablaba de "staging" y "cutover pendiente"; el sistema lleva tiempo **en producción**. Ahora sigue las 15 secciones acordadas y refleja el estado real.
+- **`CLAUDE.md` — REESCRITO.** Se conservan los 3 CANDADOS y las reglas de seguridad, y se añaden: reglas de **documentación viva**, **cómo escribir pruebas aquí** (la lección de los dobles), **líneas base** de lint/typecheck, el aviso del **APK**, y el bloque obligatorio de **cierre de sesión**.
+- **`docs/BUGS_PENDING.md`** — sección nueva con los **12 hallazgos abiertos** que sobrevivieron a la verificación adversarial, y una sección de **REFUTADOS** para que nadie los persiga otra vez.
+- **`docs/NEXT_STEPS.md` — REESCRITO** y priorizado: urgente / importante / después / ideas, más los gates humanos de Miguel.
+- **`docs/DATABASE.md`** — migraciones `0050`→`0061`, las reglas nuevas de `cortes_caja` y `pedidos`, el aviso del rol **con tilde** y el patrón de verificación revertible.
+- **`docs/FILE_MAP.md`** — archivos nuevos y modificados, con **riesgo al modificarlos**.
+- **`docs/DECISIONS.md`** — decisiones D-20 a D-29.
+- **`docs/ARCHITECTURE.md`** — modelo de sesiones por rol, refresco de caja, consultas que alimentan dinero, **los dos canales de despliegue** y la ausencia de ErrorBoundary.
+- **`docs/PROMPTS.md` — REESCRITO**: prompt de arranque para sesión nueva, verificación revertible, reproducción en navegador sin salida a internet, y el patrón de auditoría multiagente con refutación.
+
+### Archivos modificados
+- `HANDOFF.md` (nuevo), `PROJECT_CONTEXT.md`, `CLAUDE.md`
+- `docs/{BUGS_PENDING,NEXT_STEPS,DATABASE,FILE_MAP,DECISIONS,ARCHITECTURE,PROMPTS,CHANGELOG}.md`
+- Código de esta sesión: `src/lib/{cajaRefresco,cajaEstado}.js`, `scripts/{fase1_caja_refresco_verify,fase1_caja_estado_verify}.mjs`
+
+### Entidades / base de datos afectadas
+Ninguna en este cierre. (En la sesión: migraciones `0050`→`0061`, todas aplicadas.)
+
+### Bugs resueltos en la sesión
+- **P0 dinero** — cierre de caja guardando ceros (3 capas + recálculo de 11 cortes).
+- **P0 pantalla en blanco del dueño** — `Illegal invocation` en `cajaRefresco` (**regresión propia**, reproducida en navegador y arreglada).
+- `Number(null) === 0`: las dos guardas anti-ceros no defendían nada.
+- La nota de los pedidos "nunca se guardaba" (era la pantalla, no la escritura).
+- El pastelero no podía escribir (`0060`).
+- El dueño se había quedado sin rol de dueño, y el logo del ticket era una foto de celular (`0061`).
+- Fugas entre sucursales en `useCajaAbierta`; sesión no restaurada al salir de pastelero; pedido fantasma en el diálogo; `COLS_CIERRE` sin `sucursal_id`.
+
+### Bugs nuevos detectados (abiertos)
+APK apuntando a la rama equivocada · sin ErrorBoundary en el árbol de rutas · sesión colgada al recargar · 5 comparaciones de rol sin normalizar la tilde · `SidebarContent` declarado dentro de `Sidebar` · `_pin` vivo en `TerminalContext` · `CorteAutoDownloader` sin filtro de sucursal · `filter()` sin límite en el adaptador. Detalle en `docs/BUGS_PENDING.md`.
+
+### Decisiones tomadas
+D-20 a D-29 en `docs/DECISIONS.md`. Las que más condicionan lo que sigue: **normalizar el rol en el código, nunca en el dato** (D-27); **las pruebas no pueden probar sólo el arnés** (D-28); **el APK no se repunta sin OK de Miguel** (D-29).
+
+### Próximo paso
+**Resolver el APK**: decidir con Miguel si se sube `apk/capacitor` a la altura de producción, se repunta el `server.url`, o ambas. Hasta entonces las tablets no reciben ninguna corrección de frontend.
+
 ## 2026-08-09 (P0) — PANTALLA EN BLANCO al entrar como dueño: `Illegal invocation` en `cajaRefresco`
 > **Regresión mía**, introducida con el refactor de polling de caja (Fase 1) desplegado en `0c7ec71`. Reproducida y arreglada con evidencia de navegador.
 

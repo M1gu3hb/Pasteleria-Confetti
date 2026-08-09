@@ -1,32 +1,107 @@
-# PROMPTS — apertura de sesión y patrón de trabajo
+# PROMPTS.md — Prompts útiles del proyecto
 
-## Prompt maestro — APK Android (proyecto por fases, 2026-07-09)
-> Convertir el POS web en APK Android instalable con **Capacitor** que: (1) cargue la web VIVA de Vercel (para actualizar por nube sin reinstalar); (2) imprima ESC/POS nativo (USB/Ethernet) SIN window.print/RawBT; (3) abra cajón con varios métodos seleccionables; (4) deje TODA variable incierta (conexión/modo/cajón/corte) como OPCIÓN seleccionable y probable EN SITIO; (5) NO cambie la operación actual ni el diseño de los tickets.
->
-> **Reglas rectoras (inviolables):** UNA fase a la vez → auditar + evidencia + DETENERSE y esperar "continúa". NO tocar la lógica del DINERO (cortes/ventas/abonos/saldos/folios/RLS/efectivo esperado/registrarPagoPedido). NO cambiar el diseño de ningún ticket (el modo IMAGEN renderiza los MISMOS componentes). El NAVEGADOR queda byte-por-byte igual; lo nativo va detrás de `Capacitor.isNativePlatform()` (aditivo). Rama `apk/capacitor` (nace de `migracion/supabase`); previews sí, **producción NO** sin OK. Lo físico se prueba EN SITIO (Camino A) — no autocertificar. APK final en `C:\Pasteleria Confetti\release\`. git checkpoint antes de cada fase; conventional commits sin co-author de IA.
->
-> **Fases:** 0 diagnóstico · 1 cáscara Capacitor+Vercel · 2 APK de prueba (validación de carga en tablet) · 3 plugin nativo delgado ESC/POS · 4 capa de impresión (IMAGEN default + TEXTO opción) · 5 cajón (variantes) · corte térmico · 6 panel Config→Operación (config local) · 7 firmar APK + carpeta release · cierre + docs. **Estado: todo el código HECHO; pendiente = prueba en sitio + repunte a producción tras OK.**
+> Guarda aquí lo que funcionó. Actualizado 2026-08-09.
 
-## Prompt de apertura (pegar en una sesión nueva)
-> Eres un ingeniero senior continuando la migración del POS de Pastelería Confetti (Base44 → Vercel + Supabase). **Antes de tocar nada**, lee `PROJECT_CONTEXT.md` y todo `docs/` (NEXT_STEPS, DECISIONS, DATABASE, FILE_MAP, BUGS_PENDING, CHANGELOG, ARCHITECTURE) y `CLAUDE.md`. Verifica el estado real: último commit de la rama `migracion/supabase` y el estado de la DB Supabase `ivqcxdpqxwjxfohiswqb` (list_tables, list_migrations). NO toques Base44 en vivo ni la api_key. Respeta los 3 candados. El dinero y el RLS los firma Miguel. Trabaja por fases: al terminar, DETENTE y reporta; espera luz verde. El próximo paso está en `docs/NEXT_STEPS.md` (bloqueado por una decisión de Miguel sobre el modo empleado).
+---
 
-## Accesos / contexto operativo
-- GitHub: `M1gu3hb/Pasteleria-Confetti` (privado), rama `migracion/supabase`. Cuenta MCP autenticada como M1gu3hb (PAT restringido: NO crea repos; para crear repos se usó la credencial local GCM).
-- Supabase MCP: proyecto `ivqcxdpqxwjxfohiswqb`. Usar `list_tables`, `apply_migration`, `execute_sql`, `get_advisors`, `get_publishable_keys`.
-- Base44 MCP (app POS `6a28a71350ef872d8486262b`): SOLO LECTURA (`query_entities`, `list_entity_schemas`) para export/verificación.
-- Vercel MCP: `deploy_to_vercel` NO despliega (solo instrucciones); no hay git-link → import manual de Miguel.
-- Preview local: `.claude/launch.json` (server `confetti-pos`, vite :5173) + tools `mcp__Claude_Preview__*` (preview_start/screenshot/eval/click/console_logs).
-- El código del POS vive en `scratchpad/pos` en la sesión de origen; en una sesión nueva, clonar el repo (rama `migracion/supabase`) y `npm install`.
+## 1. Prompt de arranque para una sesión NUEVA (o para otra IA)
 
-## Patrón de trabajo por fases (el que siguió Miguel)
-0. Reconocimiento + andamiaje → STOP.
-1. Esquema (PROPONER, no aplicar sin auditoría) → STOP.
-2. Seed maestros + port capa de datos + smoke → STOP.
-3. Validación aritmética del dinero (casos deterministas, función REAL + lógica verbatim) → STOP.
-4. Auth + RLS real + adversariales + re-run bajo RLS → STOP.
-5. Bot de paridad vs Base44 (firma Miguel) → POS 100%.
-- Cada fase: reportar qué se hizo / validó / falta. No auto-certificar dinero ni RLS. Verificar contra datos reales, no afirmar.
-- Commits pequeños; doc viva (actualizar `docs/` + CHANGELOG tras cada cambio).
+Pégalo tal cual al abrir un chat nuevo sobre este proyecto:
 
-## Verificación del dinero (lección de Fase 3)
-Para validar lógica embebida (p. ej. el resumen del corte en `Caja.jsx`): importar las funciones REALES puras (`desgloseMetodosPagoExacto`) + copiar VERBATIM la lógica del componente a un harness Node determinista; y para quirks (doble conteo), verificar contra **datos reales de Base44** (no asumir). El bot (Fase 5) es la autoridad final de paridad.
+```
+Vas a continuar un POS EN PRODUCCIÓN (Pastelería Confetti, 3 sucursales, tablets,
+personal no técnico). Está operando HOY: cada error cuesta dinero real.
+
+ANTES DE TOCAR NADA, lee en este orden y confírmame que lo hiciste:
+  1. HANDOFF.md          (raíz) — lo más reciente: qué se hizo, qué quedó roto y por qué
+  2. CLAUDE.md           (raíz) — reglas permanentes e irrompibles
+  3. PROJECT_CONTEXT.md  (raíz) — estado real, arquitectura, flujos, qué no romper
+  4. docs/BUGS_PENDING.md — abiertos, con los REFUTADOS marcados para no perseguirlos
+  5. docs/NEXT_STEPS.md   — prioridades
+  6. docs/DATABASE.md, docs/FILE_MAP.md, docs/DECISIONS.md, docs/ARCHITECTURE.md
+  7. docs/CHANGELOG.md    — al menos las entradas de 2026-08
+
+Luego verifica el ESTADO REAL (la doc puede estar vieja; el código y la base mandan):
+  - Supabase, proyecto ivqcxdpqxwjxfohiswqb: migraciones aplicadas, políticas y triggers
+    de `pedidos` y `cortes_caja`, y que no haya cortes cerrados en cero con ventas.
+  - El último commit de la rama `migracion/supabase` (= producción) y qué bundle sirve
+    Vercel ahora mismo.
+
+Después dime, en este orden:
+  (a) qué entendiste del estado actual,
+  (b) qué encontraste que la documentación NO refleja,
+  (c) cuál es el próximo paso y por qué.
+
+No cambies código hasta que yo te dé luz verde.
+```
+
+---
+
+## 2. Verificar contra la base SIN alterar datos (transacción revertida)
+
+Patrón usado en toda la etapa 2026-08. El `RAISE` final **aborta y revierte** todo lo que haya dentro, así que nada persiste. Después **comprueba** que no quedó rastro.
+
+```sql
+do $$
+declare
+  IDENT constant text := '{"sub":"<auth_user_id>","role":"authenticated"}';
+  n int; r text := E'\n';
+begin
+  set local role authenticated;
+  perform set_config('request.jwt.claims', IDENT, true);
+
+  begin
+    update <tabla> set <col> = 'PRUEBA_REVERTIDA' where id = '<id>';
+    get diagnostics n = row_count;
+    r := r || 'filas afectadas = ' || n || E'\n';
+  exception when others then
+    r := r || 'BLOQUEADO (' || sqlstate || '): ' || sqlerrm || E'\n';
+  end;
+
+  reset role;
+  raise exception '%', r;   -- <- revierte TODO
+end $$;
+```
+
+Y justo después:
+```sql
+select count(*) from <tabla> where <col> = 'PRUEBA_REVERTIDA';  -- debe dar 0
+```
+
+> Para probar RLS de verdad, el `INSERT` de prueba debe llevar **todas las columnas NOT NULL**; si no, muere con `23502` y el rechazo no prueba nada. Exige el SQLSTATE `42501`.
+
+---
+
+## 3. Reproducir el POS en un navegador cuando la sesión no tiene salida a internet
+
+Sirvió para localizar un crash hasta la **posición exacta del bundle minificado**.
+
+1. Espeja el build de producción en local (`index.html` + assets de `pasteleria-confetti.vercel.app`).
+2. Sírvelo en `127.0.0.1` con un servidor estático mínimo y **fallback SPA** a `index.html` (localhost está en `no_proxy`, así que el navegador sí lo alcanza).
+3. Puentea Supabase con `page.route('**://*.supabase.co/**')` y reenvía con el `fetch` de **Node** (Node sí sale por el proxy). Así el navegador habla con la base **real**.
+4. Siembra `localStorage.confetti_terminal` para simular una tablet configurada.
+5. Interactúa y mide `document.getElementById('root').childElementCount` — **0 = pantalla en blanco**.
+6. Captura `pageerror` y `console` para tener el stack real.
+
+Con el stack (`archivo:línea:columna`) puedes leer esa posición exacta del bundle minificado y saber **qué línea de tu código** es.
+
+---
+
+## 4. Auditoría multiagente con verificación adversarial
+
+Lo que encontró la mayoría de los bugs abiertos de `BUGS_PENDING.md`:
+
+- **Fan-out por rutas independientes** (hooks / render / sesión / permisos / datos), cada agente con su propio contexto y sin ver a los demás.
+- **Cada hallazgo pasa por un refutador**: se parte de que es **falso** hasta demostrar lo contrario, y ante duda razonable se descarta. *"Es preferible descartar un hallazgo dudoso que mandar al equipo a perseguir un fantasma en un POS en producción."*
+- **Los refutados se guardan y se publican**, para que nadie los vuelva a perseguir.
+
+De ~40 hallazgos, sobrevivieron ~12. Los refutados incluían cosas que "parecían" obvias (una desreferencia nula en el Dashboard, un `return null` en el layout) y que no ocurrían.
+
+---
+
+## 5. Cerrar sesión con documentación viva
+
+```
+Antes de terminar, actualiza la documentación y termina tu respuesta con el bloque
+"Estado de documentación" de CLAUDE.md, más UNA sola acción concreta como próximo paso.
+```

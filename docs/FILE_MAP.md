@@ -1,5 +1,40 @@
 # FILE_MAP — archivos del port y qué NO romper
 
+---
+
+# Actualización 2026-08-09 — archivos nuevos y modificados
+
+## Archivos NUEVOS de esta etapa
+
+| Ruta | Propósito | Qué contiene | Riesgo al modificarlo |
+|---|---|---|---|
+| `src/lib/ventasCorte.js` | **Ventas del corte abierto**, acotadas y completas | `fetchVentasDelCorte` (filtra por corte **en PostgreSQL**, ordena y **pagina** hasta agotar) y `contarVentasDelCorte` (cuenta en el servidor; devuelve `null` si no es verificable) | **MÁXIMO — es dinero.** Existe porque PostgREST corta en 1.000 filas y eso guardó 11 cortes en cero. No quites el orden, el paginado ni el `null` de "no verificable" |
+| `src/lib/cajaEstado.js` | Consultas de estado de caja | `fetchCajaAbierta`, `fetchUltimoCierre` (filtradas en PostgreSQL, `LIMIT 1`, columnas mínimas) y `suscribirRealtimeCaja` **escrita y DESACTIVADA** | Alto. **Las dos listas de columnas DEBEN incluir `sucursal_id`**: las guardas anti-fuga de `useCajaAbierta` comparan ese campo |
+| `src/lib/cajaRefresco.js` | **Un solo temporizador** de respaldo por sucursal, con refcount | `registrarRefrescoCaja`, `invalidarSoloCajaAbierta` (exact), `invalidarCajaCompleta` (prefijo), las queryKeys | Alto. **Aquí estuvo el `Illegal invocation`** que dejaba la app en blanco: los nativos `setInterval`/`clearInterval` van **envueltos en flechas**, nunca guardados como propiedad y llamados como método |
+| `supabase/migrations/0050…0061` | Índices, RLS InitPlan, unicidad de caja, rate limit, recálculos, triggers, pastelero, datos | — | **MÁXIMO** |
+| `scripts/cierre_caja_verify.mjs` | Verifica la guarda anti-ceros y el paginado | 24 casos + integración opcional | — |
+| `scripts/pedido_nota_verify.mjs` | Verifica que la nota se guarda y que no hay pedido fantasma | 11 casos + integración que escribe y **restaura** | — |
+| `scripts/fase1_caja_estado_verify.mjs` | Equivalencia del refactor de caja, borde de medianoche MX, fugas entre sucursales, columnas requeridas | 12 + 181 + 11 + 5 | — |
+| `scripts/fase1_caja_refresco_verify.mjs` | Temporizador único, refcount, y **regresión WebIDL** (`Illegal invocation`) | 19 | — |
+| `scripts/pastelero_alcance_verify.mjs` | Alcance del pastelero y coherencia botones↔base | 31 | — |
+| `scripts/pastelero_alcance_evidencia.sql` | Evidencia contra la base **en transacciones revertidas** | 12 comprobaciones | Pégalo en el editor SQL de Supabase |
+| `HANDOFF.md` | **Traspaso de sesión** | Todo lo de esta etapa, el estado real y lo que falta | Manténlo al día |
+
+## Archivos MODIFICADOS que conviene conocer
+
+| Ruta | Qué cambió | Qué NO romper |
+|---|---|---|
+| `src/pages/Caja.jsx` | La consulta de ventas del corte pasa por `ventasCorte.js`; guarda **falla-cerrada** antes de cerrar; manejo de `23505` al abrir caja | **CANDADOS 1/2/3 y la matemática del dinero siguen intactos.** Sólo cambió la fuente de datos y se añadió la guarda |
+| `src/lib/useCajaAbierta.js` | Consulta filtrada, un solo temporizador, y **guardas anti-fuga por sucursal** en `placeholderData` y en la memoria de sesión | Al cambiar de sucursal el estado debe quedar en `unknown` ("Verificando…"), **nunca** servir la caja de otra sucursal |
+| `src/lib/useCorteAtrasado.js` | Deriva de `useCajaAbierta` (sin consulta ni temporizador propios) + comprobación explícita de sucursal | **CANDADO 2**: la lógica de medianoche México es idéntica |
+| `src/components/pedidos/PedidoPastelDetalleDialog.jsx` | Relee la fila **fresca** (arreglo de "la nota no se guarda"); textarea se resincroniza al cambiar de pedido; ya no muestra pedidos fantasma; botones del pastelero | La queryKey cuelga de `['pedidos_pastel']` **a propósito**: hereda los `invalidateQueries` que ya existían |
+| `src/components/common/Sidebar.jsx` | Restaura la sesión de la terminal al salir **de dueño Y de pastelero**, y aborta si no puede | `SidebarContent` sigue declarado **dentro** del componente: es un bug pendiente |
+| `src/api/entitiesAdapter.js` | Propaga el SQLSTATE de forma **aditiva** (mismo `message` de siempre) | El whitelist de columnas por tabla |
+| `src/pages/PedidosPastel.jsx` | Comentarios del alcance del pastelero | "Nuevo pedido" sigue oculto para el pastelero: la `0060` es **sólo** `FOR UPDATE` |
+| `supabase/functions/transcribir-nota-voz/index.ts` | v3 endurecida (SSRF cerrado, MIME, tamaño, timeouts, CORS) | El contrato con el frontend: **siempre 200** con `{transcript, ok, error}` |
+
+---
+
 ## APK Android (Capacitor) — nuevos / tocados (rama `apk/capacitor`)
 > Regla: lo nativo va detrás de `Capacitor.isNativePlatform()`; el navegador queda igual.
 - **`capacitor.config.ts`** — appId `com.mhastral.confettipos`, `server.url` = preview de rama, allowNavigation, cleartext. *No romper:* NO apuntar a producción durante el piloto.

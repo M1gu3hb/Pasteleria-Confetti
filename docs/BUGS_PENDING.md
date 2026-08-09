@@ -1,5 +1,97 @@
 # BUGS_PENDING / riesgos conocidos
 
+---
+
+# 🔴 ABIERTOS AL 2026-08-09 (auditoría multiagente con verificación adversarial)
+
+> Todos los de abajo **sobrevivieron** a un pase de refutación: un agente independiente intentó demostrar que eran falsos y no pudo. Los que sí se refutaron están al final, para que nadie los persiga otra vez.
+> Contexto completo en `HANDOFF.md`.
+
+## 🚨 P0 — El APK de las tablets apunta a la rama equivocada
+- **Impacto:** las tablets **no reciben ninguna corrección de frontend**. Quien opere desde el APK **todavía tiene el bug del cierre en cero** en el cliente; lo único que lo protege es el trigger `0058` de la base.
+- **Causa:** `capacitor.config.ts` (rama `apk/capacitor`) tiene `server.url` = preview de esa misma rama, y la rama está **18 commits por detrás** de producción.
+  - `apk/capacitor` = `9b36aa5`; el preview sirve `index-DG-XAF7m.js`, producción sirve `index-DOafkEZU.js`.
+- **Archivos:** `capacitor.config.ts` (rama `apk/capacitor`).
+- **Prioridad:** máxima. **Estado:** abierto, **requiere decisión de Miguel** (subir la rama, repuntar `server.url`, o ambas). `CLAUDE.md` prohíbe hacerlo sin su OK.
+
+## 🟠 ALTA — El árbol de rutas no está envuelto en ErrorBoundary
+- **Impacto:** cualquier excepción durante el render deja **toda la app en blanco**, sin mensaje. Es el amplificador que convirtió el `Illegal invocation` en un apagón total en las 3 sucursales.
+- **Causa:** `src/components/common/ErrorBoundary.jsx` existe y **no lo importa nadie**. `App.jsx` monta las rutas sin protección.
+- **Archivos:** `src/App.jsx`, `src/components/common/ErrorBoundary.jsx` (y `SafeBoundary.jsx`).
+- **Arreglo propuesto:** envolver el `AppLayout`/árbol de rutas con `ErrorBoundary` y una pantalla de fallo con botón de recarga. **Aditivo, sin tocar lógica.**
+- **Prioridad:** alta. **Estado:** abierto.
+
+## 🟠 ALTA — Sesión colgada al recargar tras usar dueño/pastelero
+- **Impacto:** tras recargar la tablet, la sesión Supabase puede seguir siendo la **global** (dueño/pastelero) mientras la interfaz dice "Modo empleado". La sucursal para RLS no es la que la pantalla muestra. Y desde `0060` esa sesión colgada **puede escribir** en pedidos.
+- **Causa:** `TerminalGate` sólo hace auto-login de la terminal **si no hay `posUser`**; y `ensureSession()` puede degradar en silencio la sesión del dueño a la de una terminal.
+- **Archivos:** `src/components/common/TerminalGate.jsx:88`, `src/api/supabaseClient.js:84`.
+- **Prioridad:** alta. **Estado:** abierto. (En la misma familia se arregló ya `Sidebar.handleSalirAdmin`, que no restauraba la sesión al salir del pastelero.)
+
+## 🟡 MEDIA — Comparaciones de rol sin normalizar la tilde
+En la base el rol es **`dueño` CON TILDE**; el código compara contra `dueno`. Casi todo normaliza, pero estos no:
+
+| Archivo | Consecuencia |
+|---|---|
+| `src/components/common/MobileAdminRadialMenu.jsx:189` | El **menú radial de tablet no le sale al dueño** |
+| `src/pages/Registros.jsx:48` | El **dueño no puede eliminar cortes** (`isAdmin` compara sólo contra `'administrador'`) |
+| `src/components/registros/LimpiarSeccionButton.jsx:40` | Botón "Limpiar sección" oculto para el dueño |
+| `src/pages/Configuracion.jsx:470` | `ROLE_LABELS` sin la clave con tilde → el rol de Abel sale **en blanco** en Usuarios POS |
+| `src/components/configuracion/ReiniciarSistemaSection.jsx:31` | Vive en ruta `soloDueno` pero exige rol `'administrador'` → **inalcanzable por diseño** |
+
+> ⚠️ **AVISO CRÍTICO, no lo toques a lo bruto:** `src/components/common/ModalPinAdmin.jsx:18` (`ROLES_ADMIN = ['dueño', ...]`) es el **ÚNICO** punto que **exige la tilde**. Si alguien "normaliza" el rol en la base a `dueno`, **el dueño se queda fuera del sistema**. Normaliza en el código, **nunca en el dato**.
+
+**Prioridad:** media. **Estado:** abierto.
+
+## 🟡 MEDIA — `SidebarContent` se declara dentro de `Sidebar`
+- **Impacto:** React lo trata como un componente nuevo en cada render y **remonta todo el subárbol**, incluido el modal del PIN: puede **borrar el PIN a medio teclear**.
+- **Archivos:** `src/components/common/Sidebar.jsx:292`.
+- **Prioridad:** media. **Estado:** abierto.
+
+## 🟡 MEDIA — El PIN del dueño queda vivo en memoria
+- **Impacto:** `AccesoDuenoGate` pasa a `activarAdmin` el objeto **con `_pin`**, así que el PIN en claro queda dentro de `TerminalContext.adminUser`. (`handleAdminSuccess` del Sidebar sí lo limpia; este camino no.)
+- **Archivos:** `src/components/common/AccesoDuenoGate.jsx:46`.
+- **Prioridad:** media. **Estado:** abierto.
+
+## 🟡 MEDIA — `CorteAutoDownloader` empareja ventas sólo por ventana de tiempo
+- **Impacto:** el PDF del corte no filtra por sucursal ni por `corte_caja_id`. Con una sola sucursal es correcto; con varias abiertas a la vez puede mezclar. Es la misma familia del incidente de los ceros.
+- **Archivos:** `src/components/caja/CorteAutoDownloader.jsx`.
+- **Prioridad:** media. **Estado:** abierto.
+
+## 🟡 MEDIA — `filter()` sin límite en el adaptador
+- **Impacto:** mismo patrón que truncó el corte (PostgREST corta en 1.000 filas). Hoy **ninguno alimenta la matemática del dinero**, pero conviene acotarlos antes de que un histórico crezca.
+- **Archivos:** `src/api/entitiesAdapter.js` y sus call-sites.
+- **Prioridad:** media. **Estado:** abierto.
+
+## 🟢 BAJA — `CambiarSucursalDialog` marca dos opciones activas
+- En "Vista general" el diálogo marca **dos** opciones como activas a la vez y miente sobre lo que el dueño está viendo.
+- **Archivos:** `src/components/common/CambiarSucursalDialog.jsx:55`. **Estado:** abierto.
+
+## 🟢 BAJA — CORS del Edge Function
+- `ORIGEN_PREVIEW` es una regex más permisiva de lo necesario en `supabase/functions/transcribir-nota-voz/index.ts`. **Estado:** abierto.
+
+---
+
+## ✅ REFUTADOS en la verificación adversarial — NO los persigas
+
+- **`AppLayout.jsx:29` `if (!posUser) return null`** — el código existe, pero la línea es **inalcanzable** como estado observable: `TerminalGate` ya muestra su propio spinner antes.
+- **`COLS_CIERRE` sin `sucursal_id` "hace que `fondoEsperado` caiga a 0"** — la observación era cierta (la guarda era siempre falsa) pero **la consecuencia de dinero no se sostiene**. Se arregló igual (commit `3a90e3c`) porque la guarda debe hacer lo que dice.
+- **`Dashboard.jsx` desreferencia nula con `sucursalEfectiva=null`** — verificado limpio, no ocurre.
+- **`useCajaAbierta` "borra la memoria de sesión en cada render" con `sucId` null** — los hechos son ciertos, la atribución causal no.
+- **"Algún sitio lee el rol de la metadata del JWT"** — descartado: nadie lo hace.
+
+---
+
+## 📌 Bloques de la auditoría 2026-08-01 que NUNCA se abrieron
+
+- 6 políticas con `USING true` y 3 vistas con `security_invoker=false`, grants y endurecimiento de RPCs.
+- Storage / imágenes / caché.
+- Endurecimiento adicional del Edge Function de audio (`getUser` + rate limit).
+- Renombrar la fachada Base44.
+- **Borrar la Edge Function `poc-auth-magiclink`** (el MCP no tiene herramienta de borrado; hay que hacerlo por dashboard o CLI).
+- Cutover de Auth a `generateLink`+`verifyOtp` (gated en `MIGUEL_OK_AUTH_TABLETS`) y enrolamiento de terminales.
+
+---
+
 ## RESUELTO (2026-08-09) — el rol `pastelero` NO podía ESCRIBIR en pedidos
 Verificado en vivo: con la sesión del pastelero se **leían** 229 pedidos, pero cualquier `UPDATE`
 afectaba **0 filas**.

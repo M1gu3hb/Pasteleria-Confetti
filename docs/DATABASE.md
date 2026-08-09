@@ -1,5 +1,58 @@
 # DATABASE — Supabase staging `ivqcxdpqxwjxfohiswqb`
 
+---
+
+# Actualización 2026-08-09 — migraciones 0050 → 0061
+
+> Todas **aplicadas en producción** (proyecto `ivqcxdpqxwjxfohiswqb`). El archivo de cada una lleva en la cabecera su causa raíz, su evidencia y su reversión exacta.
+
+| # | Qué hace | Nota |
+|---|---|---|
+| `0050` | Índices para 4 FKs sin cobertura + `usuarios_pos.auth_user_id` + `(sucursal_id, estado, created_at desc)` en `cortes_caja` | El índice de `auth_user_id` **no** redujo las tuplas leídas (6 filas, una página: el planner sigue eligiendo Seq Scan). Se documenta sin maquillar |
+| `0051` | **RLS InitPlan**: envuelve `pos_is_admin()` / `pos_sucursal()` en `(select …)` en las 7 policies scoped | Antes se evaluaban **por fila**. Medido: ~20 → 0.58 scans/s (**~96 % menos**). Se usó `ALTER POLICY`, nunca `DROP+CREATE`, para no dejar la tabla sin política |
+| `0052` | **Índice único parcial `ux_cortes_una_caja_abierta`** | Garantiza en la base **una sola caja abierta por sucursal**. Antes sólo existía la validación read-then-create del cliente (TOCTOU). La perdedora de la carrera recibe `23505` |
+| `0053` | Rate limit del PIN en `app_private` | **Superada por `0054`. No usar.** |
+| `0054` | Rate limit **forward-only**: separa `precheck` / `fallo` / `exito` | Corrige dos fallos reales de `0053`: **bloqueo perpetuo** (incrementaba antes de validar, así que tras el cooldown el PIN correcto nunca llegaba a validarse) y **bucket manipulable** (`p_dispositivo` venía del cuerpo de la petición) |
+| `0055` | `pin_verificar` server-side, sólo `service_role` | |
+| `0056` | **Respaldo** de `cortes_caja` antes del recálculo | |
+| `0057` | **Recálculo de los 10 cortes en cero** | Fórmulas validadas contra los cortes sanos (90/92 en totales, 82/82 en `diferencia_efectivo`) |
+| `0058` | **Trigger `guard_cierre_en_cero`** (`BEFORE UPDATE` en `cortes_caja`) | **Red de seguridad independiente del frontend.** Rechaza cerrar un corte con total 0 teniendo ventas pagadas. Es lo único que protege a una tablet con bundle viejo |
+| `0059` | Recálculo de `CONF-A-C042` | Se rompió **un día después** del primer despliegue porque la tablet seguía con el bundle viejo |
+| `0060` | **Pastelero**: política `pos_pastelero_update_pedidos` (FOR UPDATE) + trigger `trg_guard_pastelero_alcance` | Acota **columnas y transiciones**. **NO-OP para el resto de roles** |
+| `0061` | **Datos**: `Abel` vuelve a `rol='dueño'`; `logo_ticket_url` vuelve al logo real | Dos correcciones de datos, no de código. Reversión exacta en la cabecera del archivo |
+
+## Cambios de reglas de negocio en la base
+
+### `cortes_caja`
+- **`ux_cortes_una_caja_abierta`** (0052): una caja abierta por sucursal, garantizado.
+- **`trg_guard_cierre_en_cero`** (0058): no se puede cerrar un corte con `total_general = 0` si tiene ventas pagadas. Mensaje al usuario:
+  > *"CIERRE_EN_CERO: el corte X tiene N ventas pagadas por $Y pero se intentó cerrar con total 0. No se guardó. Actualiza la aplicación (cierra y vuelve a abrirla) e intenta de nuevo."*
+
+### `pedidos`
+Cuatro políticas activas:
+| Política | Cmd | Regla |
+|---|---|---|
+| `pos_scope_pedidos` | ALL | `pos_is_admin() OR sucursal_id = pos_sucursal()` |
+| `anon_insert_pedidos` | INSERT (anon) | `origen='web' AND estado='pendiente'` |
+| `pos_pastelero_select_pedidos` | SELECT | `pos_is_pastelero()` |
+| **`pos_pastelero_update_pedidos`** | UPDATE | `pos_is_pastelero()` — **nueva (0060)** |
+
+Más el trigger **`trg_guard_pastelero_alcance`**, que para el pastelero (y **sólo** para él) permite cambiar únicamente `nota_voz_transcripcion`, `estado`, `fecha_confirmacion` y `fecha_entrega_real`, con estas transiciones:
+- `pendiente → confirmado`
+- `→ entregado` **sólo sin saldo pendiente** (misma precedencia que la pantalla: `saldo_pendiente` y, si fuera null, `resta`)
+- las fechas **sólo se sellan en su transición**
+
+> **Dato real que importa:** `saldo_pendiente` es `NOT NULL DEFAULT 0`, y hay **68 pedidos** con `saldo_pendiente = 0` y `resta > 0` (saldados por abonos, con el campo legacy sin actualizar). Esos **sí** se pueden entregar, igual que hoy en pantalla.
+
+### El rol se guarda CON TILDE
+`usuarios_pos.rol` usa **`'dueño'`**. El código compara contra `'dueno'` y normaliza en casi todos los sitios. **`ModalPinAdmin.jsx` es el único que exige la tilde**: normalizar el dato dejaría al dueño fuera del sistema. Normaliza en el código, nunca en la base.
+
+## Cómo verificar sin alterar datos
+
+Patrón usado en toda esta etapa (`scripts/pastelero_alcance_evidencia.sql`): un bloque `DO` que hace `set local role authenticated`, fija `request.jwt.claims` con el `auth_user_id` de la identidad a probar, ejecuta las escrituras de prueba acumulando el resultado en una variable, y **termina en `RAISE EXCEPTION`**, lo que **revierte la transacción entera**. Después se comprueba que no quedó rastro.
+
+---
+
 snake_case en todo. IDs `uuid` (`gen_random_uuid()`). `created_at timestamptz default now()` en todas. "enums" = `text` + CHECK.
 
 > **APK Android (2026-07-09): la BD NO se tocó.** El proyecto APK (rama `apk/capacitor`) **no agregó ni cambió ninguna tabla, columna, RPC, RLS, vista ni migración**. El APK lee la MISMA Supabase que el POS web (mismo anon key + RLS). Los ajustes de impresora/cajón/formato-corte son **LOCALES por dispositivo** (localStorage `confetti_printer_cfg`), NO viven en la BD compartida. La matemática del dinero (cortes/ventas/abonos/efectivo esperado) quedó **intacta** (solo cambió CÓMO se imprime, no QUÉ se calcula).

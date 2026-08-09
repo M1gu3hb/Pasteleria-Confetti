@@ -1,81 +1,198 @@
-# PROJECT_CONTEXT — POS Pastelería Confetti (migración Base44 → Vercel + Supabase)
+# PROJECT_CONTEXT.md — POS Pastelería Confetti
 
-> **Fuente principal de transferencia.** Léelo COMPLETO antes de tocar nada, junto con `CLAUDE.md` y `docs/`.
-> Última actualización: 2026-06-27 (POS+Web migrados y VALIDADOS; **bot 60 días COMPLETO e impecable**; **próxima fase = Vercel + MEJORAS** → `docs/MEJORAS_POST_VALIDACION.md`; cutover pendiente = lunes, imágenes se mantienen).
-> **Working tree estable:** `C:\Pasteleria Confetti\pos` (clon de `M1gu3hb/Pasteleria-Confetti@migracion/supabase`).
-> **Repo Web (aparte):** `M1gu3hb/Pasteleria-Confetti-web-` (CON guion final) en `C:\Pasteleria Confetti\web`.
+> **Fuente principal de transferencia.** Si vas a continuar este proyecto en otra sesión, otra cuenta u otra IA, lee ESTE archivo completo, luego `CLAUDE.md`, luego `HANDOFF.md` (lo más reciente), y después `docs/`.
+>
+> **Última actualización:** 2026-08-09 · commit `3a90e3c` · rama `migracion/supabase`
 
 ---
 
-## APK Android (Confetti POS) — estado 2026-07-09 (rama `apk/capacitor`)
-Se envolvió el POS en un **APK Android (Capacitor 8)** que carga la web viva desde Vercel e **imprime ESC/POS nativo** (arregla el "imprime a medias" del `window.print` en el WebView). **TODAS las fases de CÓDIGO están hechas** (0,1,3,4,5,corte,6,7); pendiente = **prueba física EN SITIO** + (con OK) fusionar a producción.
+## 1. Objetivo del proyecto
 
-**Qué hace / arquitectura:**
-- `capacitor.config.ts`: `server.url` = **preview de la rama** `pasteleria-confetti-git-apk-capacitor-mh-astral-systems.vercel.app` (NO producción durante el piloto; producción aún no tiene el código nativo). `allowNavigation` Vercel+Supabase, `cleartext` (TCP a impresora). Proyecto `android/` (appId `com.mhastral.confettipos`). Refuerzos: orientación horizontal, pantalla siempre encendida, botón ATRÁS no cierra.
-- **Impresión** (`src/lib/print.js` con rama nativa aditiva detrás de `isNativePlatform()`): en el APK, `printDocument` delega en `src/native/printTicket.js` → renderiza el MISMO ticket del DOM a imagen 576px (html2canvas, `useCORS` para el logo) → `imprimirImagenRaster` + `cortar`. Modo **Imagen** (default, preserva diseño) o **Texto** ESC/POS (opción). En navegador: `window.print` de siempre, intacto.
-- **Plugin nativo delgado** `ConfettiPrinterPlugin.java` (envuelve **DantSu ESCPOS 3.4.0**): conectarUSB (permiso persistente por intent-filter), conectarTCP(9100), enviarBytes, imprimirImagenRaster (576/384), cortar, abrirCajonPorImpresora, **abrirCajonUsbSerial** (usb-serial-for-android). Lógica de ticket en JS (se actualiza por Vercel).
-- **Cajón** (`src/native/cajon.js` `abrirCajon(metodo)`): `ninguno` | `usb_trigger` (disparador USB-serial) | `kick_impresora` (patada ESC/POS).
-- **Corte de caja térmico** (opción además del PDF): `CorteTicketTermico.jsx` (1 columna) reusa los MISMOS `corte.*` + helpers que `CorteTicket` → **números idénticos** (verificado). `CorteViewerDialog` ramifica por `formatoCorte`.
-- **Config LOCAL por dispositivo** `src/native/printerConfig.js` (localStorage): conexion/ip/puerto/modo/metodoCajon/formatoCorte. UI: **Config → Operación → "Impresora y cajón (app)"** (`ImpresoraCajonAppSection.jsx`) para seleccionar + PROBAR; funcional solo en APK, deshabilitada en navegador.
-- **Entregable:** `C:\Pasteleria Confetti\release\` → `ConfettiPOS.apk` (firmado, apksigner v2+v3), `keystore/` (+ `RESGUARDAR.txt`, ¡respaldar!), `usb/ConfettiPOS_USB.zip` (+ `LEEME_instalacion.txt` con protocolo de prueba en sitio), `muestras/` (PNGs de evidencia).
+Punto de venta interno de **Pastelería Confetti** (Ciudad de México, 3 sucursales). Se migró desde Base44 a infraestructura propia — **React (Vite) en Vercel + Supabase (Postgres, Auth, RLS, Storage)** — **sin cambiar el comportamiento** que el dueño ya tenía aprobado.
 
-**Hardware objetivo:** tablet **Higole** RK3399 Android 12 (USB host, LAN; **sin RJ11** de cajón). Impresora **Easytime 80mm** ESC/POS (USB+Ethernet, corte auto, 72mm/576pts, sin Bluetooth, sin RJ11). Cajón: manual o disparador USB-serial.
+Lo usa **personal no técnico y de edad**, sobre **tablets**, todos los días. La consigna permanente es que **la experiencia visible no cambie**: nada de pantallas nuevas, pasos nuevos, contraseñas nuevas ni re-logins. El PIN sigue siendo de **4 dígitos**.
 
-**Pendiente (tuyo / en sitio):** (1) instalar `ConfettiPOS.apk` en la tablet y probar impresora/cajón/corte con `release/usb/LEEME_instalacion.txt`; (2) tras tu OK, **fusionar `apk/capacitor` → `migracion/supabase` y repuntar `server.url` a producción**. Ver `docs/NEXT_STEPS.md`.
+Resuelve: cobrar, llevar pedidos de pastel personalizado, controlar caja (apertura, cortes, cierres) y sacar tickets/PDF, con **aislamiento por sucursal**.
 
-## 1. Objetivo
-Independizar el **POS interno** de Pastelería Confetti de Base44, dejándolo **idéntico en comportamiento** sobre infra propia: **React (Vite) en Vercel + Supabase (Postgres + Auth + RLS + Storage)**. NO es reconstrucción: el sistema ya estaba aprobado por el cliente (Abel); se migra, no se rediseña. El cliente sigue operando en Base44 en producción durante toda la migración; el corte a producción lo decide Miguel y NO es parte de esta fase.
+## 2. Estado actual (honesto)
 
-## 2. Estado real (honesto)
-- **Fase 0** (reconocimiento + andamiaje): COMPLETA, auditada por Miguel.
-- **Fase 1** (esquema unificado): COMPLETA y APLICADA en staging, auditada.
-- **Fase 2** (seed maestros + port capa de datos + smoke): COMPLETA, auditada. Build verde; smoke en preview local OK.
-- **Fase 3** (validación aritmética del dinero): COMPLETA, auditada. + **PASO 0 gate money-crítico CERRADO LIMPIO**.
-- **Fase 4** (Auth + RLS + wiring): **CERRADA (firmada por Miguel).** Opción A; auth real terminal/admin/dueño; RLS scoped; migraciones 0015/0016; adversarial 31/31; `_pin` no persiste. Ver `CHANGELOG.md` (cont./cont.2) + `DECISIONS.md` (13–19).
-- **Fase 5** (Validación de FIDELIDAD vs Base44 vivo): **HECHA y APROBADA por Miguel.** Maestros 0 diffs; pantallas/flujos conformes; corte real 14/14 campos idénticos (incl. doble conteo). **POS migrado, independiente y fiel — Fases 0-5 COMPLETAS.**
-- **WEB-0 / WEB-1** (migración Web, repo aparte `M1gu3hb/Pasteleria-Confetti-web-`): **HECHAS.** Andamiaje web pusheado; GAP1 folio = **migración 0017** (trigger), GAP2 upload = **migración 0018** (bucket `web-uploads`) — ambas en ESTE repo POS (esquema = fuente única), verificadas (anon 11/11, regresión POS limpia). Ver `CHANGELOG.md` / `DATABASE.md` / `DECISIONS.md`.
-- **WEB-2** (port de la capa de datos de la web): **HECHA.** Migraciones **0019** (RPC `crear_pedido_web` devuelve folio → folio-Gracias resuelto), **0020** (RPC anon-only), **0021** (sella `creado_por_nombre='Web Confetti'`) en ESTE repo POS; el port (cliente anon, adaptador, puente muerto, NOMBRE→ID, web-uploads) en el repo web, build verde + smoke real. Ver repo web `docs/CHANGELOG.md`.
-- **WEB-3** (validación end-to-end POS↔web): **HECHA y aprobada por evidencia.** Pedido web visible y fiel en el POS (badge 🌐 WEB, "Creado por Web Confetti", imagen de referencia) + aislamiento por sucursal; edición de producto en el POS reflejada de inmediato en el catálogo web (misma fila, sin sync). Sin diffs vs Base44. Ver `CHANGELOG.md` (cont. 4). **Pendiente humano:** import Vercel del repo web.
-- **Bot de paridad / pruebas largas** (concurrencia/PDFs, otro proyecto de Miguel: `Bot pruebas/bot-pruebas/`): **COMPLETO.** 60 días simulados, 3 sucursales en paralelo, libro mayor + oráculo confrontando cada corte → **60/60 días limpios, cuadres 180/180 (con doble conteo), folios 180/180 sin colisión, web 30/30, RLS 18/18, 0 bugs reales**. Evidencia: `reportes/run60/RESUMEN_EJECUTIVO_60_DIAS.md`. Halló y reclasificó (decisión de Miguel): corte de turno = fantasma; cobro mixto/catálogo huérfano = fiel a Base44.
-- **➡️ PRÓXIMA FASE = MEJORAS** (lo pendiente en Base44 por créditos): **#1 subir a Vercel** (POS ya importado en preview `migracion/supabase`; Web FALTA proyecto Vercel aparte) para revisión visual de Miguel; luego fantasmas, notas de voz, pagos mixtos, cancelación-con-anticipo→devolución, etc. **Orden completo en `docs/MEJORAS_POST_VALIDACION.md`.** El **CUTOVER de Base44 sigue pendiente** (Abel se instala el lunes); las imágenes `media.base44.com` se mantienen hasta entonces.
+**EN PRODUCCIÓN Y OPERANDO.** No es staging. Abel y su personal venden con esto hoy.
 
-## 3. Stack
-- Frontend: React 18 + Vite 6 + Tailwind 3 + React Router 6 + React Query 5 (export de Base44, migrado). Sin TS en el front.
-- Datos/Auth/RLS/Storage: Supabase (proyecto staging `ivqcxdpqxwjxfohiswqb`, us-east-1, PG17).
-- Hosting destino: Vercel (import pendiente de Miguel).
+**Qué funciona:**
+- Venta, cobro (efectivo/tarjeta/transferencia/mixto), pedidos de pastel, abonos, cortes y cierre de caja.
+- Aislamiento por sucursal vía RLS. Roles: `caja` (terminal), `administrador`, `dueño`, `pastelero`.
+- Cierre de caja **protegido en tres capas** contra el bug de los ceros (ver §8 y §10).
+- Rol `pastelero` con permiso acotado para editar la nota y avanzar estados (migración `0060`).
+- APK Android (Capacitor) con impresión ESC/POS nativa — **pero apuntando a la rama equivocada**, ver §11.
 
-## 4. Arquitectura — Opción A (DB compartida + RLS)
-Una sola base Supabase sirve al POS y (después) a la Web, separadas por RLS. **El puente Base44 desapareció** (`posApiClient.js` eliminado, sin api_key, sin sync de productos, sin `crearPedidoPOS`). La Web futura leerá la vista `catalogo_publico` e insertará en `pedidos` con anon key + RLS. Detalle en `docs/ARCHITECTURE.md` y `docs/DATABASE.md`.
+**Qué está incompleto:**
+- El árbol de rutas **no tiene ErrorBoundary**: cualquier excepción en render deja la app en blanco.
+- Varias comparaciones de rol **no normalizan la tilde** (`dueño` vs `dueno`) y dejan al dueño sin funciones sueltas.
+- Bloques de la auditoría nunca abiertos: políticas `USING true`, vistas `security_invoker=false`, Storage/imágenes, cutover de Auth, limpieza de la fachada Base44.
 
-## 5. Los 3 CANDADOS (regla irrompible)
-- **CANDADO 1** — fallback venta↔corte (`Caja.jsx:220-246` y `1441-1461`): asociación por `corte_caja_id` o fallback por `fecha_cierre`+sucursal. **Idéntico bit a bit** (verbatim). NO optimizar.
-- **CANDADO 2** — día operativo = **MEDIANOCHE América/Mexico_City (UTC-6 fijo)** vía `obtenerInicioDiaMexico` (`useCorteAtrasado.js:21`) y `Dashboard.jsx:38`. **NO es 06:00** (el `hora_inicio_dia_operativo='06:00'` es de plantilla QR, fuera de dinero). Idéntico.
-- **CANDADO 3** — `handleBuscarFolioWeb` (`Caja.jsx:679`): el ÚNICO que se corrigió — ahora filtra el cobro por folio por la sucursal del terminal.
+**Qué está roto / bloqueado:**
+- **El APK de las tablets carga el preview de `apk/capacitor`, 18 commits por detrás de producción.** Por ahí no llega ninguna corrección de frontend. **Es lo más urgente.**
 
-## 6. Entidades / tablas (lista verde, 12)
-`sucursales, usuarios_pos, configuracion_negocio, productos, categorias_producto, ventas, detalle_venta, cortes_caja, pedidos, abonos, folio_contador, gastos_operativos`. (`clientes` NO se creó: 0 refs.) Basura de plantilla restaurante descartada. Detalle en `docs/DATABASE.md`.
+**Lo que se hizo entre 2026-08-01 y 2026-08-09:** ver `HANDOFF.md` §2 y `docs/CHANGELOG.md`.
 
-## 7. Mapeo de archivos clave (qué NO romper) — ver `docs/FILE_MAP.md`
-- `src/api/supabaseClient.js` — cliente + sesión.
-- `src/api/entitiesAdapter.js` — capa de adaptación `base44.entities.*`→Supabase (traduce `$in/$ne/$gte/$lte`, `created_date→created_at`, whitelist de columnas por tabla). **No romper el whitelist ni el contrato.**
-- `src/api/base44Client.js` — shim `base44` (entities + `UploadFile`→Storage `{file_url}` + stubs auth/functions).
-- `src/pages/Caja.jsx` (~2249 líneas) — CANDADOS 1/2/3 + matemática del dinero. **Solo se redirige la fuente de datos; la lógica NO cambia.**
-- `src/components/pedidos/RegistrarPagoDialog.jsx` — abono → venta paralela (ver quirk doble conteo en `docs/BUGS_PENDING.md`).
-- **Auth/sesión (Fase 4, wireados):** `supabaseClient.js` (`ensureSession`/`loginTerminal`/`validarPin`/`loginConPin`/`logoutOperador`), `TerminalGate.jsx`, `ModalPinAdmin.jsx`, `AccesoDuenoGate.jsx`, `ConfigurarTerminal.jsx`, `Sidebar.jsx`, `AuthContext.jsx`, `ConfigContext.jsx` (fallback `config_publica`). **NO tocan la matemática del dinero ni los candados.** (`POSLogin`/`/login-pos` RETIRADO — el modelo no tiene login standalone.)
+## 3. Stack técnico
 
-## 8. Flujos críticos (matemática del dinero) — ver `docs/DATABASE.md`
-Corte lee SOLO `Venta estado='pagada'`; cancelar/devolver excluye por construcción; abono crea Abono (sucursal del pedido) + Venta paralela `pagada` (corte abierto, sucursal del terminal); entregar exige `saldo_pendiente=0`; efectivo_esperado = `total_efectivo + abonosEfectivo` (⚠️ doble conteo = quirk Base44, ver bugs).
+- **Frontend:** React 18 + Vite 6 + Tailwind 3 + React Router 6 + **React Query 5**. JavaScript (no TypeScript en el front; hay `jsconfig` y `tsc` corre en modo checkJS, con errores preexistentes).
+- **Datos/Auth/RLS/Storage:** **Supabase**, proyecto **`ivqcxdpqxwjxfohiswqb`** (us-east-1, PostgreSQL 17.6).
+- **Hosting:** **Vercel**, proyecto `pasteleria-confetti`, equipo `team_pSE0TmK8p4NCa4co6nf8XTGq`. **Rama de producción: `migracion/supabase`.** Cualquier otra rama sale como preview.
+- **PWA:** `vite-plugin-pwa` con `registerType: 'autoUpdate'`, `skipWaiting`, `clientsClaim`. Precachea **sólo el shell**; **todo lo de `*.supabase.co` es `NetworkOnly`** (nunca se cachean datos: datos viejos = descuadre de dinero).
+- **APK:** Capacitor 8 + plugin nativo propio sobre DantSu ESCPOS.
+- **Edge Functions (Deno):** `transcribir-nota-voz` (Whisper), `pin-login`, `poc-auth-magiclink` (pendiente de borrar).
 
-## 9. Bugs / riesgos — ver `docs/BUGS_PENDING.md`
-(a) doble conteo efectivo_esperado con abono efectivo = quirk de Base44 reproducido idéntico (CANDADO, fuera de alcance); (b) 2/20 cortes reales con abono efectivo y total_efectivo=0 (edge a verificar con bot); (c) imágenes en `media.base44.com` mueren al apagar Base44 (re-hospedar en cutover).
+## 4. Arquitectura general
 
-## 10. Próximos pasos — ver `docs/NEXT_STEPS.md`
-Decisión tomada (Opción A) y wiring HECHO. **Próximo:** auditoría + firma de Miguel/su arquitecto sobre `migracion/supabase` (dinero + aislamiento RLS) → cierra Fase 4. Luego Fase 5 (bot de paridad).
+Una sola base Supabase sirve al POS y a la web pública, separadas por **RLS**. El puente a Base44 **ya no existe**.
 
-## 11. Pendientes humanos (Miguel)
-- Import Vercel (GitHub→Vercel, repo PRIVADO `M1gu3hb/Pasteleria-Confetti`, rama `migracion/supabase`, + 4 env vars de `supabase/STAGING_NOTES.md`).
-- Rotar la api_key Base44 `847df…` (sigue viva en prod de Abel).
+**Sesiones (importante y poco intuitivo):**
+- La **terminal** (tablet) abre una sesión Supabase propia: `terminal-<sucursal_id>@pos.confetti.local`. Esa sesión está **acotada a su sucursal** por RLS.
+- El **administrador** valida su PIN y **NO cambia la sesión**: sigue sobre la de la terminal (hereda su sucursal). Sólo se eleva la UI.
+- El **dueño** y el **pastelero** SÍ abren una **sesión global** (`loginConPin` → `signInWithPassword`), porque necesitan ver todas las sucursales.
+- Al salir de dueño/pastelero **hay que restaurar la sesión de la terminal** o la tablet queda autenticada con la identidad equivocada.
 
-## 12. Repo / staging
-- GitHub: `M1gu3hb/Pasteleria-Confetti` (**privado**), rama de trabajo `migracion/supabase`; `main` = baseline export Base44 intacto (api_key redactada).
-- Supabase staging `ivqcxdpqxwjxfohiswqb`: SOLO datos maestros (sucursales 3, categorías 8, productos 20, **usuarios_pos 36 = 33 operadores + 3 cuentas terminal**, config 1); transaccional 0. `usuarios_login` (vista) = 33 (terminales excluidas). Cuenta auth por operador `<id>@pos.confetti.local` (password `POS-<pin>`); cuentas terminal `terminal-<sucursalid>@pos.confetti.local` (password `POS-TERMINAL-CONFETTI`). Cuenta staging `staging-pos@confetti.local` ya NO se usa (el login real existe) — se puede borrar.
+**Sucursal efectiva** (`TerminalContext.sucursalEfectiva`) — de aquí salen casi todos los bugs de rol:
+
+| modo | sucursal efectiva |
+|---|---|
+| empleado | la de la terminal |
+| administrador | la suya (que es la de su terminal) |
+| **dueño** | la que elija en pantalla, o **`null`** (vista general) |
+| **pastelero** | **`null`** (ve las 3) |
+
+**Capa de datos:** `src/api/entitiesAdapter.js` conserva el contrato `base44.entities.*` (filtros estilo Mongo `$in/$ne/$gte/$lte`, alias `created_date → created_at`, whitelist de columnas por tabla). **No es un find-replace y el whitelist no se toca a la ligera.**
+
+## 5. Módulos principales
+
+| Módulo | Qué hace |
+|---|---|
+| **Caja** (`src/pages/Caja.jsx`, ~2.200 líneas) | Cobro, apertura/cierre de caja, cortes. **Aquí viven los CANDADOS y la matemática del dinero.** |
+| **POS / Punto de venta** | Venta directa y venta libre. |
+| **Pedidos de Pastel** | Pedidos personalizados y de catálogo web, abonos, estados, nota de voz. |
+| **Dashboard** | Resumen por sucursal o **vista general** (dueño, sin sucursal). |
+| **Ventas / Registros** | Historial y limpieza. |
+| **Configuración** | **Sólo dueño.** Identidad, operación, usuarios POS, precios/rellenos/extras de pastel, mantenimiento. Es donde Abel configura todo. |
+| **Web Pública** | Catálogo y pedidos desde la web (repo aparte, misma base). |
+
+## 6. Entidades y base de datos
+
+12 tablas. Detalle completo en **`docs/DATABASE.md`**.
+
+`sucursales`, `usuarios_pos`, `configuracion_negocio`, `productos`, `categorias_producto`, **`ventas`**, `detalle_venta`, **`cortes_caja`**, **`pedidos`**, `abonos`, `folio_contador`, `gastos_operativos`.
+
+**Las tres que tocan dinero y hay que tratar con cuidado:**
+- **`ventas`** — el corte lee SÓLO `estado='pagada'`. Cancelar/devolver excluye por construcción.
+- **`cortes_caja`** — apertura/cierre. Protegida por el índice único `ux_cortes_una_caja_abierta` (0052) y el trigger `guard_cierre_en_cero` (0058).
+- **`pedidos`** — pedidos de pastel. Políticas: `pos_scope_pedidos` (ALL), `pos_pastelero_select_pedidos` (SELECT), `pos_pastelero_update_pedidos` (UPDATE, 0060) + trigger `trg_guard_pastelero_alcance`.
+
+**Ojo con el rol:** en la base se guarda **`dueño` CON TILDE**. El código compara contra `dueno` SIN tilde y normaliza… **en casi todos los sitios**. `ModalPinAdmin.jsx` es el **único** que exige la tilde: si alguien "normaliza" el dato en la base, **el dueño se queda fuera del sistema**.
+
+## 7. Mapeo de archivos importantes
+
+Detalle en **`docs/FILE_MAP.md`**. Los que no se rompen:
+
+| Archivo | Para qué | Riesgo |
+|---|---|---|
+| `src/pages/Caja.jsx` | CANDADOS 1/2/3 + matemática del dinero | **Máximo** |
+| `src/lib/ventasCorte.js` | Ventas del corte: acotada, ordenada y **paginada**. Existe porque PostgREST corta en 1.000 filas | **Máximo** |
+| `src/api/entitiesAdapter.js` | Contrato `base44.entities.*` → Supabase | Alto |
+| `src/api/supabaseClient.js` | Sesiones: `ensureSession`, `loginTerminal`, `validarPin`, `loginConPin`, `logoutOperador` | Alto |
+| `src/lib/TerminalContext.jsx` | `adminMode`, `adminRole`, **`sucursalEfectiva`** | Alto |
+| `src/lib/useCajaAbierta.js` | Fuente única de "¿hay caja abierta?" | Alto |
+| `src/lib/cajaRefresco.js` | Un solo temporizador por sucursal. **Aquí estuvo el `Illegal invocation`** | Alto |
+| `src/lib/cajaEstado.js` | Consultas de caja abierta / último cierre. **Las listas de columnas deben incluir `sucursal_id`** | Alto |
+| `src/components/common/Sidebar.jsx` | Menú por rol + entrada/salida de admin/dueño. Se renderiza en TODAS las pantallas: si revienta, la app entera se apaga | Alto |
+| `src/components/pedidos/PedidoPastelDetalleDialog.jsx` | Detalle del pedido; relee la fila fresca (arreglo de "la nota no se guarda") | Medio |
+| `supabase/migrations/` | 0001→**0061** | **Máximo** |
+
+## 8. Flujos críticos
+
+**Cobro → corte.** Se cobra → `ventas` con `estado='pagada'` y `corte_caja_id` del corte abierto. El resumen del corte toma las ventas del corte (o, en tránsito, las pagadas tras la apertura y de la misma sucursal — **CANDADO 1**). Al cerrar: se **cuenta en el servidor** y se compara; si no cuadra o no se puede verificar, **no se cierra** (falla cerrada). Y la base rechaza un cierre en cero con ventas (trigger `0058`).
+
+**Día operativo.** Empieza a la **medianoche de América/Mexico_City** (UTC-6 fijo). **CANDADO 2. No son las 06:00.**
+
+**Abono a un pedido.** Crea `Abono` (sucursal del pedido) + una **venta paralela** `pagada` en el corte abierto de la sucursal de la terminal. `efectivo_esperado = total_efectivo + abonosEfectivo` — **hay doble conteo, y es un quirk de Base44 reproducido a propósito**: es CANDADO, no se "arregla".
+
+**Entregar un pedido.** Exige `saldo_pendiente = 0`. La pantalla lo impide y, para el pastelero, el trigger también.
+
+**Entrar como dueño.** PIN → `validarPin` (RPC `login_pos`, server-side) → `loginConPin` abre sesión global → `activarAdmin` → `sucursalEfectiva` pasa a `null` → vista general.
+
+## 9. Decisiones tomadas
+
+Registro completo en **`docs/DECISIONS.md`**. Las de esta etapa:
+
+| Fecha | Decisión | Razón |
+|---|---|---|
+| 2026-08-01 | RLS: envolver los helpers en `(select ...)` en vez de reescribir policies | InitPlan: 1 evaluación por statement en vez de por fila. ~96 % menos scans, sin cambiar quién ve qué |
+| 2026-08-01 | Rate limit **forward-only** (`0054` en vez de editar `0053`) | `0053` causaba bloqueo perpetuo; no se edita una migración ya aplicada |
+| 2026-08-08 | Proteger el cierre en **tres capas** en vez de sólo arreglar la consulta | Las tablets tardan en recargar; la capa de base protege al bundle viejo |
+| 2026-08-08 | **No** tocar los descuadres preexistentes (`CONF-A-C032`, `CONF-C-C002`) | Son de otra causa y anteriores. Se declaran, no se maquillan |
+| 2026-08-09 | Arreglar "la nota no se guarda" **en el diálogo**, no en los 3 call-sites | Un solo punto; la queryKey cuelga de `pedidos_pastel` y hereda las invalidaciones existentes |
+| 2026-08-09 | Pastelero: permiso por **política + trigger de alcance**, no por columnas | RLS no distingue columnas y el POS usa un único rol de base (`authenticated`) |
+| 2026-08-09 | `0061` cambia el rol de Abel a `dueño` en vez de reactivar `ADMIN_1234` | Es el usuario que el personal usa y cuyo PIN conocen |
+
+## 10. Bugs pendientes
+
+Lista viva y priorizada en **`docs/BUGS_PENDING.md`**; resumen ejecutivo en **`HANDOFF.md` §5**. Encabezan:
+
+1. **APK apuntando a la rama equivocada** (impacto: Abel no recibe ninguna corrección). **Urgente.**
+2. **Sin ErrorBoundary** en el árbol de rutas (impacto: cualquier throw = app en blanco). **Alta.**
+3. **Sesión colgada al recargar** la tablet tras usar dueño/pastelero. **Alta.**
+4. **Comparaciones de rol sin normalizar la tilde** (dueño sin menú radial, sin borrar cortes, rol en blanco). **Media.**
+5. `CorteAutoDownloader` empareja ventas sólo por ventana de tiempo. **Media.**
+
+## 11. Riesgos
+
+- **Es producción con dinero real y personal no técnico.** Un despliegue malo deja 3 sucursales sin cobrar.
+- **Las tablets no se actualizan solas del todo:** hay service worker, pero la pantalla cargada sigue con el JS viejo. Ya provocó una recaída (`CONF-A-C042`).
+- **El APK es un canal de despliegue paralelo** y hoy está desincronizado: es el riesgo activo más grande.
+- **Deuda de calidad:** `lint` 39 errores y `typecheck` 1249 son **línea base histórica**, no cero. Un error nuevo se esconde con facilidad; por eso se comparan **contra la línea base**.
+- **Dobles en las pruebas:** ya se colaron dos bugs graves porque los tests inyectaban dobles que no imitaban la restricción real.
+- La api_key vieja de Base44 (`847df…`) **sigue viva** en la app de Abel. Rotarla es tarea de Miguel.
+
+## 12. Próximos pasos
+
+**Urgente**
+1. Resolver el **APK** (`HANDOFF.md` §4). Requiere decisión de Miguel: subir `apk/capacitor` a producción, repuntar `server.url`, o ambas.
+2. Confirmar con Abel que ya ve los cambios (recargar la app; si usa APK, hasta el punto 1 no verá nada).
+
+**Importante**
+3. Envolver el árbol de rutas en `ErrorBoundary` (ya existe el componente, nadie lo usa).
+4. Arreglar la sesión colgada al recargar (`TerminalGate` / `ensureSession`).
+5. Normalizar la tilde en los sitios que dejan al dueño sin funciones — **sin tocar `ModalPinAdmin`, que exige la tilde a propósito**.
+
+**Después**
+6. `CorteAutoDownloader`: filtrar por sucursal y corte.
+7. Acotar los `filter()` sin límite del adaptador.
+8. Bloques nunca abiertos: `USING true`, vistas `security_invoker`, Storage, cutover de Auth, borrar `poc-auth-magiclink`.
+
+**Ideas futuras**
+9. Realtime para el estado de caja (ya escrito y **desactivado**: la publicación `supabase_realtime` está vacía).
+10. Enrolamiento de terminales por dispositivo.
+
+## 13. Prompts útiles
+
+En **`docs/PROMPTS.md`**. Incluye el **prompt de arranque para una sesión nueva** y el patrón de **verificación con transacción revertida**.
+
+## 14. Cosas que NO se deben romper
+
+- **CANDADO 1** — fallback venta↔corte en `Caja.jsx`. Bit a bit.
+- **CANDADO 2** — día operativo = medianoche América/Mexico_City. **No 06:00.**
+- **CANDADO 3** — `handleBuscarFolioWeb` filtra por la sucursal del terminal (ya corregido).
+- **El doble conteo de `efectivo_esperado`** con abono en efectivo: es quirk de Base44 **reproducido a propósito**.
+- **El PIN de 4 dígitos** y el flujo de acceso tal cual. Sin CAPTCHA, sin pasos nuevos.
+- **`ModalPinAdmin` exige `'dueño'` CON TILDE.** No "normalices" el rol en la base.
+- **`logo_ticket_url`** manda sobre `logo_url` en los tickets. Si se ve una foto rara, es un dato, no un bug de código.
+- **El navegador queda byte-por-byte igual** en todo lo del APK: lo nativo va detrás de `Capacitor.isNativePlatform()`.
+- **La matemática del dinero y el aislamiento RLS los firma Miguel.** Se entrega evidencia; no se autocertifican.
+
+## 15. Última actualización
+
+**2026-08-09** — commit `3a90e3c` en `migracion/supabase`.
+
+Resumen: se cerró el P0 del **cierre de caja en cero** (3 capas + recálculo de 11 cortes), el bug de **la nota que no se guardaba**, el permiso del **pastelero** (`0060`), la restauración del **rol de dueño y el logo del ticket** (`0061`), y una **regresión propia** que dejaba la app **en blanco** al entrar como dueño (`Illegal invocation` en `cajaRefresco`). Se corrigieron además `Number(null) === 0` en las guardas anti-ceros, fugas entre sucursales en `useCajaAbierta`, la sesión no restaurada al salir de dueño/pastelero, el pedido fantasma en el diálogo y `COLS_CIERRE` sin `sucursal_id`.
+
+Archivos tocados: `src/lib/{ventasCorte,cajaEstado,cajaRefresco,useCajaAbierta,useCorteAtrasado}.js`, `src/pages/{Caja,PedidosPastel}.jsx`, `src/components/common/Sidebar.jsx`, `src/components/pedidos/PedidoPastelDetalleDialog.jsx`, `src/api/entitiesAdapter.js`, `supabase/migrations/0050→0061`, `supabase/functions/transcribir-nota-voz/index.ts`, `scripts/*`, `docs/*`, `HANDOFF.md`.

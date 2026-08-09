@@ -1,5 +1,52 @@
 # DECISIONS — decisiones de arquitectura/diseño (con su porqué)
 
+---
+
+# Decisiones 2026-08-01 → 2026-08-09
+
+### D-20 · 2026-08-01 — RLS: envolver los helpers en `(select …)` en vez de reescribir policies
+- **Razón:** `pos_is_admin()` / `pos_sucursal()` son `STABLE` sin argumentos; llamados "desnudos" el ejecutor los evalúa **por fila**. Envueltos, pasan a InitPlan: **una evaluación por statement**.
+- **Consecuencia:** ~20 → 0.58 scans/s (**~96 % menos**) sin cambiar quién ve ni quién escribe qué. Se usó `ALTER POLICY` (nunca `DROP+CREATE`) para que la tabla no quede sin política ni un instante.
+- **Archivos:** `supabase/migrations/0051_rls_initplan_wrap_helpers.sql`.
+
+### D-21 · 2026-08-01 — Rate limit forward-only
+- **Razón:** `0053` tenía dos fallos reales (bloqueo perpetuo y bucket manipulable por el cliente). **No se edita una migración ya aplicada.**
+- **Consecuencia:** `0054` la sustituye; `0053` queda en el histórico marcada como superada.
+
+### D-22 · 2026-08-08 — El cierre de caja se protege en TRES capas, no en una
+- **Razón:** arreglar sólo la consulta deja fuera a las tablets que aún corren el bundle viejo — y eso **pasó de verdad** (`CONF-A-C042` se rompió un día después del despliegue).
+- **Consecuencia:** consulta acotada + guarda falla-cerrada en el cliente + **trigger en la base** (`0058`), independiente del frontend.
+
+### D-23 · 2026-08-08 — No maquillar los descuadres preexistentes
+- **Razón:** `CONF-A-C032` y `CONF-C-C002` son de **otra causa** y anteriores al incidente.
+- **Consecuencia:** se **declaran** en las pruebas y en la documentación en vez de "cuadrarlos". Las pruebas los excluyen **explícitamente y por nombre**, no en silencio.
+
+### D-24 · 2026-08-09 — "La nota no se guarda": arreglar en el diálogo, no en los 3 call-sites
+- **Razón:** los tres sitios que abren el diálogo le pasaban una instantánea congelada. Arreglar el diálogo cubre los tres y no toca ningún handler de guardado.
+- **Consecuencia:** la queryKey cuelga de `['pedidos_pastel']` **a propósito**, para heredar los `invalidateQueries` existentes.
+
+### D-25 · 2026-08-09 — Pastelero: política + trigger de alcance, no permisos por columna
+- **Razón:** RLS no distingue columnas y el POS usa **un único rol de base** (`authenticated`), así que los `GRANT` por columna no separan roles del POS.
+- **Consecuencia:** `0060` = política `FOR UPDATE` + trigger que compara OLD/NEW. **NO-OP para el resto de roles** (early return), así que caja/administrador/dueño quedan byte-idénticos.
+
+### D-26 · 2026-08-09 — `0061` cambia el rol de Abel en vez de reactivar `ADMIN_1234`
+- **Razón:** "Abel" es el usuario que el personal usa y cuyo PIN (1234) conocen. Reactivar el viejo obligaría a repartir otro PIN.
+- **Consecuencia:** `ADMIN_1234` queda como un segundo `dueño` **desactivado**. No estorba (`pos_is_admin()` resuelve por `auth_user_id`), pero hay que decidir si se borra o se guarda de respaldo.
+
+### D-27 · 2026-08-09 — Normalizar el rol en el CÓDIGO, nunca en el DATO
+- **Razón:** la base guarda `'dueño'` con tilde. `ModalPinAdmin.jsx` es el **único** punto que **exige** la tilde: si se "normaliza" el dato a `dueno`, **el dueño se queda fuera del sistema**.
+- **Consecuencia:** los bugs de tilde se arreglan añadiendo normalización en cada comparación, **sin tocar el dato ni `ModalPinAdmin`**.
+
+### D-28 · 2026-08-09 — Las pruebas no pueden probar sólo el arnés
+- **Razón:** dos bugs graves se colaron por dobles que no imitaban la restricción real: un booleano que ocultó que `Number(null) === 0`, y temporizadores inyectados que ocultaron el `Illegal invocation` de los nativos del navegador.
+- **Consecuencia:** toda prueba de regresión (a) pasa **valores crudos**, (b) **imita la restricción real** cuando usa dobles, y (c) **se comprueba contra el código viejo**: si no falla ahí, no prueba nada.
+
+### D-29 · 2026-08-09 — El APK no se repunta sin OK de Miguel
+- **Razón:** el `server.url` del APK apunta al preview de `apk/capacitor`. Cambiarlo o fusionar la rama es un despliegue a las tablets de producción.
+- **Consecuencia:** queda documentado como **decisión pendiente de Miguel**, con las tres opciones planteadas, en `HANDOFF.md` §4 y `NEXT_STEPS.md` §1.
+
+---
+
 ## APK Android (Capacitor) — decisiones (2026-07-09)
 - **Capacitor + cargar la web viva de Vercel** (no empaquetar el `dist`). *Por qué:* las actualizaciones del POS siguen por la nube sin reinstalar el APK; solo lo nativo (impresión/cajón) se instala por USB.
 - **Impresión modo IMAGEN raster por defecto** (renderizar el MISMO ticket a 576px y mandarlo como imagen ESC/POS), con TEXTO ESC/POS como opción. *Por qué:* preserva el diseño exacto que le gusta a Abel e inmuniza contra code-page (ñ/acentos); el texto plano es solo fallback.
