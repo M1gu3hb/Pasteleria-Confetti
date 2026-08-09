@@ -1,5 +1,46 @@
 # CHANGELOG
 
+## 2026-08-09 (ter) — `Number(null)` es 0: las dos guardas anti-ceros NO defendían + 5 fugas más
+> Hallazgos de una segunda revisión a fondo. **Los dos primeros ya estaban EN PRODUCCIÓN** desde `f2e9ae8`: son la corrección más urgente de este lote.
+
+### P0 — la defensa anti-ceros estaba desactivada por un detalle de JavaScript
+`Number(null)` vale **0**, no `NaN`. Así que `Number.isFinite(Number(count))` devolvía **true** cuando el `count` no llegaba (cabecera `content-range` ausente), y:
+- **`contarVentasDelCorte`** devolvía **0** en vez de `null` → la guarda del cierre (`ventasEnServidor === null` → abortar) **nunca se disparaba** y el corte se guardaba con los totales del cliente. Es exactamente el agujero que este arreglo decía cerrar.
+- **`fetchVentasDelCorte`** ponía `total = 0` → el bucle cortaba tras la **primera página** → truncación silenciosa otra vez.
+
+Ahora se comprueba el valor **crudo** (`typeof count === 'number' && Number.isFinite(count)`), que es lo único que distingue "cero ventas" de "sin dato".
+
+**Por qué no lo cazó la prueba:** el harness abstraía el count en un booleano `countFiable`, así que nunca evaluaba la expresión real. Se reescribió para recibir el **count crudo** y ejecutar la misma línea que el código. Se añadieron 11 casos, incluidos `count = null`, `undefined`, `NaN` y `"26"`.
+
+### Fugas entre sucursales en el refresco de caja (Fase 1) — es dinero
+`placeholderData: (prev) => prev` servía los datos de la queryKey **anterior**. Como la key lleva la sucursal, al cambiar de sucursal (el dueño lo hace sin recargar) se servía:
+- la **caja abierta de la sucursal previa** → un "Cerrar caja" en esa ventana escribiría sobre **otro corte**;
+- el **último cierre de la sucursal previa** → `fondoEsperado` ajeno, que se graba en `fondo_esperado_apertura` / `diferencia_apertura`.
+
+La memoria de sesión (`lastKnownOpenRef` / `lastKnownClosedRef`) tenía la **misma fuga por la otra puerta**. Ambas cosas ahora se descartan si la fila no es de la sucursal activa: al cambiar de sucursal el estado es **`unknown` ("Verificando…")**, nunca la caja ajena ni un "cerrada" falso.
+
+`useCorteAtrasado` había perdido la comparación `c.sucursal_id !== sucId` al pasar a derivar de `useCajaAbierta`; se restituye explícitamente para que el corte atrasado de una sucursal no bloquee la apertura de otra.
+
+### Otros dos
+- **`Sidebar`**: `loginTerminal()` **no lanza**, devuelve `{ ok:false }`, y el resultado se ignoraba. Si fallaba la reconexión, la tablet seguía autenticada con la sesión **global** mientras la interfaz decía "Empleado" — el mismo defecto que ese bloque arregla, por la rama de error. Ahora, si no se puede restaurar la sesión de la terminal, se cierra todo y se vuelve a pedir PIN.
+- **`PedidoPastelDetalleDialog`**: `pedidoFresco || pedidoProp` no distinguía `null` (fila borrada o invisible por RLS — `maybeSingle` no da error) de "cargando", así que el diálogo seguía mostrando un pedido **fantasma** con sus botones activos. Ahora el snapshot sólo se usa mientras la lectura no ha resuelto o si falló de verdad.
+
+### ¿SE GUARDA LA NOTA? — confirmado contra la base, para TODAS las identidades
+Sonda con la sesión real de cada identidad que opera el POS, en transacción revertida (**0 filas persistidas**: 229 pedidos, 25 pendientes, 0 rastros):
+
+```
+PASS  TERMINAL Xochimilco (caja, la que usa el personal) -> 1 fila, releido OK
+PASS  TERMINAL San Gregorio (caja)                       -> 1 fila, releido OK
+PASS  TERMINAL Topilejo (caja)                           -> 1 fila, releido OK
+PASS  Abel (administrador)                               -> 1 fila, releido OK
+PASS  Xochimilco sucursal (administrador)                -> 1 fila, releido OK
+PASS  ADMIN_1234 (dueno)                                 -> 1 fila, releido OK
+PASS  Pastelero                                          -> 1 fila, releido OK
+0 FALLOS
+```
+
+`vite build` verde; lint **39 = línea base**; typecheck **1249 = línea base**; suites **24 / 11 / 12+181 / 16 / 31**, todas en verde.
+
 ## 2026-08-09 (bis) — el rol `pastelero` ya puede editar la nota y avanzar estados (0060) [rama de trabajo, NO desplegado]
 > Alcance autorizado por Miguel: *"nota más avanzar estados"*. **Aplicado en Supabase; el frontend se queda en `claude/audit-optimize-pos-confetti-dbkff1`** — el POS en producción sigue ocultándole los botones, así que la política por sí sola no cambia nada de lo que ve nadie.
 

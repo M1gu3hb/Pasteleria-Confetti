@@ -96,7 +96,12 @@ export async function fetchVentasDelCorte(corte) {
     // de abajo pararía tras la PRIMERA página: truncación silenciosa otra vez,
     // que es justo lo que este módulo existe para impedir. Si no hay count
     // fiable se deja en null y se pagina hasta que una página venga corta.
-    if (total === null && Number.isFinite(Number(count))) total = Number(count);
+    // OJO CON `Number(count)`: `Number(null)` es 0, NO NaN, así que
+    // `Number.isFinite(Number(count))` daba TRUE con count ausente y total pasaba
+    // a 0 — el corte de abajo paraba tras la PRIMERA página. La comprobación
+    // tiene que ser sobre el valor CRUDO: supabase-js devuelve `null` cuando no
+    // hay cabecera content-range, y null no es un number.
+    if (total === null && typeof count === 'number' && Number.isFinite(count)) total = count;
     const page = Array.isArray(data) ? data : [];
     filas.push(...page);
     // Página vacía: el servidor ya no tiene más (evita bucle infinito).
@@ -142,5 +147,10 @@ export async function contarVentasDelCorte(corteId) {
   // content-range) se volvería 0 y el cierre no distinguiría "este corte no
   // tiene ventas" de "no pude verificar" — exactamente el agujero por el que
   // se escribieron los ceros. Devolvemos null y el caller aborta el cierre.
-  return Number.isFinite(Number(count)) ? Number(count) : null;
+  //
+  // Y NO vale `Number.isFinite(Number(count))`: `Number(null)` es 0 (no NaN),
+  // así que ESA versión devolvía 0 con el count ausente y la guarda del cierre
+  // —que compara `ventasEnServidor === null`— nunca se disparaba. Se comprueba
+  // el valor CRUDO, que es lo único que distingue "cero ventas" de "sin dato".
+  return typeof count === 'number' && Number.isFinite(count) ? count : null;
 }

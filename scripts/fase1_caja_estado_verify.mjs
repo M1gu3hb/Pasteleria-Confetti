@@ -169,6 +169,56 @@ for (let m = -90; m <= 90; m++) {
     ? bordeOk++ : (bordeFail++, console.log(`*** FAIL borde m=${m} ${iso} -> ${n.corteAtrasado}`));
 }
 
+// ── C. FUGA ENTRE SUCURSALES (regresión) ────────────────────────────────
+// useCajaAbierta usa `placeholderData` y una memoria de sesión (refs). La key
+// lleva la sucursal, así que al CAMBIAAR de sucursal —el dueño lo hace sin
+// recargar— ambos mecanismos pueden servir la caja de la sucursal ANTERIOR.
+// Eso es dinero: `cajaAbierta` de otro corte (un "Cerrar caja" escribiría sobre
+// el corte equivocado) y `fondoEsperado` de otra sucursal (se graba en
+// fondo_esperado_apertura / diferencia_apertura al abrir).
+// Réplica EXACTA de las dos decisiones del hook.
+const phFuga = (prev, sucId) => (prev && prev.sucursal_id === sucId ? prev : undefined);
+const recordada = (ref, sucId) => (ref?.sucursal_id === sucId ? ref : null);
+
+const cajaA = { id: 'corte-A', sucursal_id: 'suc-A', estado: 'abierto' };
+const cierreA = { id: 'cierre-A', sucursal_id: 'suc-A', dinero_dejado_en_caja: 1500 };
+
+let cOk = 0, cFail = 0;
+const chk = (n, cond) => { cond ? cOk++ : cFail++; console.log(`${cond ? 'PASS' : '*** FAIL ***'}  ${n}`); };
+
+chk('placeholder: misma sucursal SÍ reutiliza', phFuga(cajaA, 'suc-A') === cajaA);
+chk('placeholder: OTRA sucursal NO reutiliza', phFuga(cajaA, 'suc-B') === undefined);
+chk('placeholder: prev null NO hereda "cerrada" de otra sucursal', phFuga(null, 'suc-B') === undefined);
+chk('placeholder: sin sucursal activa NO reutiliza', phFuga(cajaA, null) === undefined);
+chk('ultimo cierre: OTRA sucursal NO reutiliza (fondoEsperado es dinero)',
+  phFuga(cierreA, 'suc-B') === undefined);
+chk('memoria: la caja recordada de OTRA sucursal NO se sirve', recordada(cajaA, 'suc-B') === null);
+chk('memoria: la caja recordada de LA MISMA sucursal sí se sirve', recordada(cajaA, 'suc-A') === cajaA);
+chk('memoria: el ultimo cierre recordado de OTRA sucursal NO se sirve', recordada(cierreA, 'suc-B') === null);
+// Consecuencia observable: al cambiar de sucursal el estado es 'unknown'
+// ("Verificando…"), NUNCA 'open' con el corte ajeno ni 'closed' falso.
+const estadoAlCambiar = (() => {
+  const ph = phFuga(cajaA, 'suc-B');              // placeholder descartado
+  const rec = recordada(cajaA, 'suc-B');          // memoria descartada
+  if (ph !== undefined) return 'open-ajena';
+  if (rec) return 'open-ajena';
+  return 'unknown';
+})();
+chk('al cambiar de sucursal el estado es "unknown", no la caja ajena',
+  estadoAlCambiar === 'unknown');
+
+// ── D. CORTE ATRASADO: no bloquear una sucursal por el corte de otra ─────
+const corteAtrasadoDe = (caja, sucId) => {
+  if (!caja) return null;
+  if (sucId && caja.sucursal_id && caja.sucursal_id !== sucId) return null;
+  return caja;
+};
+chk('corte atrasado: el corte de OTRA sucursal no bloquea',
+  corteAtrasadoDe({ ...cajaA }, 'suc-B') === null);
+chk('corte atrasado: el corte de LA MISMA sucursal sí cuenta',
+  corteAtrasadoDe(cajaA, 'suc-A') === cajaA);
+
 console.log(`\ncasos: ${ok} PASS, ${fail} FAIL`);
 console.log(`borde medianoche MX (181 minutos): ${bordeOk} PASS, ${bordeFail} FAIL`);
-process.exit(fail + bordeFail === 0 ? 0 : 1);
+console.log(`fuga entre sucursales: ${cOk} PASS, ${cFail} FAIL`);
+process.exit(fail + bordeFail + cFail === 0 ? 0 : 1);

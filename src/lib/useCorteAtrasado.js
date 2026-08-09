@@ -1,4 +1,5 @@
 import { useCajaAbierta } from '@/lib/useCajaAbierta';
+import { useTerminal } from '@/lib/TerminalContext';
 
 /**
  * PARTE F — Detección de corte ATRASADO por sucursal.
@@ -47,12 +48,19 @@ export function obtenerInicioDiaMexico(date = new Date()) {
 export function useCorteAtrasado() {
   // Misma fuente de verdad que la caja: sin consulta ni temporizador propios.
   const { cajaAbierta } = useCajaAbierta();
+  // El filtro original comparaba `c.sucursal_id !== sucId` en el cliente. Al
+  // derivar de useCajaAbierta esa comprobación se perdió: si por cualquier vía
+  // llegara un corte de OTRA sucursal, se bloquearía la apertura de caja de
+  // ésta por el corte atrasado de aquélla. Se restituye explícitamente.
+  const { sucursalEfectiva } = useTerminal();
+  const sucId = sucursalEfectiva?.sucursal_id || null;
 
   const inicioHoyMX = obtenerInicioDiaMexico(new Date());
 
   const corteAtrasado = (() => {
     const c = cajaAbierta;
     if (!c) return null;
+    if (sucId && c.sucursal_id && c.sucursal_id !== sucId) return null;
     // Guardas conservadas del filtro original (defensivas: la consulta ya
     // acota estado y tipo_corte en PostgreSQL).
     if (c.estado && c.estado !== 'abierto') return null;

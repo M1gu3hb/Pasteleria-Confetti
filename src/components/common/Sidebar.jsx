@@ -191,7 +191,20 @@ export default function Sidebar({ collapsed, onToggle }) {
       // volver a la sesión TERMINAL (scoped) antes de operar como empleado. Para
       // administrador no hubo cambio de sesión, así que no hay nada que restaurar.
       if (wasSesionGlobal && terminal?.sucursal_id) {
-        await loginTerminal(terminal.sucursal_id);
+        // loginTerminal NO lanza: devuelve { ok:false, error }. Ignorar el
+        // resultado dejaba la tablet autenticada con la sesión GLOBAL mientras la
+        // interfaz decía "Empleado" — el mismo defecto que este bloque arregla,
+        // sólo que por la rama de error. Si no se pudo recuperar la sesión de la
+        // terminal, se cierra todo y se vuelve a pedir PIN: es preferible a
+        // operar con una identidad que no es la que se muestra.
+        const res = await loginTerminal(terminal.sucursal_id);
+        if (!res?.ok) {
+          console.error('[Sidebar] no se pudo restaurar la sesión de la terminal:', res?.error);
+          toast.error('No se pudo volver a la sesión de la terminal. Vuelve a entrar con tu PIN.');
+          await logoutOperador();
+          logout();
+          return;
+        }
       }
       login({
         id: 'empleado_terminal',

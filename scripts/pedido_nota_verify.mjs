@@ -41,6 +41,28 @@ check('abrir otro pedido muestra SU nota, no la anterior',
 check('abrir un pedido sin nota deja el campo vacio',
   alCambiarDePedido('nota del pedido A', null) === '');
 
+// ── A2. El diálogo NO debe mostrar un pedido FANTASMA ───────────────────
+// `.get()` usa maybeSingle(): devuelve NULL sin error cuando la fila ya no
+// existe o la RLS no la deja ver. `pedidoFresco || pedidoProp` hacía caer ese
+// null al snapshot y el diálogo seguía pintando el pedido borrado con sus
+// botones activos. Réplica de la decisión del componente.
+const elegirPedido = ({ fresco, prop, fetched, placeholder, error }) => {
+  const frescoValido = fetched && !placeholder && !error;
+  return frescoValido ? fresco : prop;
+};
+const prop = { id: 'p1', nota_voz_transcripcion: 'vieja' };
+const fresco = { id: 'p1', nota_voz_transcripcion: 'nueva' };
+
+check('fantasma: mientras carga se muestra el snapshot (no queda en blanco)',
+  elegirPedido({ fresco: prop, prop, fetched: false, placeholder: true, error: false }) === prop);
+check('fantasma: con lectura fresca OK se muestra la fila fresca',
+  elegirPedido({ fresco, prop, fetched: true, placeholder: false, error: false }) === fresco);
+check('fantasma: fila borrada / invisible por RLS (null) NO cae al snapshot',
+  elegirPedido({ fresco: null, prop, fetched: true, placeholder: false, error: false }) === null);
+check('fantasma: si la lectura FALLA se conserva el snapshot (fallo de red)',
+  elegirPedido({ fresco: undefined, prop, fetched: true, placeholder: false, error: true }) === prop);
+
+
 // ── B. Integración real (escribe y restaura) ────────────────────────────
 const URL_ = process.env.SUPABASE_URL, KEY = process.env.SUPABASE_ANON_KEY;
 const EMAIL = process.env.TERMINAL_EMAIL, PWD = process.env.TERMINAL_PASSWORD;

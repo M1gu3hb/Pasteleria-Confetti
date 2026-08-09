@@ -151,16 +151,26 @@ export default function PedidoPastelDetalleDialog({ pedido: pedidoProp, open, on
   // `invalidateQueries({ queryKey: ['pedidos_pastel'] })` que ya existen en el
   // código hacen prefix-match y refrescan también este detalle, sin tener que
   // tocar ni un solo handler de guardado.
-  const { data: pedidoFresco } = useQuery({
+  const {
+    data: pedidoFresco,
+    isFetched: frescoFetched,
+    isPlaceholderData: frescoPlaceholder,
+    isError: frescoError,
+  } = useQuery({
     queryKey: ['pedidos_pastel', 'detalle', pedidoProp?.id ?? null],
     queryFn: () => base44.entities.PedidoPastel.get(pedidoProp.id),
     enabled: !!pedidoProp?.id && !!open,
     placeholderData: pedidoProp,
     staleTime: 0,
   });
-  // Si la lectura fresca falla, seguimos mostrando el snapshot: nunca se queda
-  // el diálogo en blanco por un fallo de red.
-  const pedido = pedidoFresco || pedidoProp;
+  // `pedidoFresco || pedidoProp` era una trampa: `.get()` usa maybeSingle(), que
+  // devuelve NULL sin error cuando la fila ya no existe o la RLS no la deja ver.
+  // Ese null caía al snapshot y el diálogo seguía mostrando un pedido FANTASMA
+  // con sus botones activos. Ahora sólo se usa el snapshot mientras la lectura
+  // no ha resuelto (o si falló de verdad): así un fallo de red nunca deja el
+  // diálogo en blanco, pero una fila que ya no está sí desaparece.
+  const frescoValido = frescoFetched && !frescoPlaceholder && !frescoError;
+  const pedido = frescoValido ? pedidoFresco : pedidoProp;
 
   if (!pedido) return null;
   const est = ESTADOS_PEDIDO[pedido.estado] || ESTADOS_PEDIDO.pendiente;

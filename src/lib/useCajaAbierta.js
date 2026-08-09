@@ -63,7 +63,15 @@ export function useCajaAbierta() {
     refetchInterval: false,
     staleTime: 4000,
     gcTime: 30 * 60 * 1000,
-    placeholderData: (prev) => prev,
+    // `placeholderData: (prev) => prev` a secas servía los datos de la queryKey
+    // ANTERIOR. Como la key lleva la sucursal, al cambiar de sucursal (el dueño lo
+    // hace sin recargar) se servía la caja de la sucursal previa: `cajaAbierta`
+    // apuntaba a OTRO corte y un "Cerrar caja" en esa ventana escribiría sobre el
+    // corte equivocado. Sólo se reutiliza si la fila es de ESTA sucursal; si no,
+    // `undefined` → estado 'unknown' → la pantalla muestra "Verificando…" en vez
+    // de un dato ajeno. (Con `prev` null el ternario también da undefined: no se
+    // hereda un "cerrada" de otra sucursal.)
+    placeholderData: (prev) => (prev && prev.sucursal_id === sucId ? prev : undefined),
   });
 
   // Consulta separada y pequeña, sólo para fondoEsperado. Cambia rara vez (al
@@ -75,7 +83,10 @@ export function useCajaAbierta() {
     refetchInterval: false,
     staleTime: 60_000,
     gcTime: 30 * 60 * 1000,
-    placeholderData: (prev) => prev,
+    // Mismo motivo, y aquí es DINERO: de este registro sale `fondoEsperado`, que
+    // se graba en fondo_esperado_apertura / diferencia_apertura al abrir caja.
+    // Heredar el último cierre de otra sucursal descuadraría la apertura.
+    placeholderData: (prev) => (prev && prev.sucursal_id === sucId ? prev : undefined),
   });
 
   // `undefined` = todavía no resolvió. `null` = resolvió y NO hay caja abierta.
@@ -90,6 +101,17 @@ export function useCajaAbierta() {
     if (ultimoCierreFromData) lastKnownClosedRef.current = ultimoCierreFromData;
   }
 
+  // La memoria de sesión es POR SUCURSAL. Sin esta comprobación, al cambiar de
+  // sucursal el bloque de abajo devolvía la caja recordada de la sucursal
+  // anterior mientras llegaba el fetch — la misma fuga que el placeholderData,
+  // por la otra puerta.
+  const recordadaAbierta = lastKnownOpenRef.current?.sucursal_id === sucId
+    ? lastKnownOpenRef.current
+    : null;
+  const recordadoCierre = lastKnownClosedRef.current?.sucursal_id === sucId
+    ? lastKnownClosedRef.current
+    : null;
+
   // Estado tri-state explícito:
   // - 'unknown': primer fetch en curso Y sin último valor conocido.
   // - 'open':    confirmamos caja abierta.
@@ -100,9 +122,10 @@ export function useCajaAbierta() {
   if (haRecibidoDatos) {
     cajaAbierta = cajaAbiertaFromData;
     status = cajaAbierta ? 'open' : 'closed';
-  } else if (lastKnownOpenRef.current) {
-    // Sin datos frescos pero conocemos un valor abierto previo → no flashear cerrada
-    cajaAbierta = lastKnownOpenRef.current;
+  } else if (recordadaAbierta) {
+    // Sin datos frescos pero conocemos un valor abierto previo DE ESTA sucursal
+    // → no flashear "cerrada".
+    cajaAbierta = recordadaAbierta;
     status = 'open';
   } else if (isError) {
     cajaAbierta = null;
@@ -115,7 +138,7 @@ export function useCajaAbierta() {
   // isLoading = true SOLO si todavía no tenemos forma de saber el estado.
   const cargandoSinValorPrevio = (isPending || isLoading) && status === 'unknown';
 
-  const ultimoCierre = ultimoCierreFromData || lastKnownClosedRef.current;
+  const ultimoCierre = ultimoCierreFromData || recordadoCierre;
   const fondoEsperado = Number(ultimoCierre?.dinero_dejado_en_caja);
   const fondoEsperadoSeguro = Number.isFinite(fondoEsperado) ? fondoEsperado : 0;
 

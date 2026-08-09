@@ -47,7 +47,12 @@ check('guarda: corte legitimamente SIN ventas si cierra',
 // ── A2. Parada de la paginación ─────────────────────────────────────────
 // Debe reunir TODAS las filas aunque el tope del servidor sea menor que la
 // página pedida (ese fue el fallo original: parar por "página incompleta").
-function paginar(totalReal, topeServidor, PAGINA = 1000, countFiable = true) {
+// El harness recibe el count CRUDO que devolvería supabase-js (un número, o
+// `null`/`undefined` cuando falta la cabecera content-range) y aplica la MISMA
+// expresión que src/lib/ventasCorte.js. Antes esto era un booleano
+// `countFiable`, y por eso NO detectó que `Number.isFinite(Number(null))` es
+// true: `Number(null)` vale 0, no NaN. Con un booleano el bug era invisible.
+function paginar(totalReal, topeServidor, PAGINA = 1000, countCrudo = undefined) {
   const filas = [];
   let total = null, vueltas = 0, desde = 0;
   for (;;) {
@@ -55,7 +60,10 @@ function paginar(totalReal, topeServidor, PAGINA = 1000, countFiable = true) {
     if (vueltas > 50) return { filas: filas.length, vueltas, desbordado: true };
     const restantes = Math.max(0, totalReal - desde);
     const page = Math.min(restantes, PAGINA, topeServidor);
-    if (total === null && countFiable) total = totalReal;
+    // El servidor manda `totalReal` como count salvo que se pida lo contrario.
+    const count = countCrudo === undefined ? totalReal : countCrudo;
+    // ↓ misma línea que ventasCorte.js
+    if (total === null && typeof count === 'number' && Number.isFinite(count)) total = count;
     for (let i = 0; i < page; i++) filas.push(1);
     if (page === 0) break;
     desde += page;                                // avanzar por lo RECIBIDO
@@ -69,10 +77,31 @@ check('paginacion: tope 500 < PAGINA -> AUN ASI trae 1290',
   paginar(1290, 500).filas === 1290, '(el fallo original paraba en 500)');
 check('paginacion: 0 filas -> termina sin bucle', paginar(0, 1000).filas === 0 && !paginar(0, 1000).desbordado);
 check('paginacion: nunca entra en bucle infinito', !paginar(5000, 1000).desbordado);
-check('paginacion: SIN count fiable, 1290 filas -> trae 1290',
-  paginar(1290, 1000, 1000, false).filas === 1290, '(count ausente no debe truncar)');
-check('paginacion: SIN count fiable y tope 500 -> trae 1290',
-  paginar(1290, 500, 1000, false).filas === 1290);
+// REGRESION: count = null literal (no un booleano). Con la version anterior
+// (`Number.isFinite(Number(count))`) total pasaba a 0 y esto devolvia 1000.
+check('paginacion: count = null (cabecera ausente), 1290 filas -> trae 1290',
+  paginar(1290, 1000, 1000, null).filas === 1290, '(Number(null) es 0: no debe truncar)');
+check('paginacion: count = null y tope 500 -> trae 1290',
+  paginar(1290, 500, 1000, null).filas === 1290);
+check('paginacion: count = undefined -> trae 1290',
+  paginar(1290, 1000, 1000, null).filas === 1290);
+
+// ── A3. Lectura del count del servidor (contarVentasDelCorte) ───────────
+// Réplica EXACTA de la última línea de contarVentasDelCorte. Es la que decide
+// si el cierre puede seguir: `null` = "no verificable" -> abortar.
+const leerCount = (count) => (typeof count === 'number' && Number.isFinite(count) ? count : null);
+check('count: 26 -> 26', leerCount(26) === 26);
+check('count: 0 (corte legitimamente vacio) -> 0', leerCount(0) === 0);
+check('count: null (cabecera ausente) -> null [no verificable]', leerCount(null) === null,
+  '(Number(null) es 0: la version anterior devolvia 0 y la guarda no saltaba)');
+check('count: undefined -> null [no verificable]', leerCount(undefined) === null);
+check('count: NaN -> null [no verificable]', leerCount(NaN) === null);
+check('count: "26" (string) -> null [no verificable]', leerCount('26') === null);
+// La cadena de decisión completa: count ausente NO debe permitir cerrar.
+check('cadena: count ausente -> la guarda ABORTA el cierre',
+  permiteCerrar({ cargadas: true, ventasEnServidor: leerCount(null), numVentasResumen: 26 }) === false);
+check('cadena: count 0 con resumen 0 -> SI cierra (corte vacio real)',
+  permiteCerrar({ cargadas: true, ventasEnServidor: leerCount(0), numVentasResumen: 0 }) === true);
 
 // ── B. Integración contra datos reales (sólo lectura) ───────────────────
 const URL_ = process.env.SUPABASE_URL, KEY = process.env.SUPABASE_ANON_KEY;
