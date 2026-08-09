@@ -1,5 +1,59 @@
 # CHANGELOG
 
+## 2026-08-09 (P0) — PANTALLA EN BLANCO al entrar como dueño: `Illegal invocation` en `cajaRefresco`
+> **Regresión mía**, introducida con el refactor de polling de caja (Fase 1) desplegado en `0c7ec71`. Reproducida y arreglada con evidencia de navegador.
+
+### Reproducción (no deducción)
+Serví el bundle **de producción** en `localhost` y ejecuté el flujo real en Chromium, puenteando Supabase de verdad. Tras teclear el PIN 1234:
+
+```
+=== PASO 3: tras el PIN 1234 ===
+texto: *** PANTALLA EN BLANCO ***
+nodos en #root: 0
+PAGEERROR: TypeError: Illegal invocation
+    at index-CJXYsjlc.js:696:132011
+```
+
+Localicé esa posición exacta en el bundle: es `d.clearIntervalFn(d.timer)` — la función de baja de `registrarRefrescoCaja`.
+
+### Causa raíz
+`setInterval` / `clearInterval` son **métodos de `window`** y Chrome exige (WebIDL) que su receptor **sea `window`**. El módulo los guardaba tal cual en el registro y luego los llamaba **como propiedad de un objeto**:
+
+```js
+reg = { ..., clearIntervalFn };      // clearIntervalFn = clearInterval
+...
+r.clearIntervalFn(r.timer);          // this = r  →  TypeError: Illegal invocation
+```
+
+Eso ocurría dentro de la **limpieza de un `useEffect`**, y una excepción ahí hace que React **desmonte la aplicación entera** → `#root` vacío → pantalla en blanco.
+
+### Por qué le pasaba SOLO al dueño
+El efecto se limpia cuando cambia su dependencia `sucId`. Y `sucId` sólo cambia si cambia la sucursal efectiva:
+
+| rol | sucursal efectiva | ¿cambia `sucId`? | resultado |
+|---|---|---|---|
+| empleado | la de la terminal | no | funciona |
+| **administrador** | la suya (la misma terminal) | **no** | funciona |
+| **dueño** | **null** (vista general) | **sí** | **pantalla en blanco** |
+| **pastelero** | **null** | **sí** | **pantalla en blanco** |
+
+Por eso aparecía justo al cambiar el rol de Abel a dueño: el rol nuevo es el que dispara el cambio de sucursal efectiva. El bug ya estaba desplegado; lo que faltaba era alguien que lo pisara.
+
+### Por qué no lo cazaron mis pruebas
+`scripts/fase1_caja_refresco_verify.mjs` **inyectaba** los temporizadores por `deps` como funciones normales de JS, a las que el `this` les da igual. Nunca se ejercitaron los nativos del navegador. Es exactamente el mismo tipo de punto ciego que el booleano `countFiable` del cierre: la prueba probaba el arnés, no el código.
+
+### Arreglo
+Los nativos se envuelven en flechas, así el receptor deja de importar:
+```js
+setIntervalFn  = (fn, ms) => setInterval(fn, ms),
+clearIntervalFn = (id)    => clearInterval(id),
+```
+
+### Verificación
+- **Prueba nueva** que imita el binding de Chrome (globales que comprueban el receptor) y llama a `registrarRefrescoCaja` **sin `deps`**, como corre en la tablet. Comprobado que **falla con el código viejo** (2 FAIL) y pasa con el arreglo. Suite: **19/19**.
+- **Navegador, con el arreglo**: el dueño entra y ve Dashboard, "🌐 Vista general — 3 sucursales", el menú con **Configuración**, **"Ver otra sucursal"**, y "Abel · Dueño". `#root` con 3 nodos, **0 errores de JS**.
+- `vite build` verde; lint **39 = línea base**; typecheck **1249 = línea base**; las 5 suites en verde.
+
 ## 2026-08-09 (quater) — el dueño se quedó sin rol de dueño, y el "logo" del ticket era una foto de celular (0061)
 > Dos problemas de **datos**, no de código. **Ninguno lo causó la auditoría**; se documentan con su evidencia y sus timestamps.
 

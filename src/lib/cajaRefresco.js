@@ -63,9 +63,20 @@ const registros = new Map();
 export function registrarRefrescoCaja(sucursalId, queryClient, deps = {}) {
   if (!sucursalId || !queryClient) return () => {};
 
+  // OJO CON LOS NATIVOS. `setInterval`/`clearInterval` son métodos de `window`
+  // y Chrome exige que su receptor SEA `window` (WebIDL). Guardarlos tal cual y
+  // llamarlos luego como propiedad de un objeto —`r.clearIntervalFn(r.timer)`,
+  // abajo— los invoca con `this = r`, un objeto normal, y el navegador lanza
+  // `TypeError: Illegal invocation`. Como eso ocurría dentro de la LIMPIEZA de
+  // un useEffect, React desmontaba la aplicación entera: PANTALLA EN BLANCO.
+  // Sólo se disparaba al cambiar de sucursal efectiva (entrar como dueño o
+  // pastelero, que no tienen sucursal), que es cuando cambia la dependencia del
+  // efecto y React ejecuta la limpieza.
+  // Se envuelven en flechas: así el receptor deja de importar. Se conserva la
+  // inyección por `deps` para las pruebas.
   const {
-    setIntervalFn = setInterval,
-    clearIntervalFn = clearInterval,
+    setIntervalFn = (fn, ms) => setInterval(fn, ms),
+    clearIntervalFn = (id) => clearInterval(id),
     doc = typeof document !== 'undefined' ? document : null,
     win = typeof window !== 'undefined' ? window : null,
     intervaloMs = INTERVALO_RESPALDO_MS,

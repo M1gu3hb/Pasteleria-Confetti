@@ -116,5 +116,61 @@ const invalidada = (qc, key) => qc.getQueryState(key)?.isInvalidated === true;
   check('baja idempotente (doble unmount no rompe)', (() => { try { bajas[5](); return true; } catch { return false; } })());
 }
 
+// ── REGRESION: "Illegal invocation" (pantalla en blanco del dueno) ──────
+// El navegador NO es Node. `setInterval`/`clearInterval` son metodos de
+// `window` y Chrome exige (WebIDL) que su receptor SEA `window`. La version
+// anterior guardaba `clearInterval` tal cual en el registro y luego lo llamaba
+// como `r.clearIntervalFn(r.timer)`: eso lo invoca con `this = r`, un objeto
+// normal, y Chrome lanza `TypeError: Illegal invocation`. Ocurria dentro de la
+// LIMPIEZA de un useEffect, asi que React desmontaba la app entera.
+// Se disparaba SOLO al cambiar la sucursal efectiva (entrar como dueno o
+// pastelero, que no tienen sucursal), que es cuando cambia la dependencia.
+//
+// Las pruebas anteriores no lo cazaron porque INYECTABAN los temporizadores
+// por `deps` como funciones normales de JS, a las que el `this` les da igual.
+// Aqui se instalan globales que SI comprueban el receptor, como Chrome, y se
+// llama a registrarRefrescoCaja SIN deps, que es como corre en la tablet.
+{
+  const realSet = globalThis.setInterval;
+  const realClear = globalThis.clearInterval;
+  let limpiado = 0;
+  // Imitacion del binding de Chrome: exige `this === globalThis`.
+  function setIntervalWebIDL(fn, ms) {
+    if (this !== globalThis && this !== undefined) throw new TypeError('Illegal invocation');
+    return realSet(fn, ms);
+  }
+  function clearIntervalWebIDL(id) {
+    if (this !== globalThis && this !== undefined) throw new TypeError('Illegal invocation');
+    limpiado++;
+    return realClear(id);
+  }
+  globalThis.setInterval = setIntervalWebIDL;
+  globalThis.clearInterval = clearIntervalWebIDL;
+
+  let error = null;
+  let baja = null;
+  try {
+    // SIN deps: exactamente como lo llama useCajaAbierta en el navegador.
+    baja = registrarRefrescoCaja(SUC_A, nuevoCliente());
+  } catch (e) {
+    error = e;
+  }
+  check('webidl: registrar con los nativos reales NO lanza', error === null,
+    error ? String(error.message) : '');
+
+  let errorBaja = null;
+  try {
+    if (baja) baja();   // <-- aqui es donde reventaba y dejaba la pantalla en blanco
+  } catch (e) {
+    errorBaja = e;
+  }
+  check('webidl: DAR DE BAJA no lanza "Illegal invocation"', errorBaja === null,
+    errorBaja ? String(errorBaja.message) : '');
+  check('webidl: el intervalo se limpio de verdad', limpiado === 1, `(limpiezas=${limpiado})`);
+
+  globalThis.setInterval = realSet;
+  globalThis.clearInterval = realClear;
+}
+
 console.log(`\n${ok} PASS, ${fail} FAIL`);
 process.exit(fail === 0 ? 0 : 1);
