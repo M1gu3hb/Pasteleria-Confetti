@@ -1,5 +1,28 @@
 # CHANGELOG
 
+## 2026-08-09 (quater) — el dueño se quedó sin rol de dueño, y el "logo" del ticket era una foto de celular (0061)
+> Dos problemas de **datos**, no de código. **Ninguno lo causó la auditoría**; se documentan con su evidencia y sus timestamps.
+
+### A) Desapareció Configuración, el cambio entre sucursales y el panel de dueño
+- **Por qué desaparecieron:** el menú se arma con `ver_configuracion: [ROLES.OWNER]` — **sólo el dueño** —, y el cambio de sucursal y el panel de dueño se activan con `adminRole === 'dueno'`. Ambas cosas están así **desde el import inicial (`9a281f3`)**; no las tocó nadie.
+- **Qué pasó de verdad** (timestamps de la base):
+  - `2026-08-08 16:04:50` — **ADMIN_1234** (rol `dueño`) inicia sesión.
+  - `2026-08-08 16:06:36` — **106 segundos después** se crea el usuario **"Abel"** con rol **`administrador`** y PIN **1234**, junto con su cuenta auth (mismo instante, al microsegundo → alta nueva desde Configuración, no una edición).
+  - En algún momento **ADMIN_1234 queda `activo = false`** y su PIN deja de ser 1234.
+  - **Resultado:** hoy el PIN 1234 resuelve a "Abel" = *administrador*, y el único `dueño` que existía estaba **desactivado**. Comprobado con `pin_hash = crypt('1234', pin_hash)`: sólo daba `true` en "Abel".
+- **No fue la auditoría:** la primera migración de ese día (`0056`) se aplicó a las **16:43:00**, **37 minutos después**, y **ninguna migración 0050–0061 escribe en `usuarios_pos`** (`0050` sólo crea índices, `0055` sólo hace `SELECT`).
+- **Arreglo (`0061`):** "Abel" vuelve a `rol = 'dueño'`. Verificado: PIN 1234 → dueño activo; y con ese rol `ver_configuracion`, `gestionar_usuarios` y `ver_todas_sucursales` vuelven a dar **true**.
+- **No se perdió NADA de lo que Abel había configurado** — sólo estaba oculto: 15 extras, 17 rellenos, 4 rangos de base, precio/kilo 140, ratio 7 personas/kilo, ancho de impresora 80 mm y el mensaje del ticket, todo intacto.
+
+### B) El "logo" de los tickets era una foto de una gelatina
+- `TicketPastelConfetti` usa `logo_ticket_url || logo_url`, y `logo_ticket_url` apuntaba a `/uploads/1783902454473_j5kl40of2k.jpeg`: **JPEG de 5712×4284 y 3.2 MB, EXIF de iPhone 15 Pro Max, tomada el 2026-07-01 16:03 y subida el 2026-07-13** — una foto del mostrador, no un logo. Es de **un mes antes** de esta auditoría.
+- **Arreglo (`0061`):** `logo_ticket_url` apunta ahora al logo real (`/uploads/rehost/logo/f4168a82-….png`, PNG 1254×1254 con transparencia — el "Confetti · Pastelería Fina"). **El archivo de la foto NO se borró**, sólo se dejó de apuntar a él; la reversión exacta está en la cabecera de la migración.
+- De paso: esa foto pesaba **3.2 MB y llevaba datos de GPS**, y se descargaba en cada ticket.
+
+### Pendientes anotados (no tocados)
+- `ADMIN_1234` queda como un segundo `dueño` **desactivado**. No estorba (`pos_is_admin()` resuelve por `auth_user_id`), pero conviene decidir si se borra o se deja de respaldo.
+- La metadata de la cuenta auth de Abel sigue diciendo `rol: administrador`. **No la usa nadie** — ni la RLS (`pos_is_admin()` lee `usuarios_pos`) ni el frontend (no lee `user_metadata`) —, por eso no se tocó.
+
 ## 2026-08-09 (ter) — `Number(null)` es 0: las dos guardas anti-ceros NO defendían + 5 fugas más
 > Hallazgos de una segunda revisión a fondo. **Los dos primeros ya estaban EN PRODUCCIÓN** desde `f2e9ae8`: son la corrección más urgente de este lote.
 
