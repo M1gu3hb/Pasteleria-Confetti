@@ -1,5 +1,62 @@
 # CHANGELOG
 
+## 2026-08-09 (Fase 1) — Desbloqueado el canal del APK: las tablets vuelven a ver el dinero real
+
+> **Sin cambios de código de aplicación.** Un fast-forward de rama y documentación. Producción **no se tocó**.
+
+### Qué se hizo
+Fast-forward `migracion/supabase` → `apk/capacitor` (a `84d13f3`), con SHA explícito. `apk/capacitor` no tenía ni un
+commit propio (ancestro estricto), así que el `capacitor.config.ts` **no cambió** (mismo blob `89400b4e…`): el
+`server.url` sigue apuntando al alias de rama, como debe hasta la Fase 7.
+
+### Auditoría previa (1.1-bis): ¿a dónde apuntan de verdad los APKs instalados?
+Se abrieron como ZIP **los 12 APKs** del repositorio y se leyó su `assets/capacitor.config.json`:
+
+| APK | versionName | SHA-256 | `server.url` |
+|---|---|---|---|
+| `ConfettiPOS.apk` (publicado) | 1.1.1 | `4C38D2F6…` | alias de rama |
+| `ConfettiPOS_v1.1_7BC70515.apk` | 1.1 | `7BC70515…` | alias de rama |
+| `ConfettiPOS_v1.0_C0E399F0.apk` | 1.0 | `C0E399F0…` | alias de rama |
+| `ConfettiPOS_2026-07-09.apk` / `_9jul_backup` | 1.0 | `C8C50750…` | alias de rama |
+| los 7 restantes (sin firmar, debug, builds intermedios) | 1.0 / 1.1 / 1.1.1 | — | alias de rama |
+
+**Los 12 apuntan al mismo alias de rama.** Ninguno a producción. Por eso el fast-forward los arregla **todos**,
+incluido "el primer APK". Todos empaquetan además un `dist` local (`assets/public/`, 16 ficheros) por el `cap sync`,
+pero con `server.url` puesto Capacitor carga la URL remota; el `dist` empaquetado queda inerte.
+
+### Verificación del artefacto
+El alias del APK sirve ahora **el mismo bundle byte-idéntico** que producción (sha256 `A536B714…`, antes `741923CF…`),
+con `[ventas_corte]`, `[ventas_corte_count]` y `"No se pudieron leer las ventas de este corte"` **dentro del bundle
+descargado**, backend `ivqcxdpqxwjxfohiswqb` re-comprobado sobre el bundle nuevo, y HTTP 200 sin autenticación
+(Deployment Protection desactivada: password/SSO/trusted-IPs todo en `false`).
+
+### Prueba funcional, sin tocar dinero — las 3 sucursales cuadran al peso
+
+| Sucursal | Corte | Pantalla (canal APK) | SQL | Antes del push |
+|---|---|---|---|---|
+| Xochimilco | `CONF-A-C044` | 25 tickets · $7,000.00 efectivo · $8,190.00 total | idéntico | **$0.00 · 0 tickets** |
+| Topilejo | `CONF-B-C032` | 12 tickets · $5,185.00 | idéntico | (ya cuadraba) |
+| San Gregorio | `CONF-C-C037` | 4 tickets · $700.00 | idéntico | (ya cuadraba) |
+
+`#root` con contenido en las tres. No se pulsó "Cierre diario", no se cobró, no se abrió ni cerró caja. Residuo 0.
+
+### Hallazgos colaterales
+- **La comprobación visual de "la nota" NO sirve** y no se usa: **223 de 230 pedidos tienen audio y CERO tienen
+  transcripción** en toda la base, así que el textarea sale vacío en las dos versiones y no discrimina. (De paso: eso
+  confirma que `OPENAI_API_KEY` sigue sin configurarse en Supabase.)
+- **Las rutas profundas devuelven 404 en el servidor** (`GET /caja` → 404 en **ambos** canales; `GET /` → 200). Lo tapa
+  el service worker. Preexistente e idéntico en los dos; no lo introdujo esta fase. Anotado en `BUGS_PENDING.md`.
+- Falsa alarma descartada: parecía que la pestaña "Resumen" no respondía, pero era artefacto de la prueba — Radix
+  activa las pestañas en `mousedown` y un `.click()` de JavaScript no lo dispara. Con click real funciona, en los dos
+  canales.
+
+### Regla permanente añadida (`CLAUDE.md`, `HANDOFF.md` §4, `docs/NEXT_STEPS.md`)
+**`apk/capacitor` se mantiene sincronizada con `migracion/supabase` mientras quede UNA sola tablet con un APK viejo.**
+Repuntar `server.url` en la Fase 7 sólo afecta a los APKs **nuevos**; los ya instalados seguirán cargando el alias de
+rama para siempre. Todo push a producción va seguido de un fast-forward a `apk/capacitor`.
+
+---
+
 ## 2026-08-09 (Fase 0) — Corrección de documentación: se declaraba sano dinero que no lo está
 
 > **Sin cambios de código de aplicación.** Sólo `.md`. `dist` byte-idéntico, así que las tablets no ven nada

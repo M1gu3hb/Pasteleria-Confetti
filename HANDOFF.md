@@ -181,6 +181,22 @@ producción, idéntico. Por lo tanto:
 - Lo que hace falta aquí es lo **contrario**: **`migracion/supabase` → `apk/capacitor`**, un **fast-forward puro** que
   **no toca producción ni un byte**. Es otra operación y otro riesgo. No las confundas.
 
+### 🔒 REGLA PERMANENTE (no es una nota: es una regla)
+
+**`apk/capacitor` se mantiene sincronizada con `migracion/supabase` mientras quede UNA sola tablet con un APK viejo.**
+
+Los APKs **ya instalados** llevan `server.url` **baked en el binario**. El 2026-08-09 se abrieron como ZIP los **12
+APKs** del repositorio y se leyó su `assets/capacitor.config.json`: **los 12**, desde el primero (2026-07-09, v1.0)
+hasta el publicado (v1.1.1), apuntan al **alias de rama**. Ninguno a producción.
+
+Por tanto, **repuntar `server.url` en la Fase 7 sólo arregla los APKs nuevos.** Toda tablet que conserve un APK viejo
+seguirá cargando el alias de rama para siempre. Si se abandona `apk/capacitor`, esas tablets se vuelven a congelar —
+exactamente el mecanismo que produjo el desastre del cierre en cero.
+
+**Regla operativa: todo push a `migracion/supabase` va seguido de un fast-forward a `apk/capacitor`.**
+Comprobación: `git log origin/apk/capacitor..origin/migracion/supabase` debe salir **vacío**.
+Se puede dejar de sincronizar **sólo** cuando se verifique, tablet por tablet, que ninguna conserva un APK viejo.
+
 **Opciones (la decisión sigue siendo de Miguel):**
 1. **Fast-forward de `apk/capacitor` hasta producción.** El alias de rama de Vercel sigue siempre al último commit de
    la rama, así que el APK ya instalado empieza a cargar el bundle corregido **sin reinstalar, sin re-firmar y sin

@@ -23,6 +23,24 @@ en el worktree `C:/Pasteleria Confetti/pos-fix`; sólo pasa a `migracion/supabas
 
 ---
 
+## 🔒 REGLA PERMANENTE — sincronizar `apk/capacitor` con producción
+
+**Todo push a `migracion/supabase` va seguido de un fast-forward a `apk/capacitor`:**
+
+```bash
+git push origin <sha>:refs/heads/apk/capacitor
+```
+
+Los **12 APKs** del repositorio (verificado 2026-08-09, leyendo `assets/capacitor.config.json` dentro de cada uno)
+llevan `server.url` **baked** apuntando al **alias de rama**. Repuntar `server.url` en la Fase 7 sólo afecta a los APKs
+**nuevos**: toda tablet con un APK viejo seguirá cargando ese alias **para siempre**. Si se abandona la rama, esas
+tablets se congelan otra vez.
+
+Comprobación: `git log origin/apk/capacitor..origin/migracion/supabase` → **vacío**.
+Se deja de aplicar **sólo** cuando se verifique, tablet por tablet, que ninguna tiene ya un APK viejo.
+
+---
+
 ## 🚨 URGENTE
 
 ### 1. Fase 1 — Desbloquear el canal del APK

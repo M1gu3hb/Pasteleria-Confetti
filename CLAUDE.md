@@ -137,6 +137,40 @@ El POS también se envuelve en un **APK Android** que carga la web VIVA desde Ve
 - **Config LOCAL por dispositivo** (`src/native/printerConfig.js`, localStorage), no la config compartida de Supabase.
 - Las pruebas físicas (impresora/cajón real) son **EN SITIO**; no se autocertifican.
 - **NO fusionar `apk/capacitor` → `migracion/supabase` ni repuntar `server.url` a producción sin OK explícito de Miguel.**
+
+### 🔒 REGLA PERMANENTE — `apk/capacitor` se mantiene sincronizada con producción
+
+**Todo push a `migracion/supabase` va seguido de un fast-forward a `apk/capacitor`. Sin excepciones.**
+
+```bash
+git push origin <sha-de-migracion/supabase>:refs/heads/apk/capacitor
+```
+
+**Por qué es una regla y no una nota.** Los APKs **ya instalados** llevan `server.url` **baked en el binario**.
+Comprobado el 2026-08-09 abriendo como ZIP los **12 APKs** del repositorio y leyendo su
+`assets/capacitor.config.json`: **todos, desde el primero (2026-07-09, v1.0) hasta el publicado (v1.1.1)**, apuntan al
+**alias de rama** `pasteleria-confetti-git-apk-capacitor-…`. Ninguno apunta a producción.
+
+Consecuencia que se olvida con facilidad: **cuando la Fase 7 repunte `server.url` a producción, eso sólo valdrá para
+los APKs NUEVOS.** Cualquier tablet que conserve un APK viejo seguirá cargando el alias de rama **para siempre**.
+Abandonar `apk/capacitor` vuelve a congelar esas tablets en el código del día que se abandonó — que es exactamente
+cómo se llegó al desastre del cierre en cero.
+
+**Cuándo se puede dejar de sincronizar:** sólo cuando se haya **verificado tablet por tablet** que ninguna conserva un
+APK cuyo `server.url` sea el alias de rama. Mientras quede **una sola**, la regla sigue viva.
+
+**Cómo comprobar que no se ha desincronizado:**
+```bash
+git log origin/apk/capacitor..origin/migracion/supabase   # vacío = sincronizada
+```
+
+**Cómo saber a qué apunta un APK concreto** (es un ZIP; no hace falta Android SDK):
+```powershell
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$z=[System.IO.Compression.ZipFile]::OpenRead('ruta\ConfettiPOS.apk')
+$e=$z.Entries | Where-Object { $_.FullName -eq 'assets/capacitor.config.json' }
+(New-Object System.IO.StreamReader($e.Open())).ReadToEnd(); $z.Dispose()
+```
 - **⚠️ NO CONFUNDAS LAS DOS DIRECCIONES (precisión añadida 2026-08-09).** Son operaciones distintas con riesgos distintos:
 
   | Dirección | Qué hace | Riesgo |

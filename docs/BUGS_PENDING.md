@@ -81,8 +81,28 @@
   `apk/capacitor` es un fast-forward puro que NO toca producción**. Lo que `CLAUDE.md` prohíbe es la dirección
   contraria. No confundirlas.
 - **Archivos:** `capacitor.config.ts`.
-- **Prioridad:** máxima. **Estado:** abierto, **requiere OK de Miguel**. Fase 1 = fast-forward; Fase 7 = repuntar
-  `server.url` a producción (necesita keystore de Miguel y visita a sitio).
+- **Prioridad:** máxima.
+- **✅ CANAL DESBLOQUEADO el 2026-08-09 (Fase 1).** Fast-forward `migracion/supabase` → `apk/capacitor` (`84d13f3`).
+  Verificado: el alias del APK sirve ahora el **mismo bundle byte-idéntico** que producción (sha256 `A536B714…`), con
+  los marcadores `[ventas_corte]`, `[ventas_corte_count]` y `"No se pudieron leer las ventas de este corte"` dentro
+  del bundle descargado, y el mismo backend Supabase. Probado en navegador contra el canal del APK en **las 3
+  sucursales**, y cuadra al peso con SQL: Xochimilco `CONF-A-C044` 25 tickets / $7,000.00 efectivo (antes **$0.00 / 0
+  tickets**), Topilejo `CONF-B-C032` 12 / $5,185.00, San Gregorio `CONF-C-C037` 4 / $700.00.
+- **⚠️ Estado: NO cerrado del todo.** Falta que **cada tablet reinicie la app** para tomarlo (el JS ya cargado sigue en
+  memoria), y falta la **Fase 7** (repuntar `server.url` a producción + APK nuevo firmado por Miguel).
+- **Ver también:** la 🔒 **REGLA PERMANENTE** de sincronización en `CLAUDE.md`, `HANDOFF.md` §4 y `docs/NEXT_STEPS.md`.
+
+## 🟡 MEDIA — Las rutas profundas devuelven 404 en el servidor (lo tapa el service worker)
+- **Impacto:** entrar directamente a `https://…/caja` (o cualquier ruta que no sea `/`) devuelve **404** de Vercel. Hoy
+  no se nota porque el service worker del PWA intercepta la navegación y sirve `index.html` desde caché — pero eso sólo
+  funciona **después** de que el SW esté instalado. Un dispositivo nuevo, un navegador en incógnito o un usuario que
+  pegue un enlace profundo verá el 404.
+- **No afecta al APK:** el WebView carga la **raíz** (`server.url` sin ruta) y navega en cliente.
+- **Evidencia (2026-08-09):** `GET /caja` → **404** en **los dos canales** (producción y alias del APK); `GET /` → 200.
+  Es **preexistente e idéntico en ambos**, no lo introdujo el fast-forward de la Fase 1.
+- **Arreglo probable:** una regla de reescritura SPA en `vercel.json` (`/(.*)` → `/index.html`). **No se toca ahora**:
+  es config de despliegue y hay 3 cajas abiertas.
+- **Prioridad:** media. **Estado:** abierto, sin fase asignada.
 
 ## 🟠 POR CLASIFICAR — `CONF-C-C002`: descuadre real, causa AÚN NO DEMOSTRADA
 - **Hecho comprobado:** San Gregorio, cerrado 2026-07-06. `total_general` guardado **$370** con **2** ventas; lo real
