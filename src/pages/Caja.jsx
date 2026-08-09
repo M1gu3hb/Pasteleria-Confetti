@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { fetchVentasDelCorte, contarVentasDelCorte } from '@/lib/ventasCorte';
+import { cierreBloqueadoPorLaBase } from '@/lib/cierreBloqueado';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePOSAuth } from '@/lib/POSAuthContext';
 import { useConfig } from '@/lib/ConfigContext';
@@ -1479,7 +1480,40 @@ export default function Caja() {
       toast.success('¡Caja cerrada correctamente!');
     } catch (err) {
       console.error('[Caja] handleCierreDiario:', err);
-      toast.error('No se pudo cerrar la caja. Intenta de nuevo.');
+      // Los guards de la base (0058 / 0064) rechazan el cierre cuando la
+      // pantalla trae MENOS ventas de las que hay ligadas al corte. Hasta hoy
+      // ese error se tragaba aquí y el cajero sólo leía "Intenta de nuevo",
+      // reintentaba y volvía a fallar: un callejón sin salida.
+      //
+      // Se decide por MARCADOR, no por SQLSTATE, y NUNCA se vuelca el error
+      // crudo a la pantalla: si no reconocemos el marcador, se muestra el
+      // genérico de siempre.
+      if (cierreBloqueadoPorLaBase(err)) {
+        toast.error('Todavía no se guardó el corte', {
+          duration: 60000,
+          description: (
+            <div className="space-y-2 text-sm leading-relaxed">
+              <p className="font-semibold">
+                La caja sigue abierta y no se perdió ninguna venta.
+              </p>
+              <p>La pantalla no alcanzó a cargar todas las ventas del día.</p>
+              <p className="font-semibold">Haz esto:</p>
+              <ol className="list-decimal pl-5 space-y-1">
+                <li>Cierra la aplicación por completo y vuelve a abrirla.</li>
+                <li>Entra a <strong>Caja → Resumen</strong> y comprueba que aparece el dinero del día.</li>
+                <li>Vuelve a tocar <strong>Cierre diario</strong>.</li>
+              </ol>
+              <p>
+                Si después de dos intentos sigue saliendo este aviso,{' '}
+                <strong>deja la caja abierta y avisa a Miguel por WhatsApp</strong>. No pasa
+                nada por dejarla abierta: las ventas están guardadas.
+              </p>
+            </div>
+          ),
+        });
+      } else {
+        toast.error('No se pudo cerrar la caja. Intenta de nuevo.');
+      }
     } finally {
       setAccionLoading(false);
     }

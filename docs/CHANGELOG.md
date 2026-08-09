@@ -1,5 +1,68 @@
 # CHANGELOG
 
+## 2026-08-09 (Fase 2) — P0 DINERO: truncación PARCIAL reparada, blindada y con aviso al cajero
+
+> **Dinero real, firmado por Miguel.** $1,490.00 que estaban sin reflejar.
+
+### 2.1 Auditoría (solo lectura) — el mecanismo, no sólo los números
+La consulta rota (`Venta.filter({estado:'pagada'})`) **no lleva filtro de sucursal**, y sin embargo la ventana que
+reproduce `CONF-A-C032` **sí está acotada a la sucursal**. La contradicción se resuelve en la **RLS**: `pos_scope_ventas`
+filtra por `sucursal_id` **antes** de que PostgREST aplique su tope de 1.000 filas. Por eso la ventana efectiva depende
+de **quién cierra**: terminal (`caja`) → por sucursal; dueño/administrador → global. 105 de los 108 cortes los cerró
+"Empleado".
+
+Prueba corte a corte de `CONF-A-C032`: sus 31 ventas ocupan los puestos **978–1008** de la ventana de Xochimilco.
+978–1000 (23 ventas) = **$4,995.00**, exactamente lo guardado; **1001–1008 (8 ventas) = $1,420.00**, exactamente el
+descuadre. En el cierre, la sucursal tenía **1,008** ventas pagadas: cruzó el tope por 8.
+
+**El orden es una aproximación, y se midió:** sin `ORDER BY` PostgREST devuelve orden físico (plan confirmado:
+`Seq Scan`). Comparando la consulta real contra la reconstrucción por `created_at`: **1000/1000 coinciden** en la
+ventana por sucursal, pero sólo **840/1000** en la global. Por eso no se clasificó ningún corte con la ventana global.
+
+**Clasificación (108 cerrados):** 106 sanos · 1 truncación parcial (`CONF-A-C032`) · 1 **carrera de refresco**
+(`CONF-C-C002`: universo de 11 ventas, imposible que sea truncación; la 3ª venta se cobró **48 s** antes del cierre y
+el resumen —`staleTime: 5000`— aún no la había refrescado) · **0 sobrevalorados** (nadie lo había mirado).
+Además, constancia de que **`CONF-C-C035` estaba MAL CLASIFICADO**: se reparó como truncación pero su universo era 477.
+La reparación fue correcta; la clasificación no.
+
+### 2.2 Reparación — `0062` (respaldo) + `0063` (recálculo)
+Fórmula re-validada: reproduce **106/106** de los cortes sanos en los 9 campos. Verificación: respaldo de **108 filas**
+comprobado *antes*; comparación de las **31 columnas** de las 108 filas → **exactamente 2 difieren**, 106 idénticas;
+la validación pasa de **106/108 a 108/108**; barrido de truncación **0**; recuentos de ventas/gastos/abonos idénticos;
+suma de cortes cerrados **647,758.00 → 649,248.00 = +$1,490.00 exactos**. `ticket_promedio` **sin redondear**, como la
+app. **No se tocó `notas`.**
+
+**El "descuadre del fondo" se investigó y se descartó:** `CONF-A-C032` queda en −714, puesto 24 de 40 en su sucursal,
+**por encima de la mediana** (−1,940). No es atípico. De paso quedó documentado que **el cuadre del efectivo físico es
+ruidoso en todo el histórico** (observación en `BUGS_PENDING.md`, fuera de alcance).
+
+### 2.3 Blindaje — `0064` + el aviso que sí llega
+`guard_cierre_incompleto`: rechaza el cierre si el cliente trae **menos** ventas o menos total del que la base tiene
+ligado. **Asimétrico a propósito**: puede traer MÁS (ventas en tránsito), nunca MENOS. Recuento sin margen, total con
+**$0.50**. **`NULL` falla cerrado.** Se **añade** a `0058` sin sustituirlo, para que el rollback sea una línea.
+
+Evidencia: **0 de 108** cortes sanos bloqueados · **12 de 12** valores rotos bloqueados · **7/7** en transacción
+revertida (incluye ventas en tránsito, caja vacía y recálculo de corte ya cerrado) · verificado también contra la
+**tabla real** en transacción revertida.
+
+**🚨 Hallazgo colateral, y no menor:** el `catch` de `handleCierreDiario` **se tragaba el mensaje** de los triggers y
+mostraba *"No se pudo cerrar la caja. Intenta de nuevo."*. **El texto de `0058` no lo había visto nunca nadie** — iba
+sólo a la consola. Un guard que bloquea sin decir qué hacer deja al cajero en un callejón sin salida. Corregido:
+`src/lib/cierreBloqueado.js` detecta **por marcador** (`CIERRE_INCOMPLETO` / `CIERRE_EN_CERO`), **nunca por SQLSTATE**,
+y **nunca vuelca el error crudo**; el cajero ve instrucciones concretas. Cadena verificada de punta a punta: trigger →
+PostgREST (`code 23514`, mensaje íntegro) → `entitiesAdapter` (prefijo `[cortes_caja] `) → `catch`.
+
+### 2.4 Pruebas
+`scripts/cierre_caja_verify.mjs`: **quitada la exclusión `CONOCIDOS`** — pasa **24/24 por mérito propio**.
+`scripts/cierre_bloqueado_verify.mjs` (nueva): **25/25**, y **5 FAIL contra el código viejo**.
+Las 6 suites en verde · `build` exit 0 · `lint` **39 = línea base** · `typecheck` **1249 = línea base**.
+
+### Procedimiento de emergencia
+`HANDOFF.md` §8-bis: tres vías si el guard bloquea un cierre y la sucursal necesita cerrar (reiniciar la app · dejar la
+caja abierta, con su consecuencia · SQL preparado para Miguel).
+
+---
+
 ## 2026-08-09 (Fase 1) — Desbloqueado el canal del APK: las tablets vuelven a ver el dinero real
 
 > **Sin cambios de código de aplicación.** Un fast-forward de rama y documentación. Producción **no se tocó**.

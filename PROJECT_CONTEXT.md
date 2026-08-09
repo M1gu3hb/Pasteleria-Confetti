@@ -32,8 +32,8 @@ Resuelve: cobrar, llevar pedidos de pastel personalizado, controlar caja (apertu
 
 **Qué está roto / bloqueado:**
 - **El APK de las tablets carga el preview de `apk/capacitor`, que es ancestro estricto de producción** (se quedó en `9b36aa5`, del 2026-07-13). Por ahí no llega ninguna corrección de frontend. **Es lo más urgente.** No es un riesgo latente: verificado en navegador el 2026-08-09, por ese canal Xochimilco ve **$0.00 y 0 tickets** con 17 ventas reales y **no puede cerrar caja** (el trigger `0058` rechaza el cierre en cero y el mensaje "actualiza la aplicación" no puede cumplirse desde el APK). Ver `HANDOFF.md` §4.
-- **P0 DINERO ABIERTO — truncación PARCIAL sin detectar ni reparar.** `CONF-A-C032` tiene **$1,420 sin reflejar** y estaba mal clasificado como "descuadre de otra causa". El trigger `0058` **no** lo habría impedido: sólo rechaza `total_general = 0`. Ver `docs/BUGS_PENDING.md`.
-- **La suite `scripts/cierre_caja_verify.mjs` excluye ese folio por nombre**, así que **da verde encima del dinero no reflejado**. Se corrige en la Fase 2.4.
+- ✅ **RESUELTO (Fase 2, 2026-08-09) — truncación PARCIAL.** Se reflejaron **$1,490.00** (`CONF-A-C032` $1,420 por truncación parcial; `CONF-C-C002` $70 por carrera de refresco). Barrido de los 108 cortes cerrados: **0 descuadrados, 0 sobrevalorados**. Blindado con el trigger `0064` y con un aviso que **ahora sí** llega al cajero. La suite ya no excluye ningún folio: pasa por mérito propio.
+- 🟠 **Abierto — los `catch` que se tragan mensajes accionables.** El de `handleCierreDiario` mostraba un genérico y escondía el mensaje del guard; corregido. **No se ha barrido el resto del POS**: va en la Fase 6.
 
 **Lo que se hizo entre 2026-08-01 y 2026-08-09:** ver `HANDOFF.md` §2 y `docs/CHANGELOG.md`.
 

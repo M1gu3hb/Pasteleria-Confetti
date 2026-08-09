@@ -118,11 +118,24 @@ if (!URL_ || !KEY || !EMAIL || !PWD) {
     `${URL_}/rest/v1/cortes_caja?select=id,folio,estado,fecha_apertura,sucursal_id,total_general,numero_ventas&order=fecha_apertura.desc&limit=40`,
     { headers: A })).json();
 
-  // Descuadres PREEXISTENTES, anteriores a este incidente y de otra causa.
-  // NO se tocaron en el recálculo 0057 a propósito. Se declaran aquí para que
-  // el test no los oculte ni falle por ellos.
-  const CONOCIDOS = new Set(['CONF-A-C032', 'CONF-C-C002']);
-  let cuadran = 0, revisados = 0, descuadres = [], preexistentes = [], abiertos = [];
+  // ── SIN EXCLUSIONES, A PROPÓSITO ──────────────────────────────────────
+  // Aquí había esto:
+  //     const CONOCIDOS = new Set(['CONF-A-C032', 'CONF-C-C002']);
+  //     ... else if (CONOCIDOS.has(c.folio)) { cuadran++; ... }
+  // es decir: dos folios se contaban como "cuadran" y la comprobación daba
+  // VERDE encima de $1,490 de dinero no reflejado. La justificación
+  // ("descuadres preexistentes, de otra causa") NUNCA se verificó y era FALSA:
+  // CONF-A-C032 era el mismo bug de truncación en su forma parcial.
+  //
+  // Los dos cortes se repararon el 2026-08-09 (migraciones 0062 + 0063), así
+  // que ya no hay nada que excluir y este test pasa POR MÉRITO PROPIO.
+  //
+  // REGLA (CLAUDE.md): ninguna prueba puede excluir un caso por nombre sin
+  // justificación verificada y fechada, y una exclusión sin evidencia se trata
+  // como FALLO. Si algún día hace falta excluir algo, se añade aquí con la
+  // fecha y la evidencia, se imprime en la salida y el test FALLA hasta que
+  // esa evidencia exista.
+  let cuadran = 0, revisados = 0, descuadres = [], abiertos = [];
   for (const c of cortes) {
     // Mismo criterio y misma normalizacion ISO que src/lib/ventasCorte.js
     const ap = new Date(c.fecha_apertura).toISOString();
@@ -135,13 +148,9 @@ if (!URL_ || !KEY || !EMAIL || !PWD) {
     const guardado = Number(c.total_general || 0);
     if (c.estado !== 'cerrado') { cuadran++; abiertos.push(`${c.folio}(${v.length} ventas)`); continue; }
     if (Math.abs(suma - guardado) < 0.005) cuadran++;
-    else if (CONOCIDOS.has(c.folio)) { cuadran++; preexistentes.push(c.folio); }
     else descuadres.push(`${c.folio}: consulta=${suma} guardado=${guardado}`);
   }
   console.log('');
-  if (preexistentes.length) {
-    console.log(`      (descuadres PREEXISTENTES excluidos, de otra causa: ${preexistentes.join(', ')})`);
-  }
   check(`integracion: la consulta NUEVA cuadra con el total guardado en ${cuadran}/${revisados} cortes`,
     revisados > 0 && cuadran === revisados,
     descuadres.length ? '\n        ' + descuadres.join('\n        ') : '');

@@ -7,7 +7,27 @@
 > Todos los de abajo **sobrevivieron** a un pase de refutación: un agente independiente intentó demostrar que eran falsos y no pudo. Los que sí se refutaron están al final, para que nadie los persiga otra vez.
 > Contexto completo en `HANDOFF.md`.
 
-## 🚨 P0 — Truncación PARCIAL del resumen del corte: nadie la detecta, y hay dinero sin reflejar
+## ✅ RESUELTO (2026-08-09, Fase 2) — Truncación PARCIAL: reparada, blindada y con aviso al cajero
+> Se conserva el detalle completo abajo, tachado el estado pero **no el análisis**: es la explicación del mecanismo y
+> del criterio del guard, y hace falta para entender `0064`.
+
+**Qué se hizo, en orden:**
+1. **Barrido causal de los 108 cortes cerrados** (2.1): 106 sanos, **0 sobrevalorados**, 2 infravalorados.
+2. **Reparación** (2.2, migraciones `0062` respaldo + `0063` recálculo): **$1,490.00** reflejados —
+   `CONF-A-C032` $1,420 (truncación **parcial**) y `CONF-C-C002` $70 (**carrera de refresco**, causa distinta y
+   demostrada). Comparación de las 31 columnas de las 108 filas contra el respaldo: **exactamente 2 difieren**.
+3. **Blindaje** (2.3, migración `0064`): trigger `guard_cierre_incompleto`, criterio asimétrico (el cliente puede
+   traer MÁS, nunca MENOS). Simulado: **0 de 108 sanos bloqueados**, **12 de 12 rotos bloqueados**.
+4. **El aviso llega al cajero** (2.3): se descubrió que el `catch` de `handleCierreDiario` se tragaba el mensaje y
+   mostraba un genérico — el texto de `0058` **no lo había visto nunca nadie**. Ahora se detecta por marcador
+   (`src/lib/cierreBloqueado.js`) y se muestran instrucciones. Ver la entrada 🟠 de abajo.
+5. **Procedimiento de emergencia** escrito en `HANDOFF.md` §8-bis (3 vías).
+
+**Estado: cerrado.** El análisis original se conserva a continuación.
+
+---
+
+## ~~🚨 P0~~ (histórico) — Truncación PARCIAL del resumen del corte: nadie la detecta, y hay dinero sin reflejar
 > **Abierto el 2026-08-09.** Estaba **cerrado por error** en la documentación: `CONF-A-C032` figuraba como
 > "descuadre preexistente de otra causa" en `HANDOFF.md`, `PROJECT_CONTEXT.md`, `docs/CHANGELOG.md`,
 > `docs/DECISIONS.md` (D-23), `docs/INCIDENTE_CIERRE_EN_CERO_2026-08-08.md` y el comentario de la migración `0057`.
@@ -45,7 +65,27 @@
 - **Prioridad:** **P0**. **Estado:** abierto. Barrido completo de los 111 cortes cerrados: **pendiente (Fase 2.1)**.
   Reparación y blindaje: Fases 2.2 y 2.3. **La reparación de dinero la firma Miguel.**
 
-## 🚨 P0 — La suite de verificación oculta el agujero (da verde sobre dinero no reflejado)
+## 🟠 ALTA — Los `catch` que se tragan un mensaje específico y muestran uno genérico
+> **Familia de bugs, no un caso aislado.** Encontrada el 2026-08-09 al implementar el guard de `0064`.
+
+- **El caso confirmado y ya corregido:** el `catch` de `handleCierreDiario` (`Caja.jsx`) hacía
+  `console.error(err)` + `toast.error('No se pudo cerrar la caja. Intenta de nuevo.')`. Los triggers `0058`/`0064`
+  escriben un mensaje **redactado para el cajero**, y **nunca llegaba a la pantalla**: el cajero leía "intenta de
+  nuevo", reintentaba, y volvía a fallar. Un guard que bloquea sin decir qué hacer es peor que no tener guard.
+  **Corregido** (`src/lib/cierreBloqueado.js` + el `catch`), con suite propia
+  `scripts/cierre_bloqueado_verify.mjs` (25/25, y **5 FAIL contra el código viejo**).
+- **⚠️ Lo que queda abierto:** *"el de `handleCierreDiario` no puede ser el único"*. **No se ha barrido el resto del
+  POS.** Cualquier otro `catch` que sustituya un error accionable por un genérico tiene el mismo defecto.
+- **Prioridad:** alta. **Estado:** el caso del cierre, cerrado; **el barrido completo va en la Fase 6**
+  (auditoría profunda final), donde es uno de los frentes explícitos.
+
+## ✅ RESUELTO (2026-08-09) — La suite de verificación ocultaba el agujero
+- **Corregido:** se quitó `const CONOCIDOS = new Set(['CONF-A-C032','CONF-C-C002'])` de
+  `scripts/cierre_caja_verify.mjs`. Los dos cortes están reparados, así que **el test pasa por mérito propio**
+  (24/24), sin exenciones. En su lugar queda escrita la regla de `CLAUDE.md` sobre exclusiones por nombre.
+- **Estado:** cerrado. El detalle histórico se conserva abajo.
+
+## ~~🚨 P0~~ (histórico) — La suite de verificación oculta el agujero (da verde sobre dinero no reflejado)
 - **Impacto:** `scripts/cierre_caja_verify.mjs` **cuenta como "cuadran"** los folios que excluye, así que la
   comprobación de integración **pasa en verde encima de $1,420 no reflejados**. Es peor que no tener test: da una
   garantía que no existe.

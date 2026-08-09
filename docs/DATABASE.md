@@ -20,6 +20,9 @@
 | `0059` | Recálculo de `CONF-A-C042` | Se rompió **un día después** del primer despliegue porque la tablet seguía con el bundle viejo |
 | `0060` | **Pastelero**: política `pos_pastelero_update_pedidos` (FOR UPDATE) + trigger `trg_guard_pastelero_alcance` | Acota **columnas y transiciones**. **NO-OP para el resto de roles** |
 | `0061` | **Datos**: `Abel` vuelve a `rol='dueño'`; `logo_ticket_url` vuelve al logo real | Dos correcciones de datos, no de código. Reversión exacta en la cabecera del archivo |
+| `0062` | **Respaldo** `app_private.cortes_backup_20260809_fase2` (los 108 cerrados) | Sufijo `_fase2` porque `cortes_backup_20260809` ya existía. Se respaldan TODOS los cerrados, no sólo los 2 a reparar, para poder demostrar que ningún corte sano se movió |
+| `0063` | **Recálculo de `CONF-A-C032` y `CONF-C-C002`** — $1,490.00 sin reflejar | **DINERO, firmado por Miguel.** Dos causas distintas, declaradas por separado: C032 = truncación PARCIAL (universo 1,008, cruzó el tope por 8); C002 = **carrera de refresco** (universo 11, la venta se cobró 48 s antes del cierre). `ticket_promedio` sin redondear, como la app. NO se toca `notas` |
+| `0064` | **Trigger `guard_cierre_incompleto`** (`BEFORE UPDATE` en `cortes_caja`) | Cierra el agujero de `0058`. Ver abajo |
 
 ## Cambios de reglas de negocio en la base
 
@@ -45,8 +48,36 @@
   | cierre legítimo de una caja sin ventas (`total = 0`, 0 ventas) | no lo bloquea (correcto) |
   | recálculo/reescritura de un corte ya cerrado | no lo bloquea (correcto, por `old.estado = 'cerrado'`) |
 
-  Caso real que pasó de largo: **`CONF-A-C032`**, cerrado con $4,995 cuando lo real eran $6,415. **$1,420 sin
-  reflejar, aún sin reparar.** Blindar el caso parcial es la **Fase 2.3**.
+  Caso real que pasó de largo: **`CONF-A-C032`**, cerrado con $4,995 cuando lo real eran $6,415. ✅ **Reparado el
+  2026-08-09** (`0063`) y ✅ **el hueco está cerrado** por `0064`.
+
+- **`trg_guard_cierre_incompleto`** (0064): **el que sí cubre la truncación parcial.** Criterio **asimétrico**:
+
+  ```
+  RECHAZAR si   numero_ventas_cliente  <  ventas ligadas en la base
+         o si   total_general_cliente  <  suma ligada en la base − 0.50
+  ```
+
+  **Por qué asimétrico y por qué TIENE que serlo:** cuando dispara, la base ve **sólo las ventas ya ligadas**. En
+  `handleCerrarCaja` el orden es: contar en servidor → **UPDATE del corte** → y *sólo después* ligar las ventas "en
+  tránsito" (CANDADO 1). Así que el cliente **puede traer MÁS** que la base (legítimo) pero **nunca MENOS** (eso es
+  truncación). Un guard simétrico bloquearía cierres buenos, que es el peor resultado posible.
+
+  **Margen:** el recuento **sin margen** (entero exacto; desvío medido sobre los 108 cortes: **0**). El total con
+  **0.50**, sólo para ruido de coma flotante entre el `sum` de JavaScript y el de Postgres (desvío medido: **0.00**).
+  La venta más barata del histórico es **$1.00**, así que 0.50 no puede enmascarar ni un ticket.
+
+  **`NULL` falla CERRADO** (`coalesce(..., -1)`, no `, 0`): si el NULL se tratara como cero, un cierre sin totales
+  pasaría por "caja vacía" — el mismo modo de fallo que `Number(null) === 0`.
+
+  **Convive con `0058`, no lo sustituye.** Lo subsume, pero se deja el viejo para que el rollback sea una línea
+  (`drop trigger trg_guard_cierre_incompleto on cortes_caja;`) sin quedarse sin protección. Si disparan los dos, gana
+  el mensaje de `0058` (orden alfabético).
+
+  **Los dos mensajes empiezan por un MARCADOR** (`CIERRE_EN_CERO` / `CIERRE_INCOMPLETO`). El frontend
+  (`src/lib/cierreBloqueado.js`) los reconoce **por marcador, nunca por SQLSTATE**, y muestra un aviso con
+  instrucciones. Comprobado que el marcador sobrevive la cadena completa: trigger → PostgREST (`code 23514`, mensaje
+  literal íntegro) → `entitiesAdapter` (antepone `[cortes_caja] `) → `catch`.
 
   **Nota sobre el mensaje al usuario:** *"Actualiza la aplicación (cierra y vuelve a abrirla)"* **no se puede cumplir
   desde el APK** mientras su `server.url` apunte a un preview congelado. Ahí el guard produce un **bloqueo sin

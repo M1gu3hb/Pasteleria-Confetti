@@ -311,6 +311,56 @@ Con eso se localizó el crash **hasta la posición exacta del bundle minificado*
 
 ---
 
+## 8-bis. 🚨 PROCEDIMIENTO — la base rechazó el cierre y la sucursal tiene que cerrar
+
+Desde el 2026-08-09 la base **rechaza** un cierre cuyo resumen traiga menos ventas de las que tiene ligadas
+(`trg_guard_cierre_en_cero` 0058 y `trg_guard_cierre_incompleto` 0064). Es lo que impide que se vuelvan a guardar
+cortes incompletos — pero también significa que un cierre puede quedar bloqueado. **Esto es lo que se hace.**
+
+### Vía 1 — el cajero, 1 minuto (resuelve el caso normal)
+Es lo que dice el propio aviso en pantalla: cerrar la app **del todo**, reabrirla, entrar a **Caja → Resumen**,
+comprobar que aparece el dinero del día, y volver a tocar **Cierre diario**. Funciona porque el canal del APK está
+sincronizado con producción.
+
+### Vía 2 — el cajero, 0 minutos: dejar la caja abierta
+**No se pierde nada.** Las ventas están en la base y se siguen ligando al corte abierto.
+⚠️ **Pero tiene consecuencia:** el índice único `0052` garantiza **una sola caja abierta por sucursal**, así que
+**al día siguiente no podrán abrir caja** hasta resolverlo. Compra la noche, no el día siguiente.
+
+### Vía 3 — Miguel, ~2 minutos, SQL ya escrito
+Cierra el corte con los valores de **la propia base**, así que **pasa el guard por construcción**. Sustituir
+`<FOLIO>`, `<CONTADO>` (lo que contó el cajero) y `<DEJADO>`:
+
+```sql
+with o as (
+  select c.id,
+    (select coalesce(sum(v.total),0)               from ventas v where v.corte_caja_id=c.id and v.estado='pagada') tg,
+    (select coalesce(sum(v.monto_efectivo),0)      from ventas v where v.corte_caja_id=c.id and v.estado='pagada') ef,
+    (select coalesce(sum(v.monto_tarjeta),0)       from ventas v where v.corte_caja_id=c.id and v.estado='pagada') ta,
+    (select coalesce(sum(v.monto_transferencia),0) from ventas v where v.corte_caja_id=c.id and v.estado='pagada') tr,
+    (select count(*)                               from ventas v where v.corte_caja_id=c.id and v.estado='pagada') nv,
+    (select coalesce(sum(g.monto),0)               from gastos_operativos g where g.corte_caja_id=c.id) gas,
+    (select coalesce(sum(case when g.metodo_pago='efectivo' then g.monto else 0 end),0)
+       from gastos_operativos g where g.corte_caja_id=c.id) gef,
+    (select coalesce(sum(case when a.monto<0 then a.monto_efectivo else 0 end),0)
+       from abonos a where a.corte_caja_id=c.id) dev
+  from cortes_caja c where c.folio = '<FOLIO>' and c.estado='abierto'
+)
+update cortes_caja c set
+  estado='cerrado', tipo_corte='cierre_diario', fecha_cierre=now(),
+  total_general=o.tg, total_efectivo=o.ef, total_tarjeta=o.ta, total_transferencia=o.tr,
+  numero_ventas=o.nv, ticket_promedio=case when o.nv>0 then (o.tg::float8/o.nv::float8)::numeric else 0 end,
+  total_gastos=o.gas, efectivo_esperado=o.ef+o.dev-o.gef,
+  efectivo_contado=<CONTADO>, dinero_dejado_en_caja=<DEJADO>,
+  diferencia_efectivo=<CONTADO> - (o.ef+o.dev-o.gef)
+from o where c.id=o.id;
+```
+
+**Quién puede ejecutarlo:** Miguel, desde el editor SQL de Supabase. **No hace falta improvisar nada a las 11 de la
+noche**: el texto está aquí escrito. Antes de ejecutarlo, comprueba el folio y que el corte sigue `abierto`.
+
+---
+
 ## 9. Cómo verificar sin romper nada
 
 - **Contra la base:** transacciones **revertidas**. Patrón probado:
