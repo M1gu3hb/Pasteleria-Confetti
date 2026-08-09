@@ -90,6 +90,26 @@ Dos bugs graves se colaron porque **las pruebas probaban el arnés, no el códig
 
 ## Git
 
+### 🔒 REGLA — una migración aplicada se commitea en el MISMO paso, nunca después
+
+**Si aplicas una migración a la base, el `git commit` con su archivo va en el mismo paso.** Si la sesión se corta
+entre aplicar y commitear, **el repo deja de ser el registro de lo que corre en producción**: la base avanza y el
+repositorio no sabe cómo llegó ahí.
+
+Y comprueba que el archivo del repo es **exactamente** el SQL que se aplicó — no una versión "limpiada" después:
+
+```sql
+select version, name, md5(array_to_string(statements, E'\n')), length(array_to_string(statements, E'\n'))
+from supabase_migrations.schema_migrations where version = '<version>';
+```
+
+Compara ese md5 con el del cuerpo SQL del archivo. Un archivo que **difiere** de lo aplicado es **peor que no
+tenerlo**: da una falsa sensación de trazabilidad.
+
+*Casos que originan la regla:* `0057` se aplicó en producción **sin archivo en el repo** y hubo que reconstruirla
+después. Y el 2026-08-09, `0062`/`0063` quedaron aplicadas en la base mientras el archivo vivía sólo en una rama de
+trabajo — detectado por Miguel en la auditoría, no por quien las aplicó.
+
 - Rama de trabajo **y de producción**: **`migracion/supabase`** (no `main`). Vercel despliega producción desde ahí; cualquier otra rama sale como preview.
 - Sin co-author de IA en los commits (config del usuario). Conventional commits.
 - Commits pequeños y descriptivos. El cuerpo del commit explica **causa raíz y evidencia**, no sólo el qué.

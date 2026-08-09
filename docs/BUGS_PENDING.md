@@ -92,6 +92,35 @@
   memoria), y falta la **Fase 7** (repuntar `server.url` a producción + APK nuevo firmado por Miguel).
 - **Ver también:** la 🔒 **REGLA PERMANENTE** de sincronización en `CLAUDE.md`, `HANDOFF.md` §4 y `docs/NEXT_STEPS.md`.
 
+## 📋 OBSERVACIÓN — el cuadre del efectivo FÍSICO es ruidoso en todo el histórico
+> **Fuera de alcance. NO es una tarea, NO se investiga y NO se toca.** Requiere decisión de Miguel.
+> La fórmula del efectivo esperado es **CANDADO** y ya está firmada: no se "mejora".
+
+Salió al comprobar, tras reparar `CONF-A-C032` (Fase 2.2), si su superávit era atípico. **No lo era** — y de paso
+quedó claro que **no existe un cuadre físico de referencia** contra el que comparar.
+
+Métrica `diferencia_efectivo − efectivo_inicial_contado` sobre los cortes cerrados:
+
+| Ámbito | Cortes | Mediana | Rango | Se desvían > $100 |
+|---|---|---|---|---|
+| Todas | 106 sanos | **−1,150** | −11,642 … +4,893 | **93 de 106** |
+| Xochimilco | 40 | −1,940 | −9,415 … +3,810 | 35 de 40 |
+| Topilejo | 31 | −880 | −11,642 … +4,893 | 29 de 31 |
+| San Gregorio | 35 | −1,150 | −3,460 … +1,330 | 29 de 35 |
+
+De tres modelos posibles, el único que centra en cero es `diferencia − fondo + dinero_dejado_en_caja`
+(mediana **0.00**), y aun así **sólo 21 de 106 caen exactamente en cero** y 30 dentro de $100. La explicación está en
+que **en 64 de 106 cortes el fondo de apertura es exactamente el dinero que se deja en caja**: el fondo se queda en el
+cajón y se cancela, en vez de aparecer como superávit.
+
+**Consecuencia práctica, que es lo único que hay que recordar:**
+> **`diferencia_efectivo` NO debe leerse como faltante o sobrante de un cajero** sin tener en cuenta
+> `dinero_dejado_en_caja` y `efectivo_inicial_contado`. Tomado solo, señala descuadres que no existen — y ese fue
+> exactamente el razonamiento que estuvo a punto de hacernos declarar un descuadre inexistente en `CONF-A-C032`.
+
+**Estado:** observación registrada. Sin acción. Si algún día se quiere un cuadre físico fiable, es una decisión de
+negocio (cómo se cuenta y qué se deja en caja), no un arreglo de código.
+
 ## ✅ AUDITADO Y SANO (2026-08-09) — Circuito WEB pública → POS
 > Se anota **aquí a propósito**, aunque no sea un bug: había una duda razonable de que se hubiera roto con el
 > movimiento de estos días, y que conste auditado evita que alguien vuelva a perseguirlo.
