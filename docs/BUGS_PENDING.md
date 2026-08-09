@@ -1,5 +1,23 @@
 # BUGS_PENDING / riesgos conocidos
 
+## ABIERTO (2026-08-09) — el rol `pastelero` NO puede ESCRIBIR en pedidos
+Es un bug **distinto** al de la nota (ese ya está arreglado para todos). Verificado en vivo: con la
+sesión del pastelero se **leen** 229 pedidos, pero cualquier `UPDATE` afecta **0 filas**.
+- **Origen:** `0037_rol_pastelero.sql` (**2026-06-30**, commit `17a3210`). Su propio comentario dice
+  *"Solo lectura: no toca INSERT/UPDATE/DELETE (esos siguen bajo `pos_scope_pedidos`)"* — la
+  suposición falla porque el pastelero tiene `sucursal_id = NULL`, así que `sucursal_id = pos_sucursal()`
+  evalúa a NULL (no a true) y la política de escritura nunca lo deja pasar.
+- **Pendiente:** política de UPDATE acotada para el pastelero. Toca **aislamiento RLS** → se prepara
+  con evidencia y la **firma Miguel** antes de aplicar.
+
+## ABIERTO (2026-08-09) — hallazgos de revisión aún sin cerrar
+- `CorteAutoDownloader.jsx` empareja las ventas del PDF **sólo por ventana de tiempo**, sin filtrar por
+  sucursal ni por `corte_caja_id`. En una sucursal es correcto; con varias abiertas a la vez puede
+  mezclar. No causó el incidente de los ceros, pero es la misma familia de fallo.
+- Llamadas `filter()` sin límite en `entitiesAdapter.js` (mismo patrón que truncó el corte). Ninguna
+  alimenta hoy la matemática del dinero, pero conviene acotarlas antes de que un histórico crezca.
+- CORS del Edge Function: `ORIGEN_PREVIEW` es una regex más permisiva de lo necesario.
+
 > **Actualización de auditoría independiente (2026-07-10):** la afirmación histórica siguiente de “SIN bugs de código” queda **superada**. `CAMBIOS_V2/REPORTES/AUDITORIA_INDEPENDIENTE_POS_APK_2026-07-10.md` documenta, sin modificar código ni datos reales, hallazgos críticos de RLS/folios, hallazgos altos de concurrencia de dinero, soporte incompleto 58/80 mm y APK release sin firma. Pendiente de revisión y firma de Miguel; la auditoría no propuso ni aplicó correcciones.
 >
 > **Corrección por fases (2026-07-10):**
