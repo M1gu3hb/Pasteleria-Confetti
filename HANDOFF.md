@@ -210,6 +210,27 @@ Se puede dejar de sincronizar **sólo** cuando se verifique, tablet por tablet, 
 
 ---
 
+## 4-bis. Circuito WEB pública → POS: AUDITADO Y SANO (2026-08-09)
+
+Miguel tenía la duda —fundada— de que el circuito de pedidos de la web se hubiera roto con todo el movimiento de
+estos días. **No está roto.** Auditado el 2026-08-09 por Miguel, con evidencia:
+
+| Comprobación | Resultado |
+|---|---|
+| `pasteleria-confetti.com` | HTTP **200** |
+| Backend del bundle de la web | **`ivqcxdpqxwjxfohiswqb`** — el mismo que el POS |
+| Objetos que usa | `crear_pedido_web`, `catalogo_publico`, `config_publica`, bucket `web-uploads` |
+| Alta de pedido **como rol `anon`**, en transacción **revertida** | Folio **`PP-A-0185`** asignado, fila creada, `estado='pendiente'`, `creado_por_nombre='Web Confetti'` |
+| Residuo tras revertir | **0**. El contador de folios vuelve a **184** (usa `UPDATE … RETURNING`, no una secuencia, así que revierte limpio) |
+| ¿Lo ve el POS? | **Sí**: la terminal de Xochimilco ve **11 pedidos web, 5 pendientes** |
+| Imágenes de referencia | responden **200 `image/jpeg`** |
+
+**Conclusión: el circuito web → POS funciona de punta a punta.** No requiere ninguna acción.
+*Detalle importante para el futuro:* el contador de folios usa `UPDATE … RETURNING` en vez de una secuencia, lo que
+lo hace **revertible** — por eso se puede probar el alta de un pedido sin dejar rastro. Con una secuencia no sería así.
+
+---
+
 ## 5. Bugs confirmados que quedan abiertos
 
 Detalle y prioridad en **`docs/BUGS_PENDING.md`**. Los que salieron de la auditoría de esta sesión y **sobrevivieron a la verificación adversarial**:

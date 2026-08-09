@@ -92,6 +92,21 @@
   memoria), y falta la **Fase 7** (repuntar `server.url` a producción + APK nuevo firmado por Miguel).
 - **Ver también:** la 🔒 **REGLA PERMANENTE** de sincronización en `CLAUDE.md`, `HANDOFF.md` §4 y `docs/NEXT_STEPS.md`.
 
+## ✅ AUDITADO Y SANO (2026-08-09) — Circuito WEB pública → POS
+> Se anota **aquí a propósito**, aunque no sea un bug: había una duda razonable de que se hubiera roto con el
+> movimiento de estos días, y que conste auditado evita que alguien vuelva a perseguirlo.
+
+- **Auditado por Miguel el 2026-08-09**, con evidencia:
+  - `pasteleria-confetti.com` responde **200**; el bundle de la web apunta al **mismo** proyecto Supabase
+    (`ivqcxdpqxwjxfohiswqb`) y usa `crear_pedido_web`, `catalogo_publico`, `config_publica` y el bucket `web-uploads`.
+  - **Alta real de pedido con el rol `anon`, en transacción revertida:** folio **`PP-A-0185`** asignado, fila creada,
+    `estado='pendiente'`, `creado_por_nombre='Web Confetti'`.
+  - **Residuo 0** tras revertir, y el contador de folios vuelve a **184**: usa `UPDATE … RETURNING` (no una
+    secuencia), así que revierte limpio. *Dato útil: por eso este circuito SÍ se puede probar sin dejar rastro.*
+  - **El POS lo ve:** la terminal de Xochimilco lista **11 pedidos web, 5 pendientes**.
+  - Las imágenes de referencia responden **200 `image/jpeg`**.
+- **Estado: sano. Sin acción pendiente.**
+
 ## 🟡 MEDIA — Las rutas profundas devuelven 404 en el servidor (lo tapa el service worker)
 - **Impacto:** entrar directamente a `https://…/caja` (o cualquier ruta que no sea `/`) devuelve **404** de Vercel. Hoy
   no se nota porque el service worker del PWA intercepta la navegación y sirve `index.html` desde caché — pero eso sólo
