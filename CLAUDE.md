@@ -71,6 +71,9 @@ Dos bugs graves se colaron porque **las pruebas probaban el arnés, no el códig
 1. Si inyectas un doble, que **imite la restricción real** (por ejemplo, comprobar el receptor como hace Chrome), o ejercita **también** el camino real.
 2. Toda prueba de regresión debe **comprobarse contra el código viejo**: si no falla ahí, no prueba nada.
 3. Pasa **valores crudos** (`null`, `undefined`, `NaN`, strings), no banderas que resuman el caso.
+4. **Ninguna prueba puede excluir un caso por nombre sin justificación verificada y fechada.** Si un test excluye un folio, un id o un caso concreto, el comentario debe decir **cómo se comprobó** esa justificación y **en qué fecha**; y el test debe **imprimir la exclusión en su salida**, con el número de casos excluidos. Una exclusión sin evidencia es un agujero que se presenta como verde. **Una exclusión sin evidencia verificada se trata como un fallo: el test debe fallar, no pasar.**
+
+   *Caso que originó la regla (2026-08-09):* `scripts/cierre_caja_verify.mjs` excluía `CONF-A-C032` como "descuadre preexistente de otra causa". Sí lo imprimía, pero la justificación **nunca se verificó** y era **falsa**: era el mismo bug de truncación en su forma **parcial**, con **$1,420 no reflejados**. La suite daba verde encima del agujero, y la doc, `DECISIONS.md` (D-23) y el comentario de la migración `0057` repetían la afirmación falsa. Un test que excluye lo que debería estar cazando es peor que no tener test: da una garantía que no existe.
 
 ---
 
@@ -122,12 +125,27 @@ Dos bugs graves se colaron porque **las pruebas probaban el arnés, no el códig
 El POS también se envuelve en un **APK Android** que carga la web VIVA desde Vercel e imprime ESC/POS nativo.
 
 - **⚠️ LO PRIMERO QUE HAY QUE MIRAR:** el `server.url` del APK apunta al **preview de la rama `apk/capacitor`**, no a producción. Si esa rama está atrasada, **las tablets no reciben ninguna corrección**. Ver `HANDOFF.md` §4.
+- **Comprueba SIEMPRE el retraso antes de dar nada por desplegado:**
+  ```bash
+  git rev-list --count origin/apk/capacitor..origin/migracion/supabase   # commits que le faltan al APK
+  git log origin/migracion/supabase..origin/apk/capacitor                # vacío = la rama del APK no tiene trabajo propio
+  ```
+  Un despliegue a producción **no** llega a las tablets si esa cuenta no es 0.
 - **REGLA DE ORO:** cada eslabón incierto (USB/Ethernet, imagen/texto, método de cajón, formato de corte) queda como **opción seleccionable y probable EN SITIO** (Config → Operación → "Impresora y cajón (app)"). Nunca hardcodear "el que creo que jala".
 - **Split navegador/APK:** todo lo nativo detrás de `Capacitor.isNativePlatform()`. El **navegador queda byte-por-byte igual**. Los componentes de ticket NO cambian de diseño.
 - **Dinero/RLS/folios/corte-math NO se tocan.** El APK sólo cambia CÓMO se imprime.
 - **Config LOCAL por dispositivo** (`src/native/printerConfig.js`, localStorage), no la config compartida de Supabase.
 - Las pruebas físicas (impresora/cajón real) son **EN SITIO**; no se autocertifican.
-- **NO fusionar `apk/capacitor` → `migracion/supabase` ni repuntar a producción sin OK explícito de Miguel.**
+- **NO fusionar `apk/capacitor` → `migracion/supabase` ni repuntar `server.url` a producción sin OK explícito de Miguel.**
+- **⚠️ NO CONFUNDAS LAS DOS DIRECCIONES (precisión añadida 2026-08-09).** Son operaciones distintas con riesgos distintos:
+
+  | Dirección | Qué hace | Riesgo |
+  |---|---|---|
+  | `apk/capacitor` → `migracion/supabase` | mete la rama del APK **en producción** | **Es la que prohíbe la regla de arriba.** Requiere OK de Miguel |
+  | `migracion/supabase` → `apk/capacitor` | pone el canal del APK al día | **No toca producción ni un byte.** Hoy es un **fast-forward puro** porque `apk/capacitor` no tiene commits propios. Sigue requiriendo OK de Miguel, pero el riesgo es otro |
+
+  Reversión de la segunda: `git push --force-with-lease origin 9b36aa5:apk/capacitor`.
+- **El alias de rama de Vercel (`…-git-apk-capacitor-…`) sigue automáticamente al último commit de la rama.** Por eso adelantar la rama actualiza el APK ya instalado **sin reinstalar ni re-firmar**. Y por eso, mientras el `server.url` apunte ahí, **cualquiera que empuje a esa rama cambia lo que ven las tablets de producción**.
 
 ---
 

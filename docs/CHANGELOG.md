@@ -1,5 +1,97 @@
 # CHANGELOG
 
+## 2026-08-09 (Fase 0) — Corrección de documentación: se declaraba sano dinero que no lo está
+
+> **Sin cambios de código de aplicación.** Sólo `.md`. `dist` byte-idéntico, así que las tablets no ven nada
+> (comprobado: `3a90e3c` y `04bd33c` sirven el mismo bundle y el mismo `sw.js`).
+>
+> Primera fase del **plan de reparación integral** aprobado por Miguel. Fases 0→7 en `HANDOFF.md` §10.
+
+### Qué estaba mal y por qué importa
+
+**A) `CONF-A-C032` NO es "un descuadre preexistente de otra causa". Es el MISMO bug, en forma PARCIAL, y sigue sin reparar.**
+
+Lo afirmaban `HANDOFF.md`, `PROJECT_CONTEXT.md`, `docs/BUGS_PENDING.md`, este `CHANGELOG`, `docs/DECISIONS.md` (D-23),
+`docs/INCIDENTE_CIERRE_EN_CERO_2026-08-08.md`, el comentario de cabecera de la migración `0057` y los mensajes de
+commit. **Nadie lo verificó.** Comprobación (SQL de solo lectura, reproducible):
+
+| modelo de ventana | ventas | suma | ¿reproduce lo guardado? |
+|---|---|---|---|
+| **GUARDADO** en `cortes_caja` | 23 | $4,995.00 | — |
+| REAL (todas las del corte) | 31 | $6,415.00 | — |
+| **ventana de 1.000 acotada a la SUCURSAL (causal)** | **23** | **$4,995.00** | **sí, exacto** |
+| ventana GLOBAL (sin filtro de sucursal) | 0 | $0.00 | no |
+| proxy "las N más antiguas del corte" | 23 | $4,995.00 | coincide aquí, pero es proxy |
+
+Las **dos** magnitudes coinciden a la vez (`numero_ventas` = 23 y `total_general` = $4,995) y las 8 ventas que quedan
+fuera suman **exactamente** el descuadre ($1,420.00). **Dinero no reflejado: $1,420.00, aún sin reparar.**
+
+**B) La suite daba verde encima de ese agujero.** `scripts/cierre_caja_verify.mjs:124` tiene
+`const CONOCIDOS = new Set(['CONF-A-C032','CONF-C-C002'])` y cuenta esos folios como "cuadran". **Sí** imprimía la
+exclusión, pero la justificación nunca se verificó y era falsa. Se quita en la Fase 2.4, dejando que **falle** hasta
+que el corte esté reparado.
+
+**C) El trigger `0058` es más estrecho de lo que decía la doc.** `guard_cierre_en_cero()` hace
+`if coalesce(new.total_general,0) <> 0 then return new;`: **cualquier total distinto de cero pasa sin comprobar nada**.
+Cubre `total = 0`, **no** la truncación parcial. Describirlo como "lo único que protege a una tablet con bundle viejo"
+es cierto sólo para un modo de fallo de los dos.
+
+**D) La causa raíz es la ventana de 1.000 ACOTADA A LA SUCURSAL**, no una ventana global (la RLS `pos_scope_ventas` ya
+filtra por `sucursal_id`). Importa para la reparación: el proxy "N más antiguas del corte" **da falsos positivos en
+cortes pequeños**, y barrer los 111 cortes con él habría "reparado" cortes sanos — es decir, **metido dinero mal**.
+
+**E) `apk/capacitor` no tiene commits propios**: es ancestro estricto de producción, y `capacitor.config.ts` existe
+idéntico en ambas ramas. Lo que `CLAUDE.md` prohíbe es `apk/capacitor` → producción; lo que hace falta es
+**producción → `apk/capacitor`**, un **fast-forward puro que no toca producción**. Son operaciones distintas.
+
+**F) Menores:** son **20** commits de retraso (no 18); Abel tiene `sucursal_id` = Xochimilco y **no** es un dueño
+global (aunque `pos_is_admin()` le da alcance global por rol); y **no se citan hashes de bundle** — `HANDOFF.md`
+afirmaba que `3a90e3c` servía `index-DOafkEZU.js` y en vivo servía `index-B5y-Tcrd.js`. **Cítense commits.**
+
+### Hallazgos nuevos verificados en navegador (no deducidos)
+- Por el canal del APK, contra el corte real abierto `CONF-A-C044`: el Resumen muestra **$0.00 / 0 tickets** con
+  **17 ventas / $5,735** reales, y la consulta que emite es literalmente `ventas?select=*&estado=eq.pagada`.
+  **Consecuencia: desde el APK, Xochimilco no puede cerrar caja** (el guard `0058` lo rechaza y el mensaje "actualiza
+  la aplicación" no se puede cumplir en el APK).
+- Topilejo (587 ventas pagadas) y San Gregorio (499) siguen bajo el tope de 1.000: desde el APK cierran bien **por
+  ahora**, y se romperán solas al cruzarlo.
+- En producción, el arreglo está vivo y correcto: el dueño entra sin pantalla en blanco (`#root` = 3 nodos) y el
+  Dashboard cuadra al peso con SQL ($5,735 / $3,715 / $340 = $9,790 y 28 tickets).
+
+### Cambios en documentación
+- **`HANDOFF.md`** — bloque de correcciones en cabecera; §2.2 con la tabla de los tres modelos de ventana y el alcance
+  real de `0058`; §3 con una fila nueva para la truncación parcial; **§4 reescrita** (20 commits, sin hashes, las dos
+  direcciones del merge, evidencia de navegador); §5 con dos P0 nuevos; §8 con la corrección sobre Abel; §10 con el
+  plan de fases 0→7.
+- **`PROJECT_CONTEXT.md`** — §2 (qué está roto), §7 (`cortes_caja`), §8 (flujo de cierre), §9 (D-23 tachada + 2
+  decisiones nuevas), §10, §12 y §15.
+- **`CLAUDE.md`** — **regla nueva**: exclusiones por nombre en tests (ver abajo); comandos para comprobar el retraso
+  del APK; y tabla que distingue las dos direcciones del merge.
+- **`docs/BUGS_PENDING.md`** — **dos P0 nuevos** (truncación parcial; la suite que la oculta), entrada **POR
+  CLASIFICAR** para `CONF-C-C002`, y P0 del APK corregido.
+- **`docs/DATABASE.md`** — alcance real de `0058` con el fragmento de código y una tabla de qué bloquea y qué no; nota
+  de que el comentario de `0057` es falso y **no se edita** (migración aplicada = registro histórico).
+- **`docs/NEXT_STEPS.md`** — tabla de fases y §1 reescrita.
+- **`docs/DECISIONS.md`** — **D-23 REVOCADA** (tachada, no borrada, con la explicación); **D-30** (exclusiones en
+  tests), **D-31** (criterio causal), **D-32** (las dos direcciones del APK), **D-33** (commits, no hashes); matiz en
+  D-22; D-29 resuelta.
+- **`docs/ARCHITECTURE.md`** — alcance real de `0058` y cómo se relacionan las dos ramas.
+- **`docs/INCIDENTE_CIERRE_EN_CERO_2026-08-08.md`** — la frase de la validación previa, tachada y corregida.
+
+### Regla nueva en `CLAUDE.md`
+> **Ninguna prueba puede excluir un caso por nombre sin justificación verificada y fechada.** El comentario debe decir
+> **cómo se comprobó** y **en qué fecha**; el test debe **imprimir** la exclusión y su recuento. **Una exclusión sin
+> evidencia verificada se trata como un fallo: el test debe fallar, no pasar.**
+
+### Lo que este commit NO hace
+- **No repara `CONF-A-C032`** (Fase 2.2, con respaldo previo y **firma de Miguel**).
+- **No toca `scripts/cierre_caja_verify.mjs`** (Fase 2.4).
+- **No toca la migración `0057`**: ya está aplicada y el archivo es el registro de lo que se ejecutó. La corrección de
+  su comentario vive en `docs/DATABASE.md`.
+- No toca código de aplicación, ni la base, ni la rama `apk/capacitor`.
+
+---
+
 ## 2026-08-09 (cierre de sesión) — Documentación viva puesta al día + HANDOFF para traspaso
 
 ### Cambios realizados
@@ -189,9 +281,10 @@ Es un bug **distinto** del anterior y **ya está desplegado en producción** (co
 - **Arreglo, en TRES capas independientes:**
   1. **Consulta acotada** (`src/lib/ventasCorte.js`, nuevo): filtra por corte **en PostgreSQL** (incluye el fallback de ventas en tránsito), ordena y **pagina** hasta agotar. La truncación deja de ser posible por construcción. La lógica de reparto venta↔corte (**CANDADO 1**) no cambia ni una línea: sólo recibe los datos correctos.
   2. **Guarda en el cliente** (`Caja.jsx`, `handleCerrarCaja`): antes de escribir, **cuenta las ventas en el servidor** y compara contra el resumen. **Falla CERRADA**: si no se puede verificar, o si el servidor tiene más ventas que el resumen (carga parcial), **no se cierra** y se pide reintentar.
-  3. **Red de seguridad en la BASE** (`0058_guard_cierre_en_cero.sql`): trigger `BEFORE UPDATE` que **rechaza** cerrar un corte con total 0 cuando tiene ventas pagadas. Es independiente del frontend — protege incluso a una tablet que siga con el bundle viejo, que es exactamente como se rompió `CONF-A-C042` un día después del primer deploy.
+  3. **Red de seguridad en la BASE** (`0058_guard_cierre_en_cero.sql`): trigger `BEFORE UPDATE` que **rechaza** cerrar un corte con total 0 cuando tiene ventas pagadas. Es independiente del frontend — protege incluso a una tablet que siga con el bundle viejo, que es exactamente como se rompió `CONF-A-C042` un día después del primer deploy. **⚠️ Alcance real (corregido 2026-08-09): SÓLO el caso `total_general = 0`. La truncación PARCIAL pasa de largo.**
 - **Reparación de datos:** `0056` respaldo → `0057` recálculo de los 10 cortes → `0059` recálculo de `CONF-A-C042`. Fórmulas validadas contra los cortes sanos (90/92 en totales, 82/82 en `diferencia_efectivo`). **0 ventas huérfanas.**
-- **Descuadres PREEXISTENTES declarados y NO tocados** (otra causa, anteriores al incidente): `CONF-A-C032`, `CONF-C-C002`.
+- ~~**Descuadres PREEXISTENTES declarados y NO tocados** (otra causa, anteriores al incidente): `CONF-A-C032`, `CONF-C-C002`.~~
+  **⚠️ FALSO PARA `CONF-A-C032`. Corregido el 2026-08-09 — ver la entrada del 2026-08-09 (Fase 0) al principio de este archivo.** `CONF-A-C032` es **el mismo bug**, en forma **parcial**, y **sigue sin reparar** ($1,420). `CONF-C-C002` queda **por clasificar** (causa no demostrada).
 - **Evidencia (2026-08-09):** 0 cortes cerrados en cero con ventas reales; el trigger bloquea un cierre en cero (probado en una transacción **revertida**, sin alterar datos); el corte abierto `CONF-A-C043` devuelve sus 3 ventas / $860.
 
 ### B) LA NOTA DEL PASTEL NUNCA SE GUARDABA (visible para CUALQUIER usuario)

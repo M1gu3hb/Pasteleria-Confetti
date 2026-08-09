@@ -36,14 +36,24 @@ Ahora:
 
 Regla: toda consulta que alimente la matemática del dinero va **acotada** (filtrada en PostgreSQL, no en el cliente), **ordenada** y **paginada hasta agotar**, y el `count` del servidor se lee con `typeof count === 'number'` (nunca `Number(count)`: **`Number(null)` es 0**).
 
-El cierre además **falla cerrado**: si no se puede verificar contra el servidor, no se cierra. Y la base lo rechaza por su cuenta (`0058`).
+El cierre además **falla cerrado**: si no se puede verificar contra el servidor, no se cierra. Y la base lo rechaza por su cuenta (`0058`) — **pero sólo cuando el total es exactamente 0**: la truncación **parcial** no la ve nadie. Ver `docs/DATABASE.md` §`cortes_caja` y el P0 abierto en `docs/BUGS_PENDING.md`.
 
 ## Canales de despliegue (hay DOS, y esto sorprende)
 
 1. **Navegador / PWA** → Vercel, rama **`migracion/supabase`** = producción. Service worker `autoUpdate`, pero **la pantalla ya cargada sigue con el JS viejo**: hace falta recargar.
-2. **APK Android (Capacitor)** → el WebView carga la URL fija de `capacitor.config.ts`, que hoy apunta al **preview de la rama `apk/capacitor`**, no a producción.
+2. **APK Android (Capacitor)** → el WebView carga la URL fija de `capacitor.config.ts` (`server.url`), que hoy apunta al **alias de rama de Vercel del preview de `apk/capacitor`**, no a producción.
 
 > **Esto significa que un arreglo desplegado a producción puede no llegar a las tablets.** Es el riesgo abierto más grande del proyecto. Ver `HANDOFF.md` §4.
+
+**Cómo se relacionan las dos ramas (comprobado 2026-08-09):** `apk/capacitor` **no tiene commits propios** — es
+**ancestro estricto** de `migracion/supabase`, y `capacitor.config.ts` existe idéntico en las dos. Consecuencias:
+
+- El alias `…-git-apk-capacitor-…` **sigue automáticamente al último commit de la rama**, así que adelantar la rama
+  actualiza el APK **ya instalado**, sin reinstalar ni re-firmar.
+- Y al revés: mientras `server.url` apunte ahí, **cualquiera que empuje a esa rama cambia lo que ven las tablets de
+  producción**. Es el motivo por el que la Fase 7 repunta `server.url` a producción y cierra este canal paralelo.
+- **Un commit de sólo documentación produce un `dist` byte-idéntico** (comprobado: `3a90e3c` y `04bd33c` sirven el
+  mismo bundle y el mismo `sw.js`), así que publicar docs **no** dispara actualización en las tablets.
 
 ## Sin ErrorBoundary
 

@@ -2,7 +2,7 @@
 
 > **Fuente principal de transferencia.** Si vas a continuar este proyecto en otra sesión, otra cuenta u otra IA, lee ESTE archivo completo, luego `CLAUDE.md`, luego `HANDOFF.md` (lo más reciente), y después `docs/`.
 >
-> **Última actualización:** 2026-08-09 · commit `3a90e3c` · rama `migracion/supabase`
+> **Última actualización:** 2026-08-09 (Fase 0) · commit `04bd33c` + este commit de docs · rama `migracion/supabase`
 
 ---
 
@@ -21,7 +21,7 @@ Resuelve: cobrar, llevar pedidos de pastel personalizado, controlar caja (apertu
 **Qué funciona:**
 - Venta, cobro (efectivo/tarjeta/transferencia/mixto), pedidos de pastel, abonos, cortes y cierre de caja.
 - Aislamiento por sucursal vía RLS. Roles: `caja` (terminal), `administrador`, `dueño`, `pastelero`.
-- Cierre de caja **protegido en tres capas** contra el bug de los ceros (ver §8 y §10).
+- Cierre de caja **protegido en tres capas** contra el bug de los **ceros** — ojo: **sólo contra el caso `total = 0`**; la truncación **parcial** sigue sin cubrir (ver §8 y §10).
 - Rol `pastelero` con permiso acotado para editar la nota y avanzar estados (migración `0060`).
 - APK Android (Capacitor) con impresión ESC/POS nativa — **pero apuntando a la rama equivocada**, ver §11.
 
@@ -31,7 +31,9 @@ Resuelve: cobrar, llevar pedidos de pastel personalizado, controlar caja (apertu
 - Bloques de la auditoría nunca abiertos: políticas `USING true`, vistas `security_invoker=false`, Storage/imágenes, cutover de Auth, limpieza de la fachada Base44.
 
 **Qué está roto / bloqueado:**
-- **El APK de las tablets carga el preview de `apk/capacitor`, 18 commits por detrás de producción.** Por ahí no llega ninguna corrección de frontend. **Es lo más urgente.**
+- **El APK de las tablets carga el preview de `apk/capacitor`, 20 commits por detrás de producción.** Por ahí no llega ninguna corrección de frontend. **Es lo más urgente.** No es un riesgo latente: verificado en navegador el 2026-08-09, por ese canal Xochimilco ve **$0.00 y 0 tickets** con 17 ventas reales y **no puede cerrar caja** (el trigger `0058` rechaza el cierre en cero y el mensaje "actualiza la aplicación" no puede cumplirse desde el APK). Ver `HANDOFF.md` §4.
+- **P0 DINERO ABIERTO — truncación PARCIAL sin detectar ni reparar.** `CONF-A-C032` tiene **$1,420 sin reflejar** y estaba mal clasificado como "descuadre de otra causa". El trigger `0058` **no** lo habría impedido: sólo rechaza `total_general = 0`. Ver `docs/BUGS_PENDING.md`.
+- **La suite `scripts/cierre_caja_verify.mjs` excluye ese folio por nombre**, así que **da verde encima del dinero no reflejado**. Se corrige en la Fase 2.4.
 
 **Lo que se hizo entre 2026-08-01 y 2026-08-09:** ver `HANDOFF.md` §2 y `docs/CHANGELOG.md`.
 
@@ -85,7 +87,7 @@ Una sola base Supabase sirve al POS y a la web pública, separadas por **RLS**. 
 
 **Las tres que tocan dinero y hay que tratar con cuidado:**
 - **`ventas`** — el corte lee SÓLO `estado='pagada'`. Cancelar/devolver excluye por construcción.
-- **`cortes_caja`** — apertura/cierre. Protegida por el índice único `ux_cortes_una_caja_abierta` (0052) y el trigger `guard_cierre_en_cero` (0058).
+- **`cortes_caja`** — apertura/cierre. Protegida por el índice único `ux_cortes_una_caja_abierta` (0052) y el trigger `guard_cierre_en_cero` (0058), **que sólo rechaza `total_general = 0`** — no cubre la truncación parcial.
 - **`pedidos`** — pedidos de pastel. Políticas: `pos_scope_pedidos` (ALL), `pos_pastelero_select_pedidos` (SELECT), `pos_pastelero_update_pedidos` (UPDATE, 0060) + trigger `trg_guard_pastelero_alcance`.
 
 **Ojo con el rol:** en la base se guarda **`dueño` CON TILDE**. El código compara contra `dueno` SIN tilde y normaliza… **en casi todos los sitios**. `ModalPinAdmin.jsx` es el **único** que exige la tilde: si alguien "normaliza" el dato en la base, **el dueño se queda fuera del sistema**.
@@ -110,7 +112,7 @@ Detalle en **`docs/FILE_MAP.md`**. Los que no se rompen:
 
 ## 8. Flujos críticos
 
-**Cobro → corte.** Se cobra → `ventas` con `estado='pagada'` y `corte_caja_id` del corte abierto. El resumen del corte toma las ventas del corte (o, en tránsito, las pagadas tras la apertura y de la misma sucursal — **CANDADO 1**). Al cerrar: se **cuenta en el servidor** y se compara; si no cuadra o no se puede verificar, **no se cierra** (falla cerrada). Y la base rechaza un cierre en cero con ventas (trigger `0058`).
+**Cobro → corte.** Se cobra → `ventas` con `estado='pagada'` y `corte_caja_id` del corte abierto. El resumen del corte toma las ventas del corte (o, en tránsito, las pagadas tras la apertura y de la misma sucursal — **CANDADO 1**). Al cerrar: se **cuenta en el servidor** y se compara; si no cuadra o no se puede verificar, **no se cierra** (falla cerrada). Y la base rechaza un cierre en cero con ventas (trigger `0058`). **Límite conocido:** `0058` sólo mira el caso `total_general = 0`; un total **incompleto pero distinto de cero** (truncación parcial) pasa sin comprobación. Blindarlo es la Fase 2.3.
 
 **Día operativo.** Empieza a la **medianoche de América/Mexico_City** (UTC-6 fijo). **CANDADO 2. No son las 06:00.**
 
@@ -128,8 +130,10 @@ Registro completo en **`docs/DECISIONS.md`**. Las de esta etapa:
 |---|---|---|
 | 2026-08-01 | RLS: envolver los helpers en `(select ...)` en vez de reescribir policies | InitPlan: 1 evaluación por statement en vez de por fila. ~96 % menos scans, sin cambiar quién ve qué |
 | 2026-08-01 | Rate limit **forward-only** (`0054` en vez de editar `0053`) | `0053` causaba bloqueo perpetuo; no se edita una migración ya aplicada |
-| 2026-08-08 | Proteger el cierre en **tres capas** en vez de sólo arreglar la consulta | Las tablets tardan en recargar; la capa de base protege al bundle viejo |
-| 2026-08-08 | **No** tocar los descuadres preexistentes (`CONF-A-C032`, `CONF-C-C002`) | Son de otra causa y anteriores. Se declaran, no se maquillan |
+| 2026-08-08 | Proteger el cierre en **tres capas** en vez de sólo arreglar la consulta | Las tablets tardan en recargar; la capa de base protege al bundle viejo. **Matiz 2026-08-09:** la capa de base sólo cubre `total = 0`, no la truncación parcial |
+| ~~2026-08-08~~ | ~~**No** tocar los descuadres preexistentes (`CONF-A-C032`, `CONF-C-C002`)~~ **REVOCADA 2026-08-09 (D-23)** | La premisa era **falsa**: `CONF-A-C032` es el **mismo** bug de truncación, en forma parcial. Ver `docs/DECISIONS.md` D-23 y D-30 |
+| 2026-08-09 | Usar el criterio **causal** (ventana de 1.000 **por sucursal**) para clasificar cortes, nunca el proxy "N más antiguas del corte" | El proxy coincide en `CONF-A-C032` por casualidad y da **falsos positivos** en cortes pequeños: barrer 111 cortes con él habría "reparado" cortes sanos, o sea metido dinero mal |
+| 2026-08-09 | Adelantar `apk/capacitor` hasta producción (fast-forward) antes que repuntar `server.url` | Es la única de las dos que **no toca producción**, no exige keystore ni reinstalar tablets, y es reversible en un comando. Repuntar `server.url` queda para la Fase 7 |
 | 2026-08-09 | Arreglar "la nota no se guarda" **en el diálogo**, no en los 3 call-sites | Un solo punto; la queryKey cuelga de `pedidos_pastel` y hereda las invalidaciones existentes |
 | 2026-08-09 | Pastelero: permiso por **política + trigger de alcance**, no por columnas | RLS no distingue columnas y el POS usa un único rol de base (`authenticated`) |
 | 2026-08-09 | `0061` cambia el rol de Abel a `dueño` en vez de reactivar `ADMIN_1234` | Es el usuario que el personal usa y cuyo PIN conocen |
@@ -138,8 +142,9 @@ Registro completo en **`docs/DECISIONS.md`**. Las de esta etapa:
 
 Lista viva y priorizada en **`docs/BUGS_PENDING.md`**; resumen ejecutivo en **`HANDOFF.md` §5**. Encabezan:
 
-1. **APK apuntando a la rama equivocada** (impacto: Abel no recibe ninguna corrección). **Urgente.**
-2. **Sin ErrorBoundary** en el árbol de rutas (impacto: cualquier throw = app en blanco). **Alta.**
+1. **APK apuntando a la rama equivocada** (impacto: Abel no recibe ninguna corrección; Xochimilco **no puede cerrar caja** desde el APK). **Urgente.**
+2. **P0 DINERO — truncación PARCIAL**: no la detecta ni el frontend ni el trigger `0058`; `CONF-A-C032` con **$1,420 sin reflejar**, sin reparar. Y la suite lo excluye por nombre, así que da verde. **P0.**
+3. **Sin ErrorBoundary** en el árbol de rutas (impacto: cualquier throw = app en blanco). **Alta.**
 3. **Sesión colgada al recargar** la tablet tras usar dueño/pastelero. **Alta.**
 4. **Comparaciones de rol sin normalizar la tilde** (dueño sin menú radial, sin borrar cortes, rol en blanco). **Media.**
 5. `CorteAutoDownloader` empareja ventas sólo por ventana de tiempo. **Media.**
@@ -155,9 +160,12 @@ Lista viva y priorizada en **`docs/BUGS_PENDING.md`**; resumen ejecutivo en **`H
 
 ## 12. Próximos pasos
 
+**Plan de reparación integral aprobado por Miguel el 2026-08-09** (fases 0→7, deteniéndose y reportando al final de cada una). Detalle en `HANDOFF.md` §10.
+
 **Urgente**
-1. Resolver el **APK** (`HANDOFF.md` §4). Requiere decisión de Miguel: subir `apk/capacitor` a producción, repuntar `server.url`, o ambas.
-2. Confirmar con Abel que ya ve los cambios (recargar la app; si usa APK, hasta el punto 1 no verá nada).
+1. **Fase 1 — Desbloquear el canal del APK**: fast-forward `migracion/supabase` → `apk/capacitor`. **No toca producción** (`apk/capacitor` no tiene commits propios). Reversible con `--force-with-lease` a `9b36aa5`.
+2. **Fase 2 — P0 dinero, truncación PARCIAL**: barrido causal de los 111 cortes cerrados → reparación con respaldo → extender el trigger para rechazar también la truncación parcial → quitar la exclusión de la suite.
+3. Confirmar con Abel que ya ve los cambios (**reiniciar la app**; si usa APK, hasta el punto 1 no verá nada).
 
 **Importante**
 3. Envolver el árbol de rutas en `ErrorBoundary` (ya existe el componente, nadie lo usa).
@@ -191,7 +199,16 @@ En **`docs/PROMPTS.md`**. Incluye el **prompt de arranque para una sesión nueva
 
 ## 15. Última actualización
 
-**2026-08-09** — commit `3a90e3c` en `migracion/supabase`.
+**2026-08-09 (Fase 0)** — corrección de la documentación que declaraba sano algo que no lo estaba. Se corrigió en
+`HANDOFF.md`, este archivo, `CLAUDE.md`, `docs/{BUGS_PENDING,DATABASE,NEXT_STEPS,CHANGELOG,DECISIONS,ARCHITECTURE,
+INCIDENTE_CIERRE_EN_CERO_2026-08-08}.md`:
+`CONF-A-C032` es la **misma** truncación en forma **parcial** (no "otra causa") y sigue **sin reparar** ($1,420);
+`0058` **sólo** cubre `total_general = 0`; la causa raíz es la ventana de 1.000 **acotada a la sucursal**, y el proxy
+"N más antiguas del corte" **da falsos positivos**; `apk/capacitor` **no tiene commits propios** (la dirección que hay
+que hacer no es la que prohíbe `CLAUDE.md`); son **20** commits de retraso; Abel **no** es un dueño global.
+Sin cambios de código de aplicación. Regla nueva en `CLAUDE.md`: **exclusiones por nombre en tests**.
+
+**Histórico — 2026-08-09** — commit `3a90e3c` en `migracion/supabase`.
 
 Resumen: se cerró el P0 del **cierre de caja en cero** (3 capas + recálculo de 11 cortes), el bug de **la nota que no se guardaba**, el permiso del **pastelero** (`0060`), la restauración del **rol de dueño y el logo del ticket** (`0061`), y una **regresión propia** que dejaba la app **en blanco** al entrar como dueño (`Illegal invocation` en `cajaRefresco`). Se corrigieron además `Number(null) === 0` en las guardas anti-ceros, fugas entre sucursales en `useCajaAbierta`, la sesión no restaurada al salir de dueño/pastelero, el pedido fantasma en el diálogo y `COLS_CIERRE` sin `sucursal_id`.
 

@@ -67,7 +67,15 @@ columnas de propina ni de costo, así que esos términos valen 0 en la app.
 
 **Validación previa obligatoria antes de tocar dinero:**
 - **90/92** cortes sanos se reproducen EXACTAMENTE con estas fórmulas (tarjeta y gastos: 92/92).
-- Los 2 restantes (`CONF-C-C002`, `CONF-A-C032`) son descuadres **previos** y ajenos; **no se tocaron**.
+- ~~Los 2 restantes (`CONF-C-C002`, `CONF-A-C032`) son descuadres **previos** y ajenos; **no se tocaron**.~~
+  **⚠️ CORREGIDO EL 2026-08-09 — esta frase era FALSA para `CONF-A-C032`.** No es un descuadre "previo y ajeno": es
+  **el mismo bug de este incidente, en su forma PARCIAL**, y por eso el recálculo de `0057` no lo alcanzó (`0057`
+  sólo buscaba cortes con `total_general = 0`). Comprobado: de sus 31 ventas, las **23** dentro de la ventana de
+  1.000 **de Xochimilco** suman **exactamente $4,995.00** (= el `total_general` guardado) y son **exactamente 23**
+  (= el `numero_ventas` guardado); las 8 restantes suman **exactamente $1,420.00** (= el descuadre).
+  **`CONF-A-C032` sigue SIN reparar: $1,420 no reflejados.** Se repara en la Fase 2.2, con respaldo y firma de Miguel.
+  `CONF-C-C002` ($70, San Gregorio) queda **por clasificar**: su causa **no se ha demostrado** (ver
+  `docs/BUGS_PENDING.md`). No se vuelve a declarar "de otra causa" sin evidencia.
 - **82/82** cortes con conteo confirman `diferencia_efectivo = efectivo_contado − efectivo_esperado`.
 
 No se modificó nada tecleado por el personal (`efectivo_contado`, `dinero_dejado_en_caja`, `notas`),

@@ -7,12 +7,93 @@
 > Todos los de abajo **sobrevivieron** a un pase de refutación: un agente independiente intentó demostrar que eran falsos y no pudo. Los que sí se refutaron están al final, para que nadie los persiga otra vez.
 > Contexto completo en `HANDOFF.md`.
 
+## 🚨 P0 — Truncación PARCIAL del resumen del corte: nadie la detecta, y hay dinero sin reflejar
+> **Abierto el 2026-08-09.** Estaba **cerrado por error** en la documentación: `CONF-A-C032` figuraba como
+> "descuadre preexistente de otra causa" en `HANDOFF.md`, `PROJECT_CONTEXT.md`, `docs/CHANGELOG.md`,
+> `docs/DECISIONS.md` (D-23), `docs/INCIDENTE_CIERRE_EN_CERO_2026-08-08.md` y el comentario de la migración `0057`.
+> **Era falso.**
+
+- **Impacto (dinero real):** un corte puede cerrarse con un total **creíble pero incompleto** y nadie lo impide.
+  Caso confirmado: **`CONF-A-C032` (Xochimilco, cerrado 2026-07-30) — $1,420.00 sin reflejar. NO reparado.**
+- **Causa:** la misma de siempre — `Venta.filter({estado:'pagada'})` sin orden, sin límite y sin filtro por corte, con
+  PostgREST cortando en 1.000 filas — pero en su forma **parcial**: cuando **una parte** de las ventas del corte cae
+  dentro de la ventana y otra fuera. Ocurre justo **el día en que la sucursal cruza las 1.000 ventas pagadas**.
+- **Evidencia (SQL de solo lectura, reproducible):** de las 31 ventas de `CONF-A-C032`, las **23** que caen dentro de la
+  ventana de 1.000 **de Xochimilco** suman **exactamente $4,995.00** — que es **el `total_general` guardado** — y su
+  recuento es **exactamente 23**, que es **el `numero_ventas` guardado**. Las 8 restantes suman **exactamente
+  $1,420.00**, que es el descuadre. Las dos magnitudes coinciden a la vez: no es casualidad.
+
+  | modelo de ventana | ventas | suma | ¿reproduce? |
+  |---|---|---|---|
+  | **GUARDADO** en `cortes_caja` | 23 | $4,995.00 | — |
+  | REAL (todas las del corte) | 31 | $6,415.00 | — |
+  | **acotada a la SUCURSAL (causal)** | 23 | $4,995.00 | **sí, exacto** |
+  | GLOBAL (sin filtro de sucursal) | 0 | $0.00 | no |
+  | proxy "N más antiguas del corte" | 23 | $4,995.00 | coincide **aquí**, pero es proxy |
+
+- **⚠️ Por qué el trigger `0058` NO lo protege:** `guard_cierre_en_cero()` hace
+  `if coalesce(new.total_general,0) <> 0 then return new;` — **cualquier total distinto de cero pasa sin comprobar
+  nada**. `0058` sólo cubre el caso `total = 0`. La documentación lo describía como una red más ancha de lo que es.
+- **⚠️ Por qué el frontend arreglado tampoco basta para los cortes ya cerrados:** `ventasCorte.js` impide que vuelva a
+  ocurrir en cortes nuevos, pero **no repara** los ya guardados.
+- **Archivos/objetos:** `supabase/migrations/0058_guard_cierre_en_cero.sql` (función `guard_cierre_en_cero`),
+  `src/pages/Caja.jsx` (guarda del cierre), `src/lib/ventasCorte.js`.
+- **⚠️ Criterio obligatorio para cualquier barrido de reparación:** usar el criterio **causal** (ventana de 1.000
+  **por sucursal**), **nunca** el proxy "las N más antiguas del corte". El proxy coincide en este caso por casualidad —
+  las ventas del corte son contiguas en el tiempo — y **da falsos positivos en cortes pequeños**. Barrer los 111
+  cortes con el proxy habría "reparado" cortes sanos, es decir, **metido dinero mal**.
+- **Prioridad:** **P0**. **Estado:** abierto. Barrido completo de los 111 cortes cerrados: **pendiente (Fase 2.1)**.
+  Reparación y blindaje: Fases 2.2 y 2.3. **La reparación de dinero la firma Miguel.**
+
+## 🚨 P0 — La suite de verificación oculta el agujero (da verde sobre dinero no reflejado)
+- **Impacto:** `scripts/cierre_caja_verify.mjs` **cuenta como "cuadran"** los folios que excluye, así que la
+  comprobación de integración **pasa en verde encima de $1,420 no reflejados**. Es peor que no tener test: da una
+  garantía que no existe.
+- **Causa:** `scripts/cierre_caja_verify.mjs:124`
+  ```js
+  // Descuadres PREEXISTENTES, anteriores a este incidente y de otra causa.
+  const CONOCIDOS = new Set(['CONF-A-C032', 'CONF-C-C002']);
+  ...
+  else if (CONOCIDOS.has(c.folio)) { cuadran++; preexistentes.push(c.folio); }
+  ```
+  El test **sí imprimía** la exclusión, pero la justificación (*"de otra causa"*) **nunca se verificó** y era falsa.
+- **Archivos:** `scripts/cierre_caja_verify.mjs`.
+- **Arreglo:** quitar la exclusión y **dejar que el test FALLE** hasta que el corte esté reparado (Fase 2.4).
+- **Regla derivada, ya en `CLAUDE.md`:** ninguna prueba puede excluir un caso por nombre sin justificación
+  **verificada y fechada**; y una exclusión sin evidencia verificada **se trata como fallo**.
+- **Prioridad:** **P0**. **Estado:** abierto (Fase 2.4).
+
 ## 🚨 P0 — El APK de las tablets apunta a la rama equivocada
-- **Impacto:** las tablets **no reciben ninguna corrección de frontend**. Quien opere desde el APK **todavía tiene el bug del cierre en cero** en el cliente; lo único que lo protege es el trigger `0058` de la base.
-- **Causa:** `capacitor.config.ts` (rama `apk/capacitor`) tiene `server.url` = preview de esa misma rama, y la rama está **18 commits por detrás** de producción.
-  - `apk/capacitor` = `9b36aa5`; el preview sirve `index-DG-XAF7m.js`, producción sirve `index-DOafkEZU.js`.
-- **Archivos:** `capacitor.config.ts` (rama `apk/capacitor`).
-- **Prioridad:** máxima. **Estado:** abierto, **requiere decisión de Miguel** (subir la rama, repuntar `server.url`, o ambas). `CLAUDE.md` prohíbe hacerlo sin su OK.
+- **Impacto:** las tablets **no reciben ninguna corrección de frontend**. **No es un riesgo latente: está fallando
+  ahora.** Verificado en navegador el 2026-08-09 contra el corte real abierto `CONF-A-C044`: por el canal del APK la
+  pestaña Resumen muestra **`EFECTIVO $0.00` y `TICKETS 0`** cuando lo real son **17 ventas y $5,735**.
+  - **Consecuencia operativa: desde el APK, Xochimilco NO PUEDE CERRAR CAJA.** El resumen da 0 → el trigger `0058`
+    rechaza el cierre → el cajero lee *"Actualiza la aplicación (cierra y vuelve a abrirla)"*, que **en el APK no
+    puede funcionar** porque apunta a un preview congelado.
+  - **Topilejo (587) y San Gregorio (499)** siguen por debajo de 1.000 ventas pagadas: desde el APK cierran bien
+    **por ahora**, y se romperán solas al cruzar el umbral.
+- **Causa:** `capacitor.config.ts` (presente en **ambas** ramas, idéntico) tiene `server.url` = preview de la rama
+  `apk/capacitor`, y esa rama está **20 commits por detrás** de producción (`apk/capacitor` = `9b36aa5`;
+  `migracion/supabase` = `04bd33c`). *No se citan hashes de bundle: caducan y ya provocaron una afirmación falsa.*
+- **Dato que cambia el riesgo:** `apk/capacitor` **no tiene ni un commit propio** — es **ancestro estricto** de
+  producción (`git log origin/migracion/supabase..origin/apk/capacitor` → vacío). Por tanto **`migracion/supabase` →
+  `apk/capacitor` es un fast-forward puro que NO toca producción**. Lo que `CLAUDE.md` prohíbe es la dirección
+  contraria. No confundirlas.
+- **Archivos:** `capacitor.config.ts`.
+- **Prioridad:** máxima. **Estado:** abierto, **requiere OK de Miguel**. Fase 1 = fast-forward; Fase 7 = repuntar
+  `server.url` a producción (necesita keystore de Miguel y visita a sitio).
+
+## 🟠 POR CLASIFICAR — `CONF-C-C002`: descuadre real, causa AÚN NO DEMOSTRADA
+- **Hecho comprobado:** San Gregorio, cerrado 2026-07-06. `total_general` guardado **$370** con **2** ventas; lo real
+  son **3** ventas por **$440**. Descuadre: **$70**.
+- **Hipótesis (NO probada):** no puede ser truncación, porque San Gregorio nunca ha superado las 1.000 ventas pagadas
+  (hoy tiene **499**). El segundo camino conocido al mismo síntoma es
+  `Array.isArray(ventasHoy) ? ventasHoy : []`, que trata igual "no hay ventas" y "no cargó".
+- **⚠️ Por qué está aquí y no clasificado:** la documentación anterior lo declaró "de otra causa" **sin demostrarlo**,
+  igual que a `CONF-A-C032` — y en ese caso la afirmación era falsa. **No repetir el error.** Se clasifica en la
+  Fase 2.1, con evidencia, o no se clasifica.
+- **Prioridad:** media (importe pequeño), pero **bloquea** poder afirmar que el barrido está completo.
+- **Estado:** abierto, pendiente de demostración.
 
 ## 🟠 ALTA — El árbol de rutas no está envuelto en ErrorBoundary
 - **Impacto:** cualquier excepción durante el render deja **toda la app en blanco**, sin mensaje. Es el amplificador que convirtió el `Illegal invocation` en un apagón total en las 3 sucursales.

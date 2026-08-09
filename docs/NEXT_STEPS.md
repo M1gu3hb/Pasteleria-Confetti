@@ -1,26 +1,62 @@
 # NEXT_STEPS.md — Qué sigue (POS Confetti)
 
-> **Actualizado: 2026-08-09** · commit `3a90e3c` en `migracion/supabase` (= producción).
+> **Actualizado: 2026-08-09 (Fase 0)** · commit `04bd33c` + el commit de docs de la Fase 0, en `migracion/supabase` (= producción).
 > Lee antes `HANDOFF.md` y `PROJECT_CONTEXT.md`. El histórico de fases anteriores está al final.
+
+---
+
+## Plan de reparación integral (aprobado por Miguel el 2026-08-09)
+
+Se trabaja **por fases**, deteniéndose y reportando al final de cada una. Rama de trabajo `fix/reparacion-integral`
+en el worktree `C:/Pasteleria Confetti/pos-fix`; sólo pasa a `migracion/supabase` con el OK de Miguel.
+
+| Fase | Qué | Estado |
+|---|---|---|
+| 0 | Documentación veraz | ✅ hecha |
+| **1** | **Desbloquear el canal del APK** (fast-forward) | ⏳ **siguiente** |
+| 2 | P0 dinero — truncación **PARCIAL**: barrido → reparación → blindaje → pruebas | pendiente |
+| 3 | SEG-2 — `pin_hash` legible por cualquier terminal | pendiente (**firma Miguel**) |
+| 4 | Bug #10 — sesión de dueño bajo la UI de "Modo empleado" | pendiente |
+| 5 | ErrorBoundary + funciones perdidas del dueño | pendiente |
+| 6 | Reauditoría integral y paso a producción | pendiente |
+| 7 | APK definitivo (repuntar `server.url`, compilar sin firmar, **firma Miguel**, publicar) | pendiente |
 
 ---
 
 ## 🚨 URGENTE
 
-### 1. Resolver el APK de las tablets — **requiere decisión de Miguel**
-Las tablets del POS usan el **APK**, y su `server.url` apunta al **preview de la rama `apk/capacitor`**, que está **18 commits por detrás** de producción. Por ese canal **no ha llegado ninguna corrección de frontend**: ni el cierre en cero, ni la nota, ni el arreglo del dueño.
+### 1. Fase 1 — Desbloquear el canal del APK
+Las tablets del POS usan el **APK**, y su `server.url` apunta al **preview de la rama `apk/capacitor`**, que está **20 commits por detrás** de producción. Por ese canal **no ha llegado ninguna corrección de frontend**: ni el cierre en cero, ni la nota, ni el arreglo del dueño.
 
-Quien opere desde el APK **todavía tiene el bug del cierre en cero en el cliente**; sólo lo protege el trigger `0058` de la base.
+**No es un riesgo latente: está fallando ahora.** Verificado en navegador el 2026-08-09 contra el corte real abierto
+`CONF-A-C044`: por el canal del APK el Resumen muestra **$0.00 y 0 tickets** con **17 ventas y $5,735** reales, y
+**Xochimilco no puede cerrar caja** (el trigger `0058` rechaza el cierre en cero, y el mensaje "actualiza la
+aplicación" no se puede cumplir desde el APK).
 
-**Opciones (pregúntaselas a Miguel, NO decidas tú):**
-- (a) Poner `apk/capacitor` a la altura de `migracion/supabase`.
-- (b) Repuntar el `server.url` del APK a producción y regenerar/firmar el APK.
-- (c) Ambas.
+**⚠️ Corrección a lo que decía este documento:** `apk/capacitor` **no tiene commits propios** — es ancestro estricto
+de producción. Por eso:
 
-`CLAUDE.md` prohíbe fusionar o repuntar sin su OK explícito.
+- **(a) `migracion/supabase` → `apk/capacitor` (fast-forward)** — **NO toca producción**, no exige keystore ni
+  reinstalar tablets, y el alias de rama de Vercel hace que el APK ya instalado cargue el bundle nuevo. Reversible con
+  `git push --force-with-lease origin 9b36aa5:apk/capacitor`. **Elegida para la Fase 1.**
+- **(b) Repuntar `server.url` a producción + regenerar y firmar el APK** — solución de fondo, pero exige el keystore
+  de Miguel, republicar el instalador y **reinstalar físicamente en las 3 tablets**. **Fase 7.**
+- **(c) Ambas, en ese orden.** Es el plan.
+
+Lo que `CLAUDE.md` prohíbe es la dirección **contraria** (`apk/capacitor` → producción). Aun así, **ninguna de las dos
+se hace sin OK explícito de Miguel**.
 
 ### 2. Confirmar con Abel que ya ve los cambios
-Aunque se despliegue, **la tablet tiene que recargar** (service worker PWA). Ya provocó una recaída real: `CONF-A-C042` se rompió **un día después** del primer despliegue porque la tablet seguía con el bundle viejo.
+Aunque se despliegue, **la tablet tiene que reiniciar la app** (service worker PWA; la pantalla ya cargada sigue con el JS viejo en memoria). Ya provocó una recaída real: `CONF-A-C042` se rompió **un día después** del primer despliegue porque la tablet seguía con el bundle viejo.
+
+**Mientras tanto**, si en Xochimilco necesitan cerrar caja y la tablet va por el APK, el cierre debe hacerse desde el
+**navegador** (`pasteleria-confetti.vercel.app`), que ya tiene el arreglo.
+
+### 3. Fase 2 — P0 dinero: truncación PARCIAL
+`CONF-A-C032` tiene **$1,420 sin reflejar** y estaba mal clasificado como "descuadre de otra causa". El trigger `0058`
+**no** cubre ese caso (sólo `total_general = 0`), y `scripts/cierre_caja_verify.mjs` **excluye el folio por nombre**,
+así que la suite da verde encima del agujero. Barrido de los 111 cortes cerrados: pendiente.
+**Usa el criterio causal (ventana de 1.000 por sucursal), nunca el proxy "N más antiguas del corte".**
 
 ---
 

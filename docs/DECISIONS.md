@@ -16,10 +16,60 @@
 ### D-22 · 2026-08-08 — El cierre de caja se protege en TRES capas, no en una
 - **Razón:** arreglar sólo la consulta deja fuera a las tablets que aún corren el bundle viejo — y eso **pasó de verdad** (`CONF-A-C042` se rompió un día después del despliegue).
 - **Consecuencia:** consulta acotada + guarda falla-cerrada en el cliente + **trigger en la base** (`0058`), independiente del frontend.
+- **⚠️ Matiz añadido el 2026-08-09:** la tercera capa es **más estrecha de lo que esta decisión sugiere**. `0058` sólo
+  rechaza `total_general = 0`; la **truncación parcial** pasa de largo. Con el bundle viejo, las dos primeras capas no
+  existen, así que en ese escenario la única defensa cubre **un solo** modo de fallo. Ampliarla es la Fase 2.3.
 
-### D-23 · 2026-08-08 — No maquillar los descuadres preexistentes
-- **Razón:** `CONF-A-C032` y `CONF-C-C002` son de **otra causa** y anteriores al incidente.
-- **Consecuencia:** se **declaran** en las pruebas y en la documentación en vez de "cuadrarlos". Las pruebas los excluyen **explícitamente y por nombre**, no en silencio.
+### ~~D-23 · 2026-08-08 — No maquillar los descuadres preexistentes~~ → **REVOCADA el 2026-08-09**
+> **Se conserva a propósito, tachada, para que nadie la reabra creyendo que sigue vigente.**
+
+- ~~**Razón:** `CONF-A-C032` y `CONF-C-C002` son de **otra causa** y anteriores al incidente.~~
+- ~~**Consecuencia:** se **declaran** en las pruebas y en la documentación en vez de "cuadrarlos". Las pruebas los excluyen **explícitamente y por nombre**, no en silencio.~~
+
+**POR QUÉ SE REVOCA.** La premisa era **falsa** y nunca se verificó. `CONF-A-C032` **no** es de otra causa: es el
+**mismo** bug de truncación, en su forma **parcial**. Comprobado en la base (solo lectura): de sus 31 ventas, las 23
+que caen dentro de la ventana de 1.000 **de Xochimilco** suman **exactamente $4,995.00** (= el `total_general`
+guardado) y son **exactamente 23** (= el `numero_ventas` guardado); las 8 restantes suman **exactamente $1,420.00**
+(= el descuadre). Las dos magnitudes coinciden a la vez.
+
+**Qué salió mal, además del dato.** La decisión legitimó una **exclusión por nombre** en
+`scripts/cierre_caja_verify.mjs`, y esa exclusión hizo que la suite **diera verde encima de $1,420 no reflejados**
+durante toda la etapa. La intención ("declarar en vez de maquillar") era correcta; el fallo fue **no verificar la
+premisa** y **convertirla en una exención de test**.
+
+**Qué la sustituye:**
+- `CONF-A-C032` se **repara** (Fase 2.2), con respaldo previo y firma de Miguel.
+- `CONF-C-C002` **no se clasifica hasta demostrar su causa** (Fase 2.1). Sigue siendo un descuadre real de $70.
+- La exclusión sale del test (Fase 2.4) y se aplica **D-30**.
+
+### D-30 · 2026-08-09 — Una exclusión por nombre en un test es un fallo, no una exención
+- **Razón:** D-23 demostró el modo de fallo: una exclusión "declarada y explícita" sigue siendo un agujero si la
+  justificación **no se verificó**. El test imprimía la exclusión y aun así ocultó dinero.
+- **Consecuencia (regla en `CLAUDE.md`):** ninguna prueba puede excluir un caso por nombre sin justificación
+  **verificada y fechada**; el test debe **imprimir** la exclusión y su recuento; y **una exclusión sin evidencia
+  verificada se trata como fallo: el test debe fallar, no pasar.**
+
+### D-31 · 2026-08-09 — Clasificar cortes con el criterio CAUSAL, nunca con el proxy
+- **Razón:** la ventana de 1.000 de PostgREST está **acotada a la sucursal** (la RLS ya filtra por `sucursal_id`). Se
+  probaron los tres modelos sobre `CONF-A-C032`: la ventana **por sucursal** reproduce exacto (23 / $4,995), la
+  **global** no reproduce (0 / $0) y el proxy "las N más antiguas del corte" **coincide por casualidad**, porque las
+  ventas de ese corte son contiguas en el tiempo.
+- **Consecuencia:** cualquier barrido de reparación usa la ventana **por sucursal**. El proxy **da falsos positivos en
+  cortes pequeños**: barrer los 111 cortes con él habría "reparado" cortes sanos — es decir, **metido dinero mal**.
+  Si los dos criterios divergen en algún corte, **ese corte no se repara** hasta explicar la divergencia.
+
+### D-32 · 2026-08-09 — Las dos direcciones del merge del APK no son la misma operación
+- **Razón:** `apk/capacitor` **no tiene commits propios** (es ancestro estricto de `migracion/supabase`), y
+  `capacitor.config.ts` existe idéntico en ambas ramas.
+- **Consecuencia:** `apk/capacitor` → producción es lo que `CLAUDE.md` prohíbe; **producción → `apk/capacitor` es un
+  fast-forward puro que no toca producción**. Se elige esta segunda para desbloquear las tablets (Fase 1) y se deja
+  repuntar `server.url` para la Fase 7. Ambas siguen requiriendo OK de Miguel.
+
+### D-33 · 2026-08-09 — En la documentación se citan commits, no hashes de bundle
+- **Razón:** `HANDOFF.md` afirmaba que producción servía `index-DOafkEZU.js`; se comprobó en vivo que el commit citado
+  (`3a90e3c`) servía `index-B5y-Tcrd.js`. El hash caduca en el siguiente build y produce afirmaciones falsas.
+- **Consecuencia:** los hashes se usan **para verificar en el momento** (¿el bundle servido trae el cambio?), nunca
+  como referencia escrita. En los documentos se cita el **commit**.
 
 ### D-24 · 2026-08-09 — "La nota no se guarda": arreglar en el diálogo, no en los 3 call-sites
 - **Razón:** los tres sitios que abren el diálogo le pasaban una instantánea congelada. Arreglar el diálogo cubre los tres y no toca ningún handler de guardado.
@@ -44,6 +94,7 @@
 ### D-29 · 2026-08-09 — El APK no se repunta sin OK de Miguel
 - **Razón:** el `server.url` del APK apunta al preview de `apk/capacitor`. Cambiarlo o fusionar la rama es un despliegue a las tablets de producción.
 - **Consecuencia:** queda documentado como **decisión pendiente de Miguel**, con las tres opciones planteadas, en `HANDOFF.md` §4 y `NEXT_STEPS.md` §1.
+- **Resuelta el 2026-08-09:** Miguel eligió **(c) ambas, en orden** — Fase 1 fast-forward, Fase 7 repuntar. Ver **D-32**.
 
 ---
 

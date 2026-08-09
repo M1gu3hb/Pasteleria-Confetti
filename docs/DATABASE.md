@@ -15,8 +15,8 @@
 | `0054` | Rate limit **forward-only**: separa `precheck` / `fallo` / `exito` | Corrige dos fallos reales de `0053`: **bloqueo perpetuo** (incrementaba antes de validar, así que tras el cooldown el PIN correcto nunca llegaba a validarse) y **bucket manipulable** (`p_dispositivo` venía del cuerpo de la petición) |
 | `0055` | `pin_verificar` server-side, sólo `service_role` | |
 | `0056` | **Respaldo** de `cortes_caja` antes del recálculo | |
-| `0057` | **Recálculo de los 10 cortes en cero** | Fórmulas validadas contra los cortes sanos (90/92 en totales, 82/82 en `diferencia_efectivo`) |
-| `0058` | **Trigger `guard_cierre_en_cero`** (`BEFORE UPDATE` en `cortes_caja`) | **Red de seguridad independiente del frontend.** Rechaza cerrar un corte con total 0 teniendo ventas pagadas. Es lo único que protege a una tablet con bundle viejo |
+| `0057` | **Recálculo de los 10 cortes en cero** | Fórmulas validadas contra los cortes sanos (90/92 en totales, 82/82 en `diferencia_efectivo`). ⚠️ **El comentario de cabecera de este archivo declara `CONF-A-C032` y `CONF-C-C002` "de otra causa": es FALSO para `CONF-A-C032`.** El archivo **no se edita** (migración ya aplicada = registro histórico); la corrección vive aquí y en `docs/BUGS_PENDING.md` |
+| `0058` | **Trigger `guard_cierre_en_cero`** (`BEFORE UPDATE` en `cortes_caja`) | Red de seguridad independiente del frontend. **ALCANCE REAL: rechaza únicamente `total_general = 0` con ventas pagadas.** ⚠️ **NO detecta la truncación PARCIAL** — ver abajo |
 | `0059` | Recálculo de `CONF-A-C042` | Se rompió **un día después** del primer despliegue porque la tablet seguía con el bundle viejo |
 | `0060` | **Pastelero**: política `pos_pastelero_update_pedidos` (FOR UPDATE) + trigger `trg_guard_pastelero_alcance` | Acota **columnas y transiciones**. **NO-OP para el resto de roles** |
 | `0061` | **Datos**: `Abel` vuelve a `rol='dueño'`; `logo_ticket_url` vuelve al logo real | Dos correcciones de datos, no de código. Reversión exacta en la cabecera del archivo |
@@ -27,6 +27,30 @@
 - **`ux_cortes_una_caja_abierta`** (0052): una caja abierta por sucursal, garantizado.
 - **`trg_guard_cierre_en_cero`** (0058): no se puede cerrar un corte con `total_general = 0` si tiene ventas pagadas. Mensaje al usuario:
   > *"CIERRE_EN_CERO: el corte X tiene N ventas pagadas por $Y pero se intentó cerrar con total 0. No se guardó. Actualiza la aplicación (cierra y vuelve a abrirla) e intenta de nuevo."*
+
+  **⚠️ LÍMITE REAL DEL GUARD (corregido 2026-08-09) — léelo antes de confiar en él.** El cuerpo de la función es:
+
+  ```sql
+  if new.estado is distinct from 'cerrado' then return new; end if;
+  if old.estado = 'cerrado' then return new; end if;          -- reescrituras/recálculos
+  if coalesce(new.total_general, 0) <> 0 then return new; end if;   -- <<< AQUÍ
+  ```
+
+  La tercera línea significa que **cualquier total distinto de cero se acepta sin comprobar nada**. Por tanto:
+
+  | caso | ¿lo bloquea `0058`? |
+  |---|---|
+  | cierre con `total_general = 0` y ventas pagadas | **Sí** |
+  | cierre con total **incompleto pero > 0** (truncación **parcial**) | **NO** |
+  | cierre legítimo de una caja sin ventas (`total = 0`, 0 ventas) | no lo bloquea (correcto) |
+  | recálculo/reescritura de un corte ya cerrado | no lo bloquea (correcto, por `old.estado = 'cerrado'`) |
+
+  Caso real que pasó de largo: **`CONF-A-C032`**, cerrado con $4,995 cuando lo real eran $6,415. **$1,420 sin
+  reflejar, aún sin reparar.** Blindar el caso parcial es la **Fase 2.3**.
+
+  **Nota sobre el mensaje al usuario:** *"Actualiza la aplicación (cierra y vuelve a abrirla)"* **no se puede cumplir
+  desde el APK** mientras su `server.url` apunte a un preview congelado. Ahí el guard produce un **bloqueo sin
+  salida**, no una recuperación.
 
 ### `pedidos`
 Cuatro políticas activas:
