@@ -228,7 +228,7 @@ export default function Caja() {
   //   Venta.filter({ estado: 'pagada' })
   // sin límite, sin orden y sin filtro por corte. PostgREST corta en 1,000
   // filas y, al no haber ORDER BY, devolvía las 1,000 MÁS ANTIGUAS. Cuando
-  // Xochimilco superó las 1,000 ventas pagadas (2026-07-30 01:08:55) las ventas
+  // Xochimilco superó las 1,000 ventas pagadas (2026-07-30 01:08) las ventas
   // del día dejaron de llegar: el resumen daba 0 y el cierre GUARDABA 0.
   // Ahora la consulta va acotada al corte y paginada (ver ventasCorte.js), así
   // que no puede truncarse. La lógica de reparto venta↔corte NO cambia.
@@ -236,6 +236,7 @@ export default function Caja() {
     data: ventasHoyRaw,
     isFetched: ventasCorteFetched,
     isPlaceholderData: ventasCortePlaceholder,
+    isError: ventasCorteError,
     refetch: refetchVentasCorte,
   } = useQuery({
     queryKey: ['ventas_pagadas_caja', cajaAbierta?.id ?? null],
@@ -246,8 +247,14 @@ export default function Caja() {
   });
   // OJO: `isSuccess` NO sirve aquí. Con `placeholderData` React Query lo pone en
   // true mientras sirve los datos del corte ANTERIOR (la queryKey lleva el id
-  // del corte). Sólo damos por cargado lo que se haya traído para ESTE corte.
-  const ventasCorteCargadas = ventasCorteFetched && !ventasCortePlaceholder;
+  // del corte, así que al cambiar de corte hay un intervalo con datos ajenos).
+  // Sólo damos por cargado lo que se haya traído para ESTE corte.
+  // `isFetched` es true también cuando el fetch FALLÓ (React Query lo define
+  // como dataUpdateCount>0 || errorUpdateCount>0), y con status 'error' NO se
+  // aplica placeholderData — así que sin `!isError` una consulta agotada tras
+  // sus reintentos se reportaba como "cargada" con la lista vacía.
+  const ventasCorteCargadas =
+    ventasCorteFetched && !ventasCortePlaceholder && !ventasCorteError;
   const ventasHoy = Array.isArray(ventasHoyRaw) ? ventasHoyRaw : [];
 
   const { data: gastosRaw } = useQuery({
@@ -1283,7 +1290,21 @@ export default function Caja() {
       toast.success('Caja abierta. Ya puedes cobrar.');
     } catch (err) {
       console.error('[Caja] handleAbrirCaja:', err);
-      toast.error('No se pudo abrir la caja');
+      // Carrera real entre dos dispositivos: la validación de arriba es
+      // read-then-create (TOCTOU). Desde la migración 0052 existe un índice
+      // único parcial que garantiza UNA caja abierta por sucursal, así que la
+      // perdedora recibe 23505. Se muestra EXACTAMENTE el mismo mensaje que ya
+      // veía el personal en ese caso; no es un mensaje ni un paso nuevo.
+      const esDuplicado =
+        err?.code === '23505' ||
+        /duplicate key value|ux_cortes_una_caja_abierta/i.test(err?.message || '');
+      if (esDuplicado) {
+        toast.error('Ya existe una caja abierta en esta sucursal. Ciérrala antes de abrir otra.');
+        invalidarCajaQueries();
+        setShowAbrirCaja(false);
+      } else {
+        toast.error('No se pudo abrir la caja');
+      }
     } finally {
       setAccionLoading(false);
     }
@@ -1338,22 +1359,31 @@ export default function Caja() {
       // sin comprobar que la lista de ventas se hubiera cargado de verdad. Si
       // venía vacía o truncada, se escribían CEROS sobre un día con ventas
       // reales (pasó en 10 cortes, 79,530 sin reflejar).
-      // FALLA CERRADA: si la verificación contra el servidor no se puede hacer,
-      // NO se cierra. Es preferible pedir un reintento a guardar un corte
-      // irrecuperable.
+      // Ahora se contrasta contra el SERVIDOR antes de escribir: si el corte
+      // tiene ventas pagadas pero el resumen calculó 0, se aborta.
       if (!ventasCorteCargadas) {
         toast.error('Aún no se cargaron las ventas del corte. Espera unos segundos e inténtalo de nuevo.');
         refetchVentasCorte();
         setAccionLoading(false);
         return;
       }
+      // FALLA CERRADA a propósito: si la verificación NO se puede hacer, no se
+      // cierra. Antes esto usaba `.catch(() => null)` y se saltaba la comprobación
+      // justo en el escenario "no se pueden leer las ventas", que es exactamente
+      // el que produjo los ceros. Es preferible pedir un reintento a guardar un
+      // corte irrecuperable.
       let ventasEnServidor = null;
       try {
         ventasEnServidor = await contarVentasDelCorte(cajaAbierta.id);
       } catch (e) {
         console.error('[Caja] no se pudo verificar ventas del corte:', e);
       }
-      if (ventasEnServidor === null || (ventasEnServidor > 0 && Number(resumen.numVentas) === 0)) {
+      // Se compara CANTIDAD contra cantidad, no sólo "cero". Una carga PARCIAL
+      // (el servidor tiene 26 y el cliente sólo 12) también corrompe el corte y
+      // antes pasaba la guarda por no ser exactamente 0. El resumen puede tener
+      // MÁS (incluye las ventas en tránsito sin corte_caja_id, que el conteo no
+      // cuenta), pero nunca MENOS que las ya ligadas al corte.
+      if (ventasEnServidor === null || ventasEnServidor > Number(resumen.numVentas || 0)) {
         console.error('[Caja] cierre abortado. servidor=', ventasEnServidor,
           'resumen.numVentas=', resumen.numVentas);
         toast.error('No se pudieron leer las ventas de este corte. No se cerró la caja para no guardar totales en cero. Revisa la conexión e inténtalo de nuevo.');

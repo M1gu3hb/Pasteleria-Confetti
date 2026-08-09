@@ -123,7 +123,19 @@ function makeEntity(entityName) {
   const run = async (build) => {
     await ensureSession();
     const { data, error } = await build(supabase.from(table));
-    if (error) throw new Error(`[${table}] ${error.message}`);
+    if (error) {
+      // ADITIVO: se conserva el mismo `message` de siempre (los call-sites que
+      // sólo leen err.message no cambian), pero además se propaga el SQLSTATE
+      // de PostgREST para poder distinguir casos concretos. Sin esto, una
+      // violación de índice único (23505) llegaba indistinguible de cualquier
+      // otro fallo. Lo usa handleAbrirCaja para el mensaje "ya existe caja
+      // abierta" cuando dos dispositivos abren a la vez.
+      /** @type {Error & { code?: string, details?: string }} */
+      const e = new Error(`[${table}] ${error.message}`);
+      if (error.code) e.code = error.code;
+      if (error.details) e.details = error.details;
+      throw e;
+    }
     return data;
   };
 

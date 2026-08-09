@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCajaAbierta } from '@/lib/useCajaAbierta';
@@ -54,6 +54,20 @@ function NotaVozEnDetalle({ pedido, puedeEditar = true }) {
   const [texto, setTexto] = useState(original);
   const [guardando, setGuardando] = useState(false);
 
+  // `useState(original)` sólo corre en el primer render. Al abrir OTRO pedido
+  // sin desmontar el diálogo, el textarea seguía mostrando la nota del pedido
+  // anterior. Se resincroniza al cambiar de pedido — y sólo entonces, para no
+  // pisar lo que el usuario está escribiendo cuando la lista se refresca sola
+  // cada 15 s.
+  // Tras guardar NO hace falta tocar nada: la lectura fresca del diálogo hace
+  // que `original` pase a ser el texto guardado, `dirty` se vuelve false y el
+  // botón se apaga solo.
+  const pedidoId = pedido?.id;
+  useEffect(() => {
+    setTexto(pedido?.nota_voz_transcripcion || '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pedidoId]);
+
   if (!pedido?.nota_voz_url && !original) return null;
   const dirty = texto !== original;
 
@@ -99,7 +113,7 @@ function NotaVozEnDetalle({ pedido, puedeEditar = true }) {
 }
 
 // Vista expandida del pedido: ticket completo + acciones de estado.
-export default function PedidoPastelDetalleDialog({ pedido, open, onClose }) {
+export default function PedidoPastelDetalleDialog({ pedido: pedidoProp, open, onClose }) {
   const { config } = useConfig();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -118,6 +132,33 @@ export default function PedidoPastelDetalleDialog({ pedido, open, onClose }) {
   const [confirmarEntrega, setConfirmarEntrega] = useState(false);
   // FASE 2: estado de impresión para dar feedback (spinner) mientras imprime.
   const [imprimiendo, setImprimiendo] = useState(false);
+
+  // ── BUG "los cambios nunca se guardan" ────────────────────────────────
+  // Los TRES sitios que abren este diálogo (PedidosPastel, NuevoPedidoPastel y
+  // Caja) le pasan una INSTANTÁNEA congelada guardada en su propio useState
+  // (p. ej. `const [pedidoVer, setPedidoVer] = useState(null)`). Al editar, la
+  // escritura SÍ llegaba a la base (verificado: el PATCH devuelve la fila), pero
+  // el prop seguía siendo el objeto viejo: la pantalla nunca mostraba el cambio
+  // y el botón "Guardar" no se apagaba, así que parecía que no se guardaba nada.
+  //
+  // Se resuelve aquí, en un solo punto, para que los tres sitios queden bien:
+  // el diálogo lee SIEMPRE la fila fresca y usa el prop sólo como dato inicial
+  // mientras llega.
+  //
+  // La queryKey cuelga de 'pedidos_pastel' A PROPÓSITO: todos los
+  // `invalidateQueries({ queryKey: ['pedidos_pastel'] })` que ya existen en el
+  // código hacen prefix-match y refrescan también este detalle, sin tener que
+  // tocar ni un solo handler de guardado.
+  const { data: pedidoFresco } = useQuery({
+    queryKey: ['pedidos_pastel', 'detalle', pedidoProp?.id ?? null],
+    queryFn: () => base44.entities.PedidoPastel.get(pedidoProp.id),
+    enabled: !!pedidoProp?.id && !!open,
+    placeholderData: pedidoProp,
+    staleTime: 0,
+  });
+  // Si la lectura fresca falla, seguimos mostrando el snapshot: nunca se queda
+  // el diálogo en blanco por un fallo de red.
+  const pedido = pedidoFresco || pedidoProp;
 
   if (!pedido) return null;
   const est = ESTADOS_PEDIDO[pedido.estado] || ESTADOS_PEDIDO.pendiente;

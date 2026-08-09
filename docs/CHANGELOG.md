@@ -1,5 +1,33 @@
 # CHANGELOG
 
+## 2026-08-09 — P0 dinero: el cierre de caja ya no puede guardar CEROS + la nota de pastel ya se guarda [rama `migracion/supabase`]
+> Dos incidentes de producción, ambos cerrados. El recálculo de los cortes rotos y la matemática del dinero requieren la **firma de Miguel** (no se autocertifican).
+
+### A) CIERRE DE CAJA EN CERO (P0, dinero)
+- **Síntoma:** se hacían ventas normales, pero al cerrar caja el corte guardaba `total_general = 0`, `numero_ventas = 0`. 11 cortes afectados.
+- **Causa raíz:** `Caja.jsx` calculaba el resumen sobre `Venta.filter({ estado: 'pagada' })` — **sin límite, sin ORDER BY y sin filtro por corte**. PostgREST corta la respuesta en **1,000 filas** (`db-max-rows`) y, al no haber orden, devolvía las 1,000 **más antiguas**. Cuando Xochimilco superó las 1,000 ventas pagadas (**2026-07-30 01:08:55**, instante exacto del cruce, verificado en vivo con `content-range: 0-999/1290`), las ventas del día dejaron de venir en la respuesta. Segundo camino: `Array.isArray(ventasHoy) ? ventasHoy : []` confundía "no cargó" con "no hubo ventas".
+- **NO fue causado por los cambios de la auditoría:** el primer corte roto es del **2026-07-30**, dos días antes de la primera migración de esta sesión.
+- **Arreglo, en TRES capas independientes:**
+  1. **Consulta acotada** (`src/lib/ventasCorte.js`, nuevo): filtra por corte **en PostgreSQL** (incluye el fallback de ventas en tránsito), ordena y **pagina** hasta agotar. La truncación deja de ser posible por construcción. La lógica de reparto venta↔corte (**CANDADO 1**) no cambia ni una línea: sólo recibe los datos correctos.
+  2. **Guarda en el cliente** (`Caja.jsx`, `handleCerrarCaja`): antes de escribir, **cuenta las ventas en el servidor** y compara contra el resumen. **Falla CERRADA**: si no se puede verificar, o si el servidor tiene más ventas que el resumen (carga parcial), **no se cierra** y se pide reintentar.
+  3. **Red de seguridad en la BASE** (`0058_guard_cierre_en_cero.sql`): trigger `BEFORE UPDATE` que **rechaza** cerrar un corte con total 0 cuando tiene ventas pagadas. Es independiente del frontend — protege incluso a una tablet que siga con el bundle viejo, que es exactamente como se rompió `CONF-A-C042` un día después del primer deploy.
+- **Reparación de datos:** `0056` respaldo → `0057` recálculo de los 10 cortes → `0059` recálculo de `CONF-A-C042`. Fórmulas validadas contra los cortes sanos (90/92 en totales, 82/82 en `diferencia_efectivo`). **0 ventas huérfanas.**
+- **Descuadres PREEXISTENTES declarados y NO tocados** (otra causa, anteriores al incidente): `CONF-A-C032`, `CONF-C-C002`.
+- **Evidencia (2026-08-09):** 0 cortes cerrados en cero con ventas reales; el trigger bloquea un cierre en cero (probado en una transacción **revertida**, sin alterar datos); el corte abierto `CONF-A-C043` devuelve sus 3 ventas / $860.
+
+### B) LA NOTA DEL PASTEL NUNCA SE GUARDABA (visible para CUALQUIER usuario)
+- **Síntoma:** se edita la nota de un pedido personalizado, se da Guardar, y el texto vuelve al anterior; el botón "Guardar" nunca se apaga. Parecía que la escritura no llegaba.
+- **Causa real:** la escritura **SÍ llegaba a la base** (el PATCH devuelve la fila). Los **tres** sitios que abren `PedidoPastelDetalleDialog` (PedidosPastel, NuevoPedidoPastel y Caja) le pasan una **instantánea congelada** guardada en su propio `useState`. Tras guardar, el prop seguía siendo el objeto viejo → la pantalla mostraba la nota anterior y `dirty` seguía en true. Además el `useState(original)` del textarea sólo corre en el primer render: al abrir OTRO pedido sin desmontar el diálogo se veía la nota del pedido anterior.
+- **Desde cuándo:** desde que existe el diálogo con ese patrón — no lo introdujo un cambio reciente; es el patrón "snapshot en useState" de los tres call-sites.
+- **Arreglo (un solo punto, los tres sitios quedan bien):** el diálogo lee **siempre la fila fresca** (`useQuery` con key `['pedidos_pastel','detalle',id]`, que hereda los `invalidateQueries` por prefijo que ya existían) y usa el prop sólo como dato inicial; si la lectura falla se sigue mostrando el snapshot (nunca se queda en blanco). El textarea se resincroniza al **cambiar de pedido**, y sólo entonces, para no pisar lo que el usuario está escribiendo.
+
+### Verificación de este deploy
+- `vite build` **verde**; lint **39 errores = línea base sin cambios**; `typecheck` 1251 vs 1250 de base (el +1 es el mismo error preexistente de `base44.entities` sin tipar, en la línea nueva del diálogo).
+- `scripts/cierre_caja_verify.mjs` **15/15** (guarda anti-ceros incl. carga parcial y falla-cerrada; paginación incl. tope de servidor menor que la página y `count` ausente).
+- `scripts/pedido_nota_verify.mjs` **7/7** (reproduce el bug ANTES del fix y lo ve desaparecer DESPUÉS).
+- **NO se desplegó** el refactor de polling de caja (Fase 1: `cajaEstado.js`, `cajaRefresco.js`, `useCajaAbierta`, `useCorteAtrasado`) — sigue en la rama de trabajo esperando luz verde y prueba en tablet.
+- **Las tablets deben recargar la app** para tomar el bundle nuevo. Mientras no recarguen, quien las protege es el trigger `0058`.
+
 ## 2026-07-12 (bis) — APK: fallback USB no-silencioso + RECOMPILACIÓN del release firmado [rama `apk/capacitor`]
 > Cierra el bloqueo de Codex: el `release/ConfettiPOS.apk` del 9-jul era ANTERIOR a los fixes (su DEX no tenía los métodos nuevos). Se recompiló desde `apk/capacitor@760e73e`.
 - **Hallazgo MEDIO (Codex) — cerrado:** si se eligió una impresora USB y YA NO está, antes se caía en SILENCIO a otra. Ahora **NO es silencioso**: nativo `dispositivoElegido()` devuelve null si la elegida no está (no cae a otra); `conectarUSB` resuelve con `fallback=true` + mensaje; JS `asegurarConexionImpresora` muestra un **toast visible** ("la elegida no está; se usó la conectada — revisa la selección"). Sin elección previa → primera conectada (byte-idéntico). Commit `760e73e`; `vite build` verde; JS desplegado al preview.
