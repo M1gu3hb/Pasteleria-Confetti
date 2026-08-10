@@ -256,6 +256,11 @@ export default function CorteViewerDialog({ corte, open, onClose }) {
       toast.error('No se encontró el contenido para generar el PDF');
       return;
     }
+    // FALLO DE MI PROPIO PARCHE DE HACE UN RATO: aquí se LEÍA `ocupadoRef` pero
+    // nunca se PONÍA, así que la guarda cubría Imprimir↔Descargar e
+    // Imprimir↔Imprimir, pero NO Descargar↔Descargar. Dos toques rápidos en
+    // "Descargar" seguían generando dos PDF del mismo corte.
+    ocupadoRef.current = true;
     setDownloading(true);
     try {
       const fecha = corte?.fecha_cierre ? format(new Date(corte.fecha_cierre), 'yyyyMMdd') : format(new Date(), 'yyyyMMdd');
@@ -268,6 +273,7 @@ export default function CorteViewerDialog({ corte, open, onClose }) {
       console.error('Error generando PDF:', err);
       toast.error('No se pudo generar el PDF');
     } finally {
+      ocupadoRef.current = false;
       setDownloading(false);
     }
   };

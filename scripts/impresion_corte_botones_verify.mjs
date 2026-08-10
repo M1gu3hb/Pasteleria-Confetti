@@ -85,6 +85,10 @@ check('ViewerDialog: la impresión comprueba la guarda',
   /handlePrintCashCut\s*=\s*async[\s\S]{0,400}if\s*\(\s*ocupadoRef\.current\s*\)\s*return;/.test(dlg));
 check('ViewerDialog: la descarga comprueba la MISMA guarda (no se solapan)',
   /handleDownloadCashCutPDF\s*=\s*async[\s\S]{0,200}if\s*\(\s*ocupadoRef\.current\s*\)\s*return;/.test(dlg));
+// La descarga LEÍA la guarda pero no la PONÍA: Descargar↔Descargar quedaba
+// desprotegido. Comprobación explícita para que no vuelva a pasar.
+check('ViewerDialog: la descarga tambien PONE la guarda (no solo la lee)',
+  /handleDownloadCashCutPDF\s*=\s*async[\s\S]{0,900}ocupadoRef\.current\s*=\s*true[\s\S]{0,900}setDownloading\(true\)/.test(dlg));
 check('ViewerDialog: la guarda se libera en finally',
   /finally\s*\{[\s\S]{0,160}ocupadoRef\.current\s*=\s*false/.test(dlg));
 
