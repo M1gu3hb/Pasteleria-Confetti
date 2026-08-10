@@ -1,4 +1,52 @@
-# DATABASE — Supabase staging `ivqcxdpqxwjxfohiswqb`
+# DATABASE — Supabase `ivqcxdpqxwjxfohiswqb`
+
+> ⚠️ **No es staging.** El título de este archivo decía "staging" y es **falso**: es la base **de producción**, en
+> vivo, compartida por el POS y la web pública. Un cambio de esquema se refleja al instante en las 3 sucursales.
+> Corregido el 2026-08-09.
+>
+> **El listado de abajo no es la verdad: es el histórico.** La verdad se consulta:
+> ```sql
+> select version, name from supabase_migrations.schema_migrations order by version desc limit 8;
+> ```
+
+---
+
+## 🚨 La numeración `00NN_` del repo NO coincide con la de la base
+
+**Léelo antes de usar un número de migración para razonar sobre lo que corre.** Descubierto el 2026-08-09.
+
+La base registra las migraciones por **timestamp** (`version`), y el `00NN_` es sólo parte del **nombre**. Nada impide
+repetirlo, y se repitió:
+
+| Nombre en la base | Aplicada | ¿Archivo en el repo? |
+|---|---|---|
+| `0049_crear_venta_directa_atomico` | 2026-07-13 | sí, pero **con el nombre `0049_PREPARADA_…`**, que dice "no aplicada" |
+| **`0059_crear_venta_directa_guards`** | 2026-07-13 | **NO. No existe.** |
+| `0059_recalculo_cortes_en_cero_ronda2` | 2026-08-09 | sí |
+
+**Dos migraciones distintas llamadas `0059`.** El `0059` del repo **no** es el `0059` de la base.
+
+**Y lo importante:** `0059_crear_venta_directa_guards` **reemplazó** la función `crear_venta_directa_tx` —la que crea
+**cada venta directa de mostrador**— el mismo día que se creó. El cuerpo vivo es **~2.100 caracteres más largo** que
+el del archivo `0049` del repo y añade guards que ese archivo ni menciona: `TOTAL_INVALIDO`, `TOTAL_NO_CUADRA`,
+`LINEA_INVALIDA`, `LINEA_NO_CUADRA`, `SIN_DETALLE`, `SIN_CAJA`, `SIN_SUCURSAL`.
+
+> **Consecuencia:** leer `supabase/migrations/0049_PREPARADA_crear_venta_directa_atomico.sql` para saber qué valida el
+> cobro de mostrador da una respuesta **falsa** — y falsa por el lado peligroso, porque **la versión viva es más
+> estricta que la documentada**.
+
+**Cómo se comprueba qué corre de verdad:**
+```sql
+select md5(prosrc), length(prosrc) from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace
+ where n.nspname = 'public' and p.proname = 'crear_venta_directa_tx';
+```
+
+**Pendiente:** reconstruir el archivo desde la base, renumerarlo sin colisión y commitearlo. Es SQL de dinero: **lo
+firma Miguel** (`docs/BUGS_PENDING.md`). La cabecera de `0049` ya lleva la nota fechada.
+
+**Regla derivada:** una migración aplicada se commitea **en el mismo paso** (ya en `CLAUDE.md`), y su número se
+comprueba contra `schema_migrations` antes de asignarlo.
 
 ---
 

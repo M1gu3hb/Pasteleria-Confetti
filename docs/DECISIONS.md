@@ -103,6 +103,48 @@ premisa** y **convertirla en una exención de test**.
 - **Consecuencia:** queda documentado como **decisión pendiente de Miguel**, con las tres opciones planteadas, en `HANDOFF.md` §4 y `NEXT_STEPS.md` §1.
 - **Resuelta el 2026-08-09:** Miguel eligió **(c) ambas, en orden** — Fase 1 fast-forward, Fase 7 repuntar. Ver **D-32**.
 
+### D-34 · 2026-08-09 — El APK 1.2 se APLAZA, y el aplazamiento es CONDICIONAL
+- **Decisión de Miguel:** *"ante dos soluciones, PREFIERE SIEMPRE la que llegue sin APK nuevo."* Un APK nuevo exige
+  keystore, republicar el instalador y visitar 3 tablets; el canal de rama entrega lo mismo en el siguiente push.
+- **Razón por la que es seguro aplazarla:** todo lo que se está arreglando llega por el bundle. Incluso el arreglo del
+  corte de papel, que parecía nativo, se resolvió mandando `ESC J` desde JS porque `enviarBytes` **ya está expuesto**
+  en la 1.1.1 instalada.
+- **Consecuencia, escrita como CONDICIÓN y no como costumbre:** el aplazamiento **sólo es seguro mientras
+  `apk/capacitor` se sincronice en CADA push a producción**. Quien empuje sin sincronizar no está olvidando un paso:
+  está **revocando el aplazamiento sin decírselo a nadie**, y reproduciendo el mecanismo exacto que congeló las
+  tablets en julio. Si algún día no se puede sincronizar, **se reabre la decisión del APK**.
+- Lo único que la 1.2 arreglaría y el canal de rama no puede es **repuntar `server.url`** — o sea, dejar de depender
+  de esta condición. Eso es la Fase 7.
+
+### D-35 · 2026-08-09 — Los documentos de traspaso no llevan estado volátil
+- **Razón:** la documentación llegó a afirmar que había **$1,420 sin reparar** que se habían reflejado horas antes, y
+  a anunciar como "siguiente" una fase hecha y desplegada. **Eso no es desorden: es riesgo de corrupción de datos**,
+  porque una afirmación caducada sobre dinero invita a "reparar" lo ya reparado. Antes ya había mentido con un hash de
+  bundle que nunca existió y con tres cifras distintas de commits de retraso.
+- **Consecuencia:** los documentos de traspaso llevan **causas, mecanismos, decisiones y reglas** (duran) más el
+  comando o la consulta con la que se comprueba el estado de hoy. **Excepción:** los registros históricos fechados
+  (CHANGELOG, cabeceras de migración, actas) sí citan commits, porque describen un momento del pasado. La diferencia
+  está en el tiempo verbal.
+
+### D-36 · 2026-08-09 — Una migración aplicada no se "corrige": se le añade una nota fechada
+- **Caso:** la cabecera de `0049_PREPARADA_crear_venta_directa_atomico.sql` afirma `PREPARADA — NO APLICADA` y
+  `NO mergear hasta la firma`, y las dos cosas son falsas desde el 2026-07-13.
+- **Decisión:** **no se toca ni una línea del SQL ni del texto original.** Se antepone un bloque fechado que dice qué
+  es falso, qué corre de verdad y **con qué consultas comprobarlo**. Igual que se hizo con `0057`.
+- **Razón:** una migración aplicada es un **registro histórico**. Reescribirla borra la evidencia de cómo se llegó
+  aquí, y además el archivo del repo dejaría de coincidir con lo aplicado, que es peor que no tenerlo.
+- **Lo que la nota NO arregla:** que el archivo de `0059_crear_venta_directa_guards` **no exista**. Reconstruirlo es
+  SQL de dinero y **lo firma Miguel** (`docs/BUGS_PENDING.md`).
+
+### D-37 · 2026-08-09 — Una guarda de dinero sólo puede LEER, nunca recalcular
+- **Caso:** el pago "mixto" es el único método sin reparto automático y se guardaba sin comprobar que sumara.
+- **Decisión:** la guarda **lee** los importes ya calculados y se niega a guardar si no cuadran. No reparte, no
+  reajusta, no redondea. Tolerancia y forma **calcadas** de la comprobación de propinas que ya vivía en la misma
+  función, para no introducir un criterio nuevo.
+- **Consecuencia comprobable:** la suite verifica **byte a byte** que las tres líneas del reparto automático
+  (`mEfec = totalACobrar`, etc.) y el `totalACobrar = total + propinaMonto` siguen idénticos. Esas comprobaciones
+  pasan **contra el código viejo y contra el nuevo** a propósito: ése es su trabajo.
+
 ---
 
 ## APK Android (Capacitor) — decisiones (2026-07-09)

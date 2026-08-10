@@ -2,7 +2,12 @@
 
 > **Fuente principal de transferencia.** Si vas a continuar este proyecto en otra sesión, otra cuenta u otra IA, lee ESTE archivo completo, luego `CLAUDE.md`, luego `HANDOFF.md` (lo más reciente), y después `docs/`.
 >
-> **Última actualización:** 2026-08-09 (Fase 0) · commit `04bd33c` + este commit de docs · rama `migracion/supabase`
+> **Última revisión:** 2026-08-09 · rama de trabajo **y de producción**: `migracion/supabase`
+>
+> 🔒 **Este archivo no dice en qué commit está producción.** Lo decía y mentía (citó `04bd33c` cuando producción iba
+> días por delante). Ver la regla de **estado volátil** en `CLAUDE.md`. Para saber el estado real:
+> `git log --oneline -5 origin/migracion/supabase` y
+> `select version, name from supabase_migrations.schema_migrations order by version desc limit 6;`
 
 ---
 
@@ -108,7 +113,7 @@ Detalle en **`docs/FILE_MAP.md`**. Los que no se rompen:
 | `src/lib/cajaEstado.js` | Consultas de caja abierta / último cierre. **Las listas de columnas deben incluir `sucursal_id`** | Alto |
 | `src/components/common/Sidebar.jsx` | Menú por rol + entrada/salida de admin/dueño. Se renderiza en TODAS las pantallas: si revienta, la app entera se apaga | Alto |
 | `src/components/pedidos/PedidoPastelDetalleDialog.jsx` | Detalle del pedido; relee la fila fresca (arreglo de "la nota no se guarda") | Medio |
-| `supabase/migrations/` | 0001→**0061** | **Máximo** |
+| `supabase/migrations/` | consúltalo en `schema_migrations`, **no aquí**. ⚠️ La numeración `00NN_` del repo **no** coincide con la de la base: hay dos `0059` y falta el archivo de `0059_crear_venta_directa_guards`. Ver `docs/DATABASE.md` | **Máximo** |
 
 ## 8. Flujos críticos
 
@@ -142,35 +147,46 @@ Registro completo en **`docs/DECISIONS.md`**. Las de esta etapa:
 
 Lista viva y priorizada en **`docs/BUGS_PENDING.md`**; resumen ejecutivo en **`HANDOFF.md` §5**. Encabezan:
 
-1. **APK apuntando a la rama equivocada** (impacto: Abel no recibe ninguna corrección; Xochimilco **no puede cerrar caja** desde el APK). **Urgente.**
-2. **P0 DINERO — truncación PARCIAL**: no la detecta ni el frontend ni el trigger `0058`; `CONF-A-C032` con **$1,420 sin reflejar**, sin reparar. Y la suite lo excluye por nombre, así que da verde. **P0.**
+1. **`0059_crear_venta_directa_guards` no tiene archivo en el repo**, y es la que define lo que valida **cada venta directa de mostrador**. Además hay **dos migraciones numeradas 0059**. El repo no describe lo que corre. **Requiere firma de Miguel.** **Alta.**
+2. **Sesión colgada al recargar** la tablet tras usar dueño/pastelero: hay que comprobar la **identidad** de la sesión, no su existencia. **Alta.**
 3. **Sin ErrorBoundary** en el árbol de rutas (impacto: cualquier throw = app en blanco). **Alta.**
-3. **Sesión colgada al recargar** la tablet tras usar dueño/pastelero. **Alta.**
-4. **Comparaciones de rol sin normalizar la tilde** (dueño sin menú radial, sin borrar cortes, rol en blanco). **Media.**
-5. `CorteAutoDownloader` empareja ventas sólo por ventana de tiempo. **Media.**
+4. **El barrido de la familia "catch que se traga el mensaje"** — sólo está corregido el del cierre. **Alta.**
+5. **Comparaciones de rol sin normalizar la tilde** (dueño sin menú radial, sin borrar cortes, rol en blanco). **Media.**
+6. `CorteAutoDownloader` empareja ventas sólo por ventana de tiempo. **Media.**
+
+**Ya NO están en esta lista** (estaban, y era falso al momento de leerlo): el APK apuntando a una rama congelada —el
+canal se desbloqueó el 2026-08-09 y **se sincroniza en cada push**— y la truncación PARCIAL, **reparada y blindada**
+el mismo día.
 
 ## 11. Riesgos
 
 - **Es producción con dinero real y personal no técnico.** Un despliegue malo deja 3 sucursales sin cobrar.
 - **Las tablets no se actualizan solas del todo:** hay service worker, pero la pantalla cargada sigue con el JS viejo. Ya provocó una recaída (`CONF-A-C042`).
-- **El APK es un canal de despliegue paralelo** y hoy está desincronizado: es el riesgo activo más grande.
+- **El APK es un canal de despliegue paralelo.** Está sincronizado, y **seguirlo sincronizando en cada push es una
+  condición, no una costumbre**: es lo que sostiene el aplazamiento del APK 1.2. Dejar de hacerlo reproduce
+  exactamente el mecanismo que congeló las tablets en julio (ver `CLAUDE.md`).
+- **El repo no es un registro fiel de la base.** Falta el archivo de `0059_crear_venta_directa_guards` y hay dos
+  migraciones con el mismo número. Para dinero, **consulta la base, no el repo**.
 - **Deuda de calidad:** `lint` 39 errores y `typecheck` 1249 son **línea base histórica**, no cero. Un error nuevo se esconde con facilidad; por eso se comparan **contra la línea base**.
 - **Dobles en las pruebas:** ya se colaron dos bugs graves porque los tests inyectaban dobles que no imitaban la restricción real.
 - La api_key vieja de Base44 (`847df…`) **sigue viva** en la app de Abel. Rotarla es tarea de Miguel.
 
 ## 12. Próximos pasos
 
-**Plan de reparación integral aprobado por Miguel el 2026-08-09** (fases 0→7, deteniéndose y reportando al final de cada una). Detalle en `HANDOFF.md` §10.
+🔒 **Este apartado ya no enumera "la fase siguiente".** Lo hacía, y anunciaba como pendientes fases hechas y
+desplegadas — incluida la reparación de un dinero que ya estaba reparado, que es una invitación a corromper datos.
 
-**Urgente**
-1. **Fase 1 — Desbloquear el canal del APK**: fast-forward `migracion/supabase` → `apk/capacitor`. **No toca producción** (`apk/capacitor` no tiene commits propios). Reversible con `--force-with-lease` a `9b36aa5`.
-2. **Fase 2 — P0 dinero, truncación PARCIAL**: barrido causal de los 111 cortes cerrados → reparación con respaldo → extender el trigger para rechazar también la truncación parcial → quitar la exclusión de la suite.
-3. Confirmar con Abel que ya ve los cambios (**reiniciar la app**; si usa APK, hasta el punto 1 no verá nada).
+**La lista de trabajo pendiente vive en `docs/NEXT_STEPS.md`**, sin marcar cuál toca ahora. Lo hecho, con su fecha,
+en `docs/CHANGELOG.md`.
 
-**Importante**
-3. Envolver el árbol de rutas en `ErrorBoundary` (ya existe el componente, nadie lo usa).
-4. Arreglar la sesión colgada al recargar (`TerminalGate` / `ensureSession`).
-5. Normalizar la tilde en los sitios que dejan al dueño sin funciones — **sin tocar `ModalPinAdmin`, que exige la tilde a propósito**.
+Lo único que hay que recordar aquí:
+
+- **Se PARA en seco y firma Miguel** ante cualquier cambio de **RLS/políticas** y ante cualquier cosa que toque
+  **dinero, folios o cortes**, aunque parezca inofensiva.
+- **Todo push a producción va seguido del fast-forward a `apk/capacitor`.**
+- **Ante dos soluciones, gana la que llega sin APK nuevo.**
+- **A Abel no se le pide que pruebe nuestro trabajo ni que reinicie la app cada vez.** Es el cliente. Que la
+  actualización llegue sola es trabajo nuestro (está en la lista).
 
 **Después**
 6. `CorteAutoDownloader`: filtrar por sucursal y corte.
@@ -202,7 +218,8 @@ En **`docs/PROMPTS.md`**. Incluye el **prompt de arranque para una sesión nueva
 **2026-08-09 (Fase 0)** — corrección de la documentación que declaraba sano algo que no lo estaba. Se corrigió en
 `HANDOFF.md`, este archivo, `CLAUDE.md`, `docs/{BUGS_PENDING,DATABASE,NEXT_STEPS,CHANGELOG,DECISIONS,ARCHITECTURE,
 INCIDENTE_CIERRE_EN_CERO_2026-08-08}.md`:
-`CONF-A-C032` es la **misma** truncación en forma **parcial** (no "otra causa") y sigue **sin reparar** ($1,420);
+`CONF-A-C032` es la **misma** truncación en forma **parcial** (no "otra causa") y **en aquel momento estaba sin
+reparar** ($1,420 — se reparó ese mismo día, ver la entrada de la Fase 2);
 `0058` **sólo** cubre `total_general = 0`; la causa raíz es la ventana de 1.000 **acotada a la sucursal**, y el proxy
 "N más antiguas del corte" **da falsos positivos**; `apk/capacitor` **no tiene commits propios** (la dirección que hay
 que hacer no es la que prohíbe `CLAUDE.md`); **no se cita un número de commits de retraso** (caduca: se dijo 18,

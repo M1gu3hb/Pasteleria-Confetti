@@ -7,6 +7,75 @@
 > Todos los de abajo **sobrevivieron** a un pase de refutación: un agente independiente intentó demostrar que eran falsos y no pudo. Los que sí se refutaron están al final, para que nadie los persiga otra vez.
 > Contexto completo en `HANDOFF.md`.
 
+## 🚨 ALTA — `0059_crear_venta_directa_guards` no tiene archivo en el repo (trazabilidad de DINERO)
+> **Requiere decisión y firma de Miguel.** Encontrado el 2026-08-09 al corregir la cabecera de `0049`.
+
+- **Qué pasa:** `crear_venta_directa_tx` —la función que crea **cada venta directa de mostrador**— se aplicó el
+  2026-07-13 como `0049_crear_venta_directa_atomico` y se **reemplazó el mismo día** por
+  `0059_crear_venta_directa_guards`, que **nunca tuvo archivo en el repo**.
+- **Impacto:** el repo **no describe lo que corre**. El cuerpo vivo es ~2.100 caracteres más largo que el del archivo
+  `0049` y añade guards que ese archivo ni menciona: `TOTAL_INVALIDO`, `TOTAL_NO_CUADRA`, `LINEA_INVALIDA`,
+  `LINEA_NO_CUADRA`, `SIN_DETALLE`, `SIN_CAJA`, `SIN_SUCURSAL`. Es decir, **la versión viva es MÁS estricta que la
+  documentada**: leer el archivo para saber qué valida el cobro de mostrador da una respuesta falsa.
+- **Agravante — colisión de números:** hay **dos migraciones 0059**. La de arriba (2026-07-13, sin archivo) y
+  `0059_recalculo_cortes_en_cero_ronda2` (2026-08-09, con archivo). **El 0059 del repo no es el 0059 de la base.**
+- **Y la cabecera del archivo mentía entera:** decía `PREPARADA — NO APLICADA` y `NO mergear hasta la firma`, cuando
+  está aplicada, mergeada y en uso. El orden de firma que declara (`0042 → 0044 → … → 0049 → frontend`) **no se
+  siguió**: `0049` y su frontend se adelantaron a toda la cadena.
+- **Corregido de momento (2026-08-09):** nota fechada al principio de
+  `supabase/migrations/0049_PREPARADA_crear_venta_directa_atomico.sql`, **sin tocar una línea del SQL**, con las dos
+  consultas para comprobarlo contra la base.
+- **Lo que falta:** reconstruir el archivo desde `supabase_migrations.schema_migrations`, renumerarlo sin colisión y
+  commitearlo. **Es SQL de dinero: lo decide y lo firma Miguel.**
+- **Prioridad:** alta. **Estado:** abierto.
+
+## ✅ RESUELTO (2026-08-09) — DOBLE PEDIDO Y DOBLE COBRO del anticipo (`NuevoPedidoPastel`)
+> El único de todo el barrido que **le cobraba dos veces a un cliente real**.
+
+- **Qué pasaba:** el botón "Guardar pedido" sólo llevaba `disabled={guardando}`, y `guardando` vuelve a `false` en el
+  `finally`. Al terminar el guardado el botón quedaba **otra vez activo** y **seguía diciendo "Guardar pedido"** — y
+  arriba la pantalla apenas cambia, así que creer que no se guardó es lo normal. Un segundo toque no entra por la rama
+  de edición (`editId` es null): cae al `else` y **crea otro pedido**, con **otro folio** y, si había anticipo,
+  **otro abono con otra venta paralela** cobrada en el corte del día.
+- **⚠️ La base NO lo para**, comprobado en producción: `pedidos` y `abonos` sólo tienen su PK, y **`ventas.folio` no es
+  único**. No hay red debajo.
+- **Arreglo:** `guardandoRef` **síncrona** (`setGuardando` no se ve hasta el siguiente render, y en tablet el doble
+  toque es más rápido que un render), el botón se **desarma** con `!editId && !!pedidoGuardado?.id`, y **lo dice**:
+  "Pedido guardado ✓". "Nuevo pedido" (`limpiar`) lo vuelve a armar. **Matemática y flujo de anticipo sin tocar.**
+- **Prueba:** `scripts/dinero_estado_cobro_verify.mjs` (26/26; **16 FAIL contra el código viejo**).
+
+## ✅ RESUELTO (2026-08-09) — El método de pago sobrevivía de un ticket al siguiente, y el mixto no se comprobaba
+- **Qué pasaba (1):** `abrirVenta` limpiaba los importes pero **no `metodoPago`**, que sólo se reponía tras un cobro
+  **correcto**. Abrir un ticket, elegir "Tarjeta", salirse sin cobrar y abrir el siguiente lo dejaba **ya en
+  "Tarjeta"**: un cobro en efectivo registrado como tarjeta. El dinero está en el cajón pero el corte no lo espera, y
+  al cuadrar aparece un descuadre que nadie sabe explicar — **con el cajero cargando la culpa de un fallo de la
+  pantalla**. La **búsqueda por folio** (la puerta de los pedidos web) no limpiaba **nada**.
+- **Qué pasaba (2):** "mixto" es el **único** método sin reparto automático — los otros tres hacen
+  `mEfec = totalACobrar` y compañía, así que no pueden descuadrar. El mixto se guardaba tal cual lo tecleaba el cajero,
+  **sin comprobar que sumara**. Con los campos vacíos, la venta se guardaba **pagada con efectivo=0 + tarjeta=0 +
+  transferencia=0**: el ticket entero desaparecía del reparto por método.
+- **Arreglo:** `limpiarCamposCobro()` único, llamado desde **las dos puertas**, con los mismos valores que el
+  `useState` inicial y que la limpieza post-cobro. Y una guarda que impide guardar un cobro incoherente —
+  **estrictamente una guarda**: lee lo ya calculado y se niega; **no se tocó cómo se calcula nada**, y la suite lo
+  verifica **byte a byte** sobre las tres líneas del reparto automático. Tolerancia y forma calcadas de la
+  comprobación de propinas que ya vivía veinte líneas más abajo.
+- **Prueba:** `scripts/dinero_estado_cobro_verify.mjs` (26/26).
+
+## ✅ RESUELTO (2026-08-09) — Spinner infinito: el POS se quedaba muerto hasta recargar
+> **Lo introdujo el propio arreglo de la sesión colgada.** Queda escrito así a propósito.
+
+- **Qué pasaba:** `Sidebar.handleSalirAdmin` hace `logout()` si al salir de dueño/pastelero falla `loginTerminal`
+  (correcto: preferible a operar con una identidad que no es la que se muestra). Pero `TerminalGate` es el `element` de
+  la ruta de layout —**no se desmonta nunca**— y `autoLoginRef` no se soltaba: era un **latch de por vida**. El efecto
+  se volvía a disparar y moría en `if (autoLoginRef.current) return`. Y como `sesionError` seguía en `null`, tampoco
+  salía el botón "Reintentar", que era el **único** otro sitio que soltaba el ref. Resultado: spinner, y **la caja no
+  cobra hasta recargar la página**.
+- **Arreglo:** soltar el ref cuando desaparece `posUser`. El ref sigue haciendo su trabajo real (no abrir dos sesiones
+  durante el `await`); deja de hacer el que no le tocaba.
+- **Prueba:** `scripts/dinero_estado_cobro_verify.mjs` (26/26).
+- **⚠️ No confundir con** la entrada 🟠 de más abajo, que sigue abierta: aquélla es **identidad** de la sesión, ésta
+  era **disponibilidad**. Arreglar una no arregla la otra.
+
 ## ✅ RESUELTO (2026-08-09, Fase 2) — Truncación PARCIAL: reparada, blindada y con aviso al cajero
 > Se conserva el detalle completo abajo, tachado el estado pero **no el análisis**: es la explicación del mecanismo y
 > del criterio del guard, y hace falta para entender `0064`.
@@ -34,7 +103,9 @@
 > **Era falso.**
 
 - **Impacto (dinero real):** un corte puede cerrarse con un total **creíble pero incompleto** y nadie lo impide.
-  Caso confirmado: **`CONF-A-C032` (Xochimilco, cerrado 2026-07-30) — $1,420.00 sin reflejar. NO reparado.**
+  Caso confirmado: **`CONF-A-C032` (Xochimilco, cerrado 2026-07-30) — $1,420.00 sin reflejar.**
+  *(Estado al escribirlo, 2026-08-09 por la mañana: **sin reparar**. **Se reparó ese mismo día** con `0062`+`0063`.
+  Se deja el texto porque es la explicación del mecanismo; **no lo leas como una tarea pendiente**.)*
 - **Causa:** la misma de siempre — `Venta.filter({estado:'pagada'})` sin orden, sin límite y sin filtro por corte, con
   PostgREST cortando en 1.000 filas — pero en su forma **parcial**: cuando **una parte** de las ventas del corte cae
   dentro de la ventana y otra fuera. Ocurre justo **el día en que la sucursal cruza las 1.000 ventas pagadas**.
@@ -62,8 +133,9 @@
   **por sucursal**), **nunca** el proxy "las N más antiguas del corte". El proxy coincide en este caso por casualidad —
   las ventas del corte son contiguas en el tiempo — y **da falsos positivos en cortes pequeños**. Barrer los 111
   cortes con el proxy habría "reparado" cortes sanos, es decir, **metido dinero mal**.
-- **Prioridad:** **P0**. **Estado:** abierto. Barrido completo de los 111 cortes cerrados: **pendiente (Fase 2.1)**.
-  Reparación y blindaje: Fases 2.2 y 2.3. **La reparación de dinero la firma Miguel.**
+- ~~**Prioridad:** **P0**. **Estado:** abierto.~~ → **CERRADO el 2026-08-09.** Barrido causal de los 108 cortes
+  cerrados: **106 sanos, 0 sobrevalorados, 2 infravalorados**. Reparados con `0062` (respaldo) + `0063` (recálculo):
+  **$1,490.00** reflejados. Blindado con `0064`. Ver el bloque ✅ del principio de este archivo.
 
 ## 🟠 ALTA — Los `catch` que se tragan un mensaje específico y muestran uno genérico
 > **Familia de bugs, no un caso aislado.** Encontrada el 2026-08-09 al implementar el guard de `0064`.
@@ -101,7 +173,8 @@
 - **Arreglo:** quitar la exclusión y **dejar que el test FALLE** hasta que el corte esté reparado (Fase 2.4).
 - **Regla derivada, ya en `CLAUDE.md`:** ninguna prueba puede excluir un caso por nombre sin justificación
   **verificada y fechada**; y una exclusión sin evidencia verificada **se trata como fallo**.
-- **Prioridad:** **P0**. **Estado:** abierto (Fase 2.4).
+- ~~**Prioridad:** **P0**. **Estado:** abierto (Fase 2.4).~~ → **CERRADO el 2026-08-09**: la exclusión se eliminó y el
+  test pasa **por mérito propio** (24/24), sin exenciones, porque los dos cortes están reparados.
 
 ## 🚨 P0 — El APK de las tablets apunta a la rama equivocada
 - **Impacto:** las tablets **no reciben ninguna corrección de frontend**. **No es un riesgo latente: está fallando
@@ -212,17 +285,17 @@ negocio (cómo se cuenta y qué se deja en caja), no un arreglo de código.
   es config de despliegue y hay 3 cajas abiertas.
 - **Prioridad:** media. **Estado:** abierto, sin fase asignada.
 
-## 🟠 POR CLASIFICAR — `CONF-C-C002`: descuadre real, causa AÚN NO DEMOSTRADA
+## ✅ RESUELTO (2026-08-09) — `CONF-C-C002`: causa DEMOSTRADA y reparado
 - **Hecho comprobado:** San Gregorio, cerrado 2026-07-06. `total_general` guardado **$370** con **2** ventas; lo real
-  son **3** ventas por **$440**. Descuadre: **$70**.
-- **Hipótesis (NO probada):** no puede ser truncación, porque San Gregorio nunca ha superado las 1.000 ventas pagadas
-  (hoy tiene **499**). El segundo camino conocido al mismo síntoma es
-  `Array.isArray(ventasHoy) ? ventasHoy : []`, que trata igual "no hay ventas" y "no cargó".
-- **⚠️ Por qué está aquí y no clasificado:** la documentación anterior lo declaró "de otra causa" **sin demostrarlo**,
-  igual que a `CONF-A-C032` — y en ese caso la afirmación era falsa. **No repetir el error.** Se clasifica en la
-  Fase 2.1, con evidencia, o no se clasifica.
-- **Prioridad:** media (importe pequeño), pero **bloquea** poder afirmar que el barrido está completo.
-- **Estado:** abierto, pendiente de demostración.
+  eran **3** ventas por **$440**. Descuadre: **$70**.
+- **Causa demostrada (no era truncación):** San Gregorio nunca ha superado las 1.000 ventas pagadas, así que la ventana
+  de PostgREST no puede explicarlo. Era una **carrera de refresco**: el resumen se calculó antes de que la tercera
+  venta entrara en la lista que leía el cliente.
+- **Reparado** en la misma migración `0063` que `CONF-A-C032`, pero **con su causa declarada por separado** — a
+  petición expresa de Miguel, para no volver a meter dos cosas distintas bajo una sola etiqueta.
+- **Estado: cerrado.** Los **$70** están reflejados.
+- **Lección que se queda:** la documentación anterior lo declaró "de otra causa" **sin demostrarlo**, igual que a
+  `CONF-A-C032` — y allí la afirmación era falsa. Se demostró antes de clasificar. **No clasificar sin evidencia.**
 
 ## 🟠 ALTA — El árbol de rutas no está envuelto en ErrorBoundary
 - **Impacto:** cualquier excepción durante el render deja **toda la app en blanco**, sin mensaje. Es el amplificador que convirtió el `Illegal invocation` en un apagón total en las 3 sucursales.
@@ -233,9 +306,13 @@ negocio (cómo se cuenta y qué se deja en caja), no un arreglo de código.
 
 ## 🟠 ALTA — Sesión colgada al recargar tras usar dueño/pastelero
 - **Impacto:** tras recargar la tablet, la sesión Supabase puede seguir siendo la **global** (dueño/pastelero) mientras la interfaz dice "Modo empleado". La sucursal para RLS no es la que la pantalla muestra. Y desde `0060` esa sesión colgada **puede escribir** en pedidos.
-- **Causa:** `TerminalGate` sólo hace auto-login de la terminal **si no hay `posUser`**; y `ensureSession()` puede degradar en silencio la sesión del dueño a la de una terminal.
-- **Archivos:** `src/components/common/TerminalGate.jsx:88`, `src/api/supabaseClient.js:84`.
-- **Prioridad:** alta. **Estado:** abierto. (En la misma familia se arregló ya `Sidebar.handleSalirAdmin`, que no restauraba la sesión al salir del pastelero.)
+- **Causa:** `TerminalGate` sólo hace auto-login de la terminal **si no hay `posUser`** — comprueba que la sesión *exista*, no *quién* es; y `ensureSession()` puede degradar en silencio la sesión del dueño a la de una terminal.
+- **Lo que hay que hacer:** comprobar la **identidad** de la sesión, no su existencia, y **sólo degradar** — nunca ampliar el alcance.
+- **Archivos:** `src/components/common/TerminalGate.jsx`, `src/api/supabaseClient.js` (`ensureSession`).
+- **Prioridad:** alta. **Estado:** abierto.
+- **Ya arreglado en esta familia, para que nadie lo persiga otra vez:**
+  - `Sidebar.handleSalirAdmin` no restauraba la sesión al salir del pastelero. Corregido.
+  - **El latch de `autoLoginRef` que dejaba el spinner infinito** (ver la entrada ✅ de abajo). **Es otra cosa**: aquélla era disponibilidad, ésta es identidad. Arreglar una no arregla la otra.
 
 ## 🟡 MEDIA — Comparaciones de rol sin normalizar la tilde
 En la base el rol es **`dueño` CON TILDE**; el código compara contra `dueno`. Casi todo normaliza, pero estos no:
@@ -264,8 +341,14 @@ En la base el rol es **`dueño` CON TILDE**; el código compara contra `dueno`. 
 
 ## 🟡 MEDIA — `CorteAutoDownloader` empareja ventas sólo por ventana de tiempo
 - **Impacto:** el PDF del corte no filtra por sucursal ni por `corte_caja_id`. Con una sola sucursal es correcto; con varias abiertas a la vez puede mezclar. Es la misma familia del incidente de los ceros.
-- **Archivos:** `src/components/caja/CorteAutoDownloader.jsx`.
+- **Archivos:** `src/components/cortes/CorteAutoDownloader.jsx`. *(Esta ficha decía `src/components/caja/`. **No existe ahí.** Corregido el 2026-08-09.)*
 - **Prioridad:** media. **Estado:** abierto.
+- **Ya arreglado en el mismo archivo (2026-08-09), y es otra cosa:** el botón «Listo» estaba anidado dentro de
+  `{!done && ( … {done && …} … )}` —o sea `!done && done`: **inalcanzable**— así que `onDone` **nunca** se llamaba y
+  `autoDownloadCorte` se quedaba puesto en `Caja.jsx`. Consecuencia **silenciosa**: al cerrar un **segundo** corte sin
+  salir de `/caja`, el componente no se remontaba, `done` seguía en `true`, el efecto no descargaba y el botón de
+  rescate tampoco aparecía → **el PDF de ese corte y de todos los siguientes no se descargaba, sin aviso y sin forma
+  de pedirlo**. Prueba: `scripts/impresion_corte_botones_verify.mjs` (14/14, 12 FAIL contra el código viejo).
 
 ## 🟡 MEDIA — `filter()` sin límite en el adaptador
 - **Impacto:** mismo patrón que truncó el corte (PostgREST corta en 1.000 filas). Hoy **ninguno alimenta la matemática del dinero**, pero conviene acotarlos antes de que un histórico crezca.

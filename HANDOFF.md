@@ -2,17 +2,27 @@
 
 > **Léeme COMPLETO antes de tocar nada.** Este archivo existe para que otra sesión, otra cuenta u otra IA continúe exactamente desde donde se quedó la anterior, sin preguntarle contexto a Miguel.
 >
-> - **Última actualización:** 2026-08-09 (Fase 0 — corrección de documentación)
-> - **Escribió:** sesión de Claude Code local **con navegador**, revisando lo que dejó la sesión en la nube
-> - **Commit desplegado a producción:** `04bd33c` en la rama `migracion/supabase` (+ este commit de docs)
+> - **Última revisión de este archivo:** 2026-08-09
 > - **Estado del sistema:** **EN PRODUCCIÓN Y OPERANDO HOY.** 3 sucursales, tablets, personal no técnico. No es staging. Cada error se cobra en dinero real.
+>
+> ### 🔒 Este archivo NO dice en qué commit está producción, ni qué fase toca ahora
+> Lo intentó y **mintió tres veces**: citó un bundle que nunca existió, un commit que llevaba días atrasado y un
+> "$1,420 sin reparar" que ya estaban reparados. Ver la **regla de estado volátil** en `CLAUDE.md`.
+> Aquí van **causas, mecanismos, decisiones y procedimientos**, que duran. El estado vivo se consulta:
+> ```bash
+> git log --oneline -5 origin/migracion/supabase           # qué corre en producción
+> git log origin/apk/capacitor..origin/migracion/supabase  # vacío = canal del APK al día
+> ```
+> ```sql
+> select version, name from supabase_migrations.schema_migrations order by version desc limit 6;
+> ```
 >
 > ### ⚠️ Correcciones aplicadas el 2026-08-09 a lo que decía este mismo archivo
 > La versión anterior de este HANDOFF, del `docs/CHANGELOG.md`, de `BUGS_PENDING.md`, de `DECISIONS.md` (D-23) y
 > del comentario de la migración `0057` **declaraba sano algo que no lo estaba**. Corregido en §2.2, §3 y §4:
 >
-> 1. **`CONF-A-C032` NO es "un descuadre preexistente de otra causa".** Es **el mismo bug de truncación, en su
->    forma PARCIAL**, y **sigue sin reparar** ($1,420 no reflejados). Ver §2.2.
+> 1. **`CONF-A-C032` NO era "un descuadre preexistente de otra causa".** Era **el mismo bug de truncación, en su
+>    forma PARCIAL**. **Reparado el 2026-08-09** (migraciones `0062` respaldo + `0063` recálculo). Ver §2.2.
 > 2. **El trigger `0058` sólo rechaza `total_general = 0`.** **No** detecta la truncación **parcial**. Se describía
 >    como una red más ancha de lo que es.
 > 3. **La causa raíz es la ventana de 1.000 filas ACOTADA A LA SUCURSAL**, no una ventana global. Importa: el
@@ -31,7 +41,10 @@
 
 1. Esto **no es un proyecto nuevo ni un staging**. Abel (el dueño de la pastelería) y su personal están vendiendo con esto **ahora mismo**. Un despliegue malo deja a tres sucursales sin cobrar.
 2. La sesión anterior **arregló bugs graves de dinero** y, en el camino, **introdujo y luego arregló una regresión que dejaba la app en blanco**. Los detalles están abajo, sin adornos.
-3. **Lo único importante que quedó pendiente y bloqueado es el APK.** Las tablets del POS usan un **APK Android**, y ese APK NO apunta a producción. Ver §4.
+3. **Las tablets del POS usan un APK Android, no el navegador**, y ese APK carga una URL **baked en el binario** que
+   apunta al **alias de la rama `apk/capacitor`**, no a producción. Hoy no duele porque esa rama **se sincroniza en
+   cada push** — y eso es una **condición**, no una costumbre: si se deja de hacer, las tablets se congelan otra vez.
+   Es exactamente así como se llegó al desastre del cierre en cero. Ver §4.
 4. La sesión anterior **no podía usar un navegador con salida a internet**. Por eso Miguel abrió una sesión nueva. Si tú sí puedes navegar, léete §7: hay un truco montado que sí funcionó y te ahorra horas.
 
 ---
@@ -81,8 +94,11 @@ Orden cronológico. Todo está en `docs/CHANGELOG.md` con el detalle largo.
   3. **`0058`**: trigger `BEFORE UPDATE` que **rechaza** cerrar un corte con total **exactamente 0** teniendo ventas pagadas. Independiente del frontend.
 - **⚠️ ALCANCE REAL DE `0058` (corregido 2026-08-09): sólo cubre `total_general = 0`.** El código de `guard_cierre_en_cero()` hace `if coalesce(new.total_general,0) <> 0 then return new;` — es decir, **cualquier total distinto de cero pasa sin comprobar nada**. La **truncación PARCIAL** (el cliente trae menos ventas de las que hay) **no la detecta**. Describirlo como "la red que protege a una tablet con bundle viejo" es **falso para el caso parcial**. Ver el P0 abierto en `docs/BUGS_PENDING.md`.
 - **Reparación de datos:** `0056` respaldo → `0057` (10 cortes) → `0059` (`CONF-A-C042`).
-- **⚠️ CORREGIDO 2026-08-09 — `CONF-A-C032` NO es "de otra causa" y NO está reparado.** Es la **misma truncación, en forma parcial**: de sus 31 ventas, las 23 que caen dentro de la ventana de 1.000 de Xochimilco suman **exactamente $4,995.00** (= el `total_general` guardado) y su recuento es **exactamente 23** (= el `numero_ventas` guardado); las 8 que quedan fuera suman **exactamente $1,420.00** (= el descuadre). La coincidencia es exacta en las dos magnitudes a la vez: no es casualidad. **Dinero no reflejado: $1,420.00.** Pendiente de reparar (Fase 2).
-- **`CONF-C-C002` (San Gregorio, 2026-07-06, $370 guardado vs $440 real, 2 vs 3 ventas): causa AÚN NO DEMOSTRADA.** La hipótesis es que **no** puede ser truncación, porque San Gregorio nunca ha superado las 1.000 ventas pagadas (hoy tiene 499). **Es una hipótesis, no un hecho**: hay que probarla en la Fase 2.1 antes de clasificarlo. No repetir el error de declararlo "de otra causa" sin evidencia.
+- **⚠️ CORREGIDO 2026-08-09 — `CONF-A-C032` NO era "de otra causa".** Era la **misma truncación, en forma parcial**: de sus 31 ventas, las 23 que caen dentro de la ventana de 1.000 de Xochimilco suman **exactamente $4,995.00** (= el `total_general` guardado) y su recuento es **exactamente 23** (= el `numero_ventas` guardado); las 8 que quedan fuera suman **exactamente $1,420.00** (= el descuadre). La coincidencia es exacta en las dos magnitudes a la vez: no es casualidad. **REPARADO** el 2026-08-09 (`0062` respaldo + `0063` recálculo).
+- **`CONF-C-C002` (San Gregorio, 2026-07-06, $370 guardado vs $440 real, 2 vs 3 ventas): CAUSA DEMOSTRADA y REPARADO.** No era truncación —San Gregorio nunca ha superado las 1.000 ventas pagadas— sino una **carrera de refresco**: el resumen se calculó antes de que la tercera venta entrara en la lista que leía el cliente. Causa distinta, declarada por separado dentro de la misma migración `0063`. Los **$70** están reflejados.
+- **Barrido causal completo de los cortes cerrados (2026-08-09):** hecho sobre los 108 cerrados de ese día. **106 sanos, 0 sobrevalorados, 2 infravalorados** — los dos de arriba. Comparación de las 31 columnas de las 108 filas contra el respaldo `app_private.cortes_backup_20260809_fase2`: **exactamente 2 difieren**. Total reflejado: **$1,490.00**.
+  > ⚠️ **Criterio obligatorio si alguna vez hay que repetirlo:** ventana de 1.000 **por sucursal** (causal). **NUNCA** el proxy "las N ventas más antiguas del corte": coincide en `CONF-A-C032` por casualidad —sus ventas son contiguas en el tiempo— y **da falsos positivos en cortes pequeños**. Barrer con el proxy habría "reparado" cortes sanos, es decir, **metido dinero mal**.
+- **Blindaje `0064` (`trg_guard_cierre_incompleto`):** rechaza cerrar un corte cuyo resumen traiga **menos** ventas o menos dinero que las ligadas en la base. **Asimétrico a propósito**: el cliente puede traer MÁS (ventas en tránsito), nunca MENOS. `numero_ventas`/`total_general` a NULL fallan **cerrado** (se leen como `-1`, no como 0). Simulado antes de aplicar: **0 de 108 sanos bloqueados, 12 de 12 rotos bloqueados**.
 
 ### 2.3 La nota de los pedidos "nunca se guardaba"
 - **La escritura SIEMPRE llegó a la base.** Lo que fallaba era la pantalla: los **tres** sitios que abren `PedidoPastelDetalleDialog` le pasaban una **instantánea congelada** en su propio `useState`, así que tras guardar seguía mostrando la nota vieja y el botón no se apagaba.
@@ -115,24 +131,32 @@ Orden cronológico. Todo está en `docs/CHANGELOG.md` con el detalle largo.
 
 ---
 
-## 3. Estado de producción al cerrar la sesión
+## 3. Cómo comprobar el estado de producción
 
-| Cosa | Estado |
+**Este apartado ya no lleva una tabla de estado.** La llevaba, y caducó: decía `04bd33c` cuando producción iba días por
+delante, y "al menos 1 corte sin reparar" cuando ya estaban reparados. Lo que dura es **cómo se comprueba**.
+
+| Qué quieres saber | Cómo se comprueba |
 |---|---|
-| Rama de producción | `migracion/supabase` @ **`04bd33c`** (+ el commit de docs de la Fase 0) |
-| Vercel | `target: production`, READY, alias `pasteleria-confetti.vercel.app` |
-| Cortes cerrados **en cero** con ventas reales | **0** ✔ |
-| Cortes con truncación **PARCIAL** sin reparar | **⚠️ al menos 1 — `CONF-A-C032`, $1,420 no reflejados.** Barrido completo de los 111 cortes: pendiente (Fase 2.1) |
-| Ventas huérfanas | **0** |
-| Trigger `trg_guard_cierre_en_cero` (0058) | activo |
-| Política + trigger del pastelero (0060) | activos |
-| Abel | `rol = dueño`, `activo = true`, PIN 1234 |
-| Logo del ticket | el real (PNG 1254×1254) |
-| Migraciones aplicadas | hasta **`0061`** |
-| `vite build` | verde |
-| lint | 39 errores = **línea base sin cambios** (no son nuevos) |
-| typecheck | 1249 = **línea base** (el proyecto no compila TS limpio y nunca lo hizo) |
-| Suites | `cierre_caja` 24/24 · `pedido_nota` 11/11 · `fase1_caja_estado` 12+181+11+5 · `fase1_caja_refresco` 19/19 · `pastelero_alcance` 31/31 |
+| Qué corre en producción | `git log --oneline -5 origin/migracion/supabase` |
+| Si el canal del APK está al día | `git log origin/apk/capacitor..origin/migracion/supabase` → **vacío** |
+| Qué migraciones hay aplicadas | `select version, name from supabase_migrations.schema_migrations order by version desc limit 6;` |
+| Cortes cerrados **en cero** con ventas reales | debe dar **0** — el trigger `0058` lo impide desde el 2026-08-09 |
+| Cortes cerrados **incompletos** | debe dar **0** — el trigger `0064` lo impide desde el 2026-08-09 |
+| Cajas abiertas ahora | `select folio, sucursal_nombre from cortes_caja where estado='abierto';` |
+| Si el despliegue llegó | en Vercel: `target: "production"` + `githubCommitSha` = tu commit, y **descarga el bundle servido** y busca dentro un marcador del código nuevo |
+
+**Puerta de calidad (estos números SÍ duran, son líneas base acordadas):**
+
+| Comprobación | Criterio |
+|---|---|
+| `npm run build` | **exit 0** |
+| `npm run lint` | **39** = línea base. Lo que importa es que **no suba** |
+| `npm run typecheck` | **1249** = línea base. Igual: que no suba |
+| Suites `scripts/*.mjs` | todas en verde **menos tres**, que exigen un `.env` que no está en el repo: `fase4_rls_adversarial`, `fase5_corte_fidelity`, `web1_gaps_verify`. Si esos tres fallan con `ENOENT … .env`, **no es tu cambio** |
+
+**Datos que sí son estables:** Abel es `rol = dueño`, `activo = true`, PIN 1234, con `sucursal_id` = Xochimilco.
+El logo del ticket es el real (PNG 1254×1254).
 
 ---
 
@@ -149,11 +173,20 @@ server.url = https://pasteleria-confetti-git-apk-capacitor-mh-astral-systems.ver
 Eso es el **preview de la rama `apk/capacitor`**, y esa rama es **ancestro estricto** de producción: se quedó en
 `9b36aa5` (2026-07-13) y producción ha seguido avanzando.
 
+Ese alias de Vercel **sigue automáticamente al último commit de la rama**. Por eso adelantar la rama actualiza el APK
+ya instalado **sin reinstalar ni re-firmar** — y por eso, mientras `server.url` apunte ahí, **cualquiera que empuje a
+esa rama cambia lo que ven las tablets de producción**.
+
+```bash
+# ¿Está el canal del APK al día? (vacío = sí). No lo cites de memoria: compruébalo.
+git log origin/apk/capacitor..origin/migracion/supabase
+# ¿Tiene la rama del APK trabajo propio? (vacío = es ancestro estricto, el ff es limpio)
+git log origin/migracion/supabase..origin/apk/capacitor
 ```
-apk/capacitor      = 9b36aa5   "chore(apk): version 1.1.1"   (2026-07-13)
-migracion/supabase = va por delante; compruébalo, no lo cites de memoria:
-  git rev-list --count origin/apk/capacitor..origin/migracion/supabase
-```
+
+*Histórico: la rama se quedó congelada en `9b36aa5` (2026-07-13) mientras producción avanzaba, y ése es exactamente el
+mecanismo que dejó a las tablets sin el arreglo del cierre en cero. Se desbloqueó el 2026-08-09 y **desde entonces se
+sincroniza en cada push**.*
 
 > **No escribas el número de commits de retraso en la documentación.** Cambia con cada commit y envejece mal (llegó a
 > decir 18 cuando eran 20, y 20 cuando eran 21). Lo que **sí** es estable y es lo que importa: **`apk/capacitor` es
@@ -235,12 +268,23 @@ lo hace **revertible** — por eso se puede probar el alta de un pedido sin deja
 
 Detalle y prioridad en **`docs/BUGS_PENDING.md`**. Los que salieron de la auditoría de esta sesión y **sobrevivieron a la verificación adversarial**:
 
-**P0 añadidos el 2026-08-09** (no estaban en la lista porque la documentación los daba por cerrados):
+**Los dos P0 de dinero del 2026-08-09 están CERRADOS.** Se dejan escritos porque el mecanismo sigue siendo la
+lección, no porque queden pendientes:
 
-| # | Dónde | Qué pasa | Sev. |
+| # | Dónde | Qué pasaba | Estado |
 |---|---|---|---|
-| **P0-A** | `guard_cierre_en_cero()` (0058) + `Caja.jsx` | **La truncación PARCIAL no la detecta nadie.** `0058` sólo rechaza `total_general = 0`; un total “creíble pero incompleto” se guarda sin comprobar. Caso probado: `CONF-A-C032`, **$1,420 sin reflejar**, aún sin reparar. | **P0** |
-| **P0-B** | `scripts/cierre_caja_verify.mjs:124` | **La suite oculta el agujero.** `const CONOCIDOS = new Set(['CONF-A-C032','CONF-C-C002'])` cuenta esos folios como “cuadran”, así que la comprobación de integración **da verde encima de dinero no reflejado**. La justificación (“de otra causa”) nunca se verificó y era falsa. | **P0** |
+| **P0-A** | `guard_cierre_en_cero()` (0058) + `Caja.jsx` | La truncación **PARCIAL** no la detectaba nadie: `0058` sólo rechaza `total_general = 0`, así que un total "creíble pero incompleto" se guardaba sin comprobar. | ✅ **cerrado**: `0063` reparó los 2 cortes ($1,490) y `0064` añadió el guard asimétrico. Barrido causal de los 108 cerrados: 106 sanos |
+| **P0-B** | `scripts/cierre_caja_verify.mjs` | La suite **ocultaba el agujero**: `const CONOCIDOS = new Set([…])` contaba esos folios como "cuadran", así que daba verde encima de dinero no reflejado. La justificación ("de otra causa") nunca se verificó y era falsa. | ✅ **cerrado**: exclusión eliminada; el test pasa **por mérito propio** (24/24). La regla derivada está en `CLAUDE.md` |
+
+**Arreglados el 2026-08-09 en el mismo bloque** (mismo patrón: estado que sobrevive a la operación):
+
+| Dónde | Qué pasaba |
+|---|---|
+| `NuevoPedidoPastel.jsx` | **DOBLE PEDIDO Y DOBLE COBRO.** El botón se re-armaba tras guardar y un segundo toque creaba otro pedido, otro folio y **otro abono con otra venta paralela**: el anticipo se cobraba dos veces. La base **no lo para** (`pedidos`/`abonos` sólo tienen su PK; `ventas.folio` no es único) |
+| `TerminalGate.jsx` | **Spinner infinito, POS muerto.** `autoLoginRef` era un latch de por vida y el componente nunca se desmonta. Lo disparaba el propio arreglo de la sesión colgada (`Sidebar.handleSalirAdmin` hace `logout()` si falla `loginTerminal`) |
+| `Caja.jsx` | **El método de pago sobrevivía de un ticket al siguiente** (un cobro en efectivo registrado como tarjeta → descuadre inexplicable, con el cajero cargando la culpa); la búsqueda por folio no limpiaba nada; y **"mixto" se guardaba sin comprobar que sumara** (con los campos vacíos: pagada con 0+0+0) |
+| `CorteAutoDownloader.jsx` | El botón «Listo» estaba dentro de `{!done && … {done && …}}` — inalcanzable — así que `onDone` nunca se llamaba y **el PDF del 2.º corte y de todos los siguientes no se descargaba, en silencio** |
+| `printTicket.js` + `avancePapel.js` | **El ticket se cortaba sin avanzar el papel** y se perdía el final (el bug que reportó Abel). `cutPaper()` de DantSu son tres bytes y un flush: no avanza. Arreglado con `ESC J` desde JS — **llega sin APK nuevo** |
 
 Resto de hallazgos abiertos:
 
@@ -255,8 +299,9 @@ Resto de hallazgos abiertos:
 | 7 | `ModalPinAdmin.jsx:18` | ⚠️ **AVISO, no bug:** es el **único** punto que exige la tilde (`ROLES_ADMIN = ['dueño', ...]`). Si alguien "normaliza" el rol en la base a `dueno`, **el dueño se queda fuera del sistema**. | — |
 | 8 | `Sidebar.jsx:292` | `SidebarContent` se declara **dentro** del componente: remonta todo el subárbol en cada render (y borra el PIN a medio teclear). | Media |
 | 9 | `AccesoDuenoGate.jsx:46` | Pasa el objeto **con `_pin`** a `activarAdmin`: el PIN queda vivo en `TerminalContext.adminUser`. | Media |
-| 10 | `TerminalGate.jsx:88` / `supabaseClient.js:84` | Tras recargar la tablet, la sesión Supabase puede seguir siendo la **global del dueño** mientras la UI dice "Modo empleado"; y `ensureSession()` puede degradar en silencio la sesión del dueño a la de una sola sucursal. | Alta |
-| 11 | `CorteAutoDownloader.jsx` | El PDF empareja ventas **sólo por ventana de tiempo**, sin filtrar por sucursal ni `corte_caja_id`. | Media |
+| 10 | `TerminalGate.jsx` / `supabaseClient.js` (`ensureSession`) | Tras recargar la tablet, la sesión Supabase puede seguir siendo la **global del dueño** mientras la UI dice "Modo empleado"; y `ensureSession()` puede degradar en silencio la sesión del dueño a la de una sola sucursal. **Lo que falta es comprobar la IDENTIDAD de la sesión, no su existencia, y sólo degradar.** *(El latch del spinner infinito, que es otra cosa, ya está arreglado.)* | Alta |
+| 11 | `src/components/cortes/CorteAutoDownloader.jsx` | El PDF empareja ventas **sólo por ventana de tiempo**, sin filtrar por sucursal ni `corte_caja_id`. *(Ojo: esta tabla decía `components/caja/`. La ruta correcta es `components/cortes/`.)* | Media |
+| 13 | `supabase/migrations/` | **`0059_crear_venta_directa_guards` no tiene archivo en el repo**, y es la que define lo que valida **cada venta directa de mostrador**. Además hay **dos migraciones numeradas 0059**. Leer el repo para saber qué corre da una respuesta falsa. **Requiere firma de Miguel.** | **Alta** |
 | 12 | `entitiesAdapter.js` | Quedan `filter()` sin límite (mismo patrón que truncó el corte). Hoy ninguno alimenta la matemática del dinero. | Media |
 
 **Bloques de la auditoría original que nunca se abrieron:** políticas `USING true` (6), vistas con `security_invoker=false` (3), Storage/imágenes, cutover de Auth (gated en `MIGUEL_OK_AUTH_TABLETS`), renombrar la fachada Base44, borrar la función `poc-auth-magiclink`.
@@ -374,41 +419,36 @@ noche**: el texto está aquí escrito. Antes de ejecutarlo, comprueba el folio y
   end $$;
   ```
   Después **comprueba** que no quedó rastro (`select count(*) ... where <marca de prueba>`).
-- **Suites** (todas sin credenciales, la parte de integración se omite sola):
+- **Suites.** Córrelas todas de un tirón:
+  ```bash
+  for f in scripts/*.mjs; do node "$f" >/dev/null 2>&1 || echo "FALLA $f"; done
   ```
-  node scripts/cierre_caja_verify.mjs
-  node scripts/pedido_nota_verify.mjs
-  node scripts/fase1_caja_estado_verify.mjs
-  node scripts/fase1_caja_refresco_verify.mjs
-  node scripts/pastelero_alcance_verify.mjs
-  node scripts/pastelero_alcance_evidencia.sql   # este es SQL: pégalo en Supabase
-  ```
+  **Corrección 2026-08-09:** este archivo decía que **todas** funcionan sin credenciales. Es **falso**: tres exigen un
+  `.env` que no está en el repo y mueren con `ENOENT … .env` — `fase4_rls_adversarial`, `fase5_corte_fidelity` y
+  `web1_gaps_verify`. Si sólo fallan esos tres, **no es tu cambio**.
+  `scripts/pastelero_alcance_evidencia.sql` es SQL: pégalo en Supabase, no lo pases por `node`.
+  Varias suites aceptan **`SRC_DIR=<dir>`** para correrlas contra otro árbol — así se comprueba que una prueba de
+  regresión **falla contra el código viejo**, que es obligatorio aquí (`git show <sha>:<ruta> > viejo/<ruta>`).
 - **Antes de desplegar:** `npm run build` (debe salir 0), `npm run lint` (**39 = línea base**), `npm run typecheck` (**1249 = línea base**). Ojo: lint y typecheck **no están en cero** y nunca lo estuvieron; lo que importa es que **no suban**.
 - **Después de desplegar:** confirma en Vercel que el deployment es `target: "production"`, que su `githubCommitSha` es **el commit que acabas de subir**, y **descarga el bundle servido** para comprobar que trae el cambio (busca dentro un marcador del código nuevo, p. ej. `[ventas_corte]`). **En la documentación cita el commit, no el hash del bundle**: el hash caduca al siguiente build y ya provocó una afirmación falsa en este archivo.
   - Dato útil comprobado el 2026-08-09: **un commit de sólo documentación produce un `dist` byte-idéntico** — `3a90e3c` y `04bd33c` sirven el mismo `index-B5y-Tcrd.js` y un `sw.js` idéntico. Publicar documentación **no** dispara actualización en las tablets.
 
 ---
 
-## 10. Próximo paso recomendado
+## 10. Qué sigue
 
-**Plan de reparación integral aprobado por Miguel el 2026-08-09.** Fases, en este orden, deteniéndose y reportando
-al final de cada una:
+**Este apartado ya no dice "la fase X es la siguiente".** Lo decía, y anunciaba como pendientes fases hechas y
+desplegadas. La lista de trabajo pendiente vive en **`docs/NEXT_STEPS.md`**, sin marcar cuál toca ahora; lo hecho, con
+su fecha, en **`docs/CHANGELOG.md`**.
 
-| Fase | Qué | Estado |
-|---|---|---|
-| **0** | Documentación veraz (este commit) | ✅ hecha |
-| **1** | **Desbloquear el canal del APK** — fast-forward `migracion/supabase` → `apk/capacitor` (§4, opción 1) | ⏳ siguiente |
-| **2** | **P0 dinero — truncación PARCIAL**: barrido causal de los 111 cortes → reparación → blindaje del trigger → pruebas | pendiente |
-| **3** | **SEG-2** — `pin_hash` legible por cualquier terminal | pendiente (**lo firma Miguel**) |
-| **4** | **Bug #10** — sesión de dueño viva bajo la UI de "Modo empleado" | pendiente |
-| **5** | ErrorBoundary + funciones perdidas del dueño (tildes, Sidebar, `_pin`) | pendiente |
-| **6** | Reauditoría integral y paso a producción | pendiente |
-| **7** | **APK definitivo** — repuntar `server.url` a producción, compilar sin firmar, **firma Miguel**, publicar | pendiente |
+**Lo único que hace falta recordar aquí:**
 
-**Rama de trabajo:** `fix/reparacion-integral`, en el worktree `C:/Pasteleria Confetti/pos-fix`.
-**No tocar** `fix/auditoria-codex` (blindaje diferido, con cambios sin commitear) ni el worktree `pos-apk`.
-
-**Fuera de este plan** (no abrir sin pedirlo): cutover de Auth, enrolamiento de terminales, las 6 políticas
-`USING true` restantes y las 3 vistas `security_invoker=false` (SEG-2 sí entra, en Fase 3), Storage/imágenes,
-renombrar la fachada Base44, borrar `poc-auth-magiclink`, `CorteAutoDownloader` y los `filter()` sin límite del
-adaptador.
+- **Rama de trabajo Y de producción: `migracion/supabase`**, en el worktree `C:/Pasteleria Confetti/pos-fix`.
+  **No tocar** el worktree `pos` (rama `fix/auditoria-codex`, blindaje diferido **sin commitear**) ni `pos-apk`.
+- **Todo push a producción va seguido del fast-forward a `apk/capacitor`.** Es lo que sostiene el aplazamiento del
+  APK 1.2 (ver §4 y `CLAUDE.md`).
+- **Se PARA en seco y firma Miguel** en dos sitios: cualquier cambio de **RLS/políticas**, y cualquier cosa que toque
+  **dinero, folios o cortes**, aunque parezca inofensiva.
+- **Fuera de plan** (no abrir sin pedirlo): cutover de Auth, enrolamiento de terminales, las 6 políticas `USING true`
+  y las 3 vistas `security_invoker=false` (SEG-2 sí está en la lista), Storage/imágenes, renombrar la fachada Base44,
+  borrar `poc-auth-magiclink`, y los `filter()` sin límite del adaptador.

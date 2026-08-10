@@ -1,135 +1,188 @@
-# NEXT_STEPS.md — Qué sigue (POS Confetti)
+# NEXT_STEPS.md — Trabajo pendiente (POS Confetti)
 
-> **Actualizado: 2026-08-09 (Fase 0)** · commit `04bd33c` + el commit de docs de la Fase 0, en `migracion/supabase` (= producción).
-> Lee antes `HANDOFF.md` y `PROJECT_CONTEXT.md`. El histórico de fases anteriores está al final.
-
----
-
-## Plan de reparación integral (aprobado por Miguel el 2026-08-09)
-
-Se trabaja **por fases**, deteniéndose y reportando al final de cada una. Rama de trabajo `fix/reparacion-integral`
-en el worktree `C:/Pasteleria Confetti/pos-fix`; sólo pasa a `migracion/supabase` con el OK de Miguel.
-
-| Fase | Qué | Estado |
-|---|---|---|
-| 0 | Documentación veraz | ✅ hecha |
-| **1** | **Desbloquear el canal del APK** (fast-forward) | ⏳ **siguiente** |
-| 2 | P0 dinero — truncación **PARCIAL**: barrido → reparación → blindaje → pruebas | pendiente |
-| 3 | SEG-2 — `pin_hash` legible por cualquier terminal | pendiente (**firma Miguel**) |
-| 4 | Bug #10 — sesión de dueño bajo la UI de "Modo empleado" | pendiente |
-| 5 | ErrorBoundary + funciones perdidas del dueño | pendiente |
-| 6 | Reauditoría integral y paso a producción | pendiente |
-| 7 | APK definitivo (repuntar `server.url`, compilar sin firmar, **firma Miguel**, publicar) | pendiente |
+> **Este documento no dice "en qué punto estamos".** Lo dice la base y la rama, y este archivo se quedaría viejo en
+> horas — ya pasó: llegó a anunciar como "⏳ siguiente" una fase hecha y desplegada, y a reclamar la reparación de
+> `$1,420` que se habían reparado el mismo día. Ver la regla de estado volátil en `CLAUDE.md`.
+>
+> **Cómo saber el estado REAL, siempre, antes de tocar nada:**
+> ```bash
+> git log --oneline -5 origin/migracion/supabase          # qué corre en producción
+> git log origin/apk/capacitor..origin/migracion/supabase # vacío = el canal del APK está al día
+> ```
+> ```sql
+> select version, name from supabase_migrations.schema_migrations order by version desc limit 6;
+> select count(*) from cortes_caja where estado='cerrado';
+> ```
+> Lee antes `HANDOFF.md` (mecanismos y causas) y `PROJECT_CONTEXT.md`.
 
 ---
 
-## 🔒 REGLA PERMANENTE — sincronizar `apk/capacitor` con producción
+## Cómo se trabaja
 
-**Todo push a `migracion/supabase` va seguido de un fast-forward a `apk/capacitor`:**
+Por **bloques**, reportando al terminar cada uno. Rama de trabajo y de producción: **`migracion/supabase`**
+(en el worktree `C:/Pasteleria Confetti/pos-fix`). **No tocar** los worktrees `pos` (rama `fix/auditoria-codex`,
+con blindaje diferido sin commitear) ni `pos-apk`.
+
+**Se PARA en seco y se pide firma de Miguel en dos sitios, sin excepción:**
+1. Cualquier cambio de **RLS o políticas**.
+2. Cualquier cosa que toque **dinero, folios o cortes**, aunque parezca inofensiva.
+
+---
+
+## 🔒 Condiciones permanentes (no son tareas: son condiciones)
+
+### 1. `apk/capacitor` se sincroniza en CADA push a producción
 
 ```bash
-git push origin <sha>:refs/heads/apk/capacitor
+git push origin <sha-de-migracion/supabase>:refs/heads/apk/capacitor
 ```
 
-Los **12 APKs** del repositorio (verificado 2026-08-09, leyendo `assets/capacitor.config.json` dentro de cada uno)
-llevan `server.url` **baked** apuntando al **alias de rama**. Repuntar `server.url` en la Fase 7 sólo afecta a los APKs
-**nuevos**: toda tablet con un APK viejo seguirá cargando ese alias **para siempre**. Si se abandona la rama, esas
-tablets se congelan otra vez.
+Los APKs instalados llevan `server.url` **baked** apuntando al **alias de rama**, no a producción (verificado abriendo
+como ZIP los 12 APKs del repositorio y leyendo su `assets/capacitor.config.json`). Si la rama se abandona, las tablets
+se congelan otra vez — el mecanismo exacto que produjo los cortes en cero.
 
-Comprobación: `git log origin/apk/capacitor..origin/migracion/supabase` → **vacío**.
-Se deja de aplicar **sólo** cuando se verifique, tablet por tablet, que ninguna tiene ya un APK viejo.
+**El aplazamiento del APK 1.2 depende de esto.** No es costumbre: es la condición que lo sostiene. Si algún día no se
+puede sincronizar, hay que **reabrir la decisión del APK**, no seguir adelante. Detalle en `CLAUDE.md`.
 
----
+Se deja de aplicar **sólo** cuando se verifique, tablet por tablet, que ninguna conserva un APK viejo.
 
-## 🚨 URGENTE
-
-### 1. Fase 1 — Desbloquear el canal del APK
-Las tablets del POS usan el **APK**, y su `server.url` apunta al **preview de la rama `apk/capacitor`**, que es **ancestro estricto** de producción (se quedó en `9b36aa5`, del 2026-07-13). Por ese canal **no ha llegado ninguna corrección de frontend**: ni el cierre en cero, ni la nota, ni el arreglo del dueño. *(No cites un número de commits: cambia con cada push. Comprueba con `git rev-list --count origin/apk/capacitor..origin/migracion/supabase`.)*
-
-**No es un riesgo latente: está fallando ahora.** Verificado en navegador el 2026-08-09 contra el corte real abierto
-`CONF-A-C044`: por el canal del APK el Resumen muestra **$0.00 y 0 tickets** con **17 ventas y $5,735** reales, y
-**Xochimilco no puede cerrar caja** (el trigger `0058` rechaza el cierre en cero, y el mensaje "actualiza la
-aplicación" no se puede cumplir desde el APK).
-
-**⚠️ Corrección a lo que decía este documento:** `apk/capacitor` **no tiene commits propios** — es ancestro estricto
-de producción. Por eso:
-
-- **(a) `migracion/supabase` → `apk/capacitor` (fast-forward)** — **NO toca producción**, no exige keystore ni
-  reinstalar tablets, y el alias de rama de Vercel hace que el APK ya instalado cargue el bundle nuevo. Reversible con
-  `git push --force-with-lease origin 9b36aa5:apk/capacitor`. **Elegida para la Fase 1.**
-- **(b) Repuntar `server.url` a producción + regenerar y firmar el APK** — solución de fondo, pero exige el keystore
-  de Miguel, republicar el instalador y **reinstalar físicamente en las 3 tablets**. **Fase 7.**
-- **(c) Ambas, en ese orden.** Es el plan.
-
-Lo que `CLAUDE.md` prohíbe es la dirección **contraria** (`apk/capacitor` → producción). Aun así, **ninguna de las dos
-se hace sin OK explícito de Miguel**.
-
-### 2. Confirmar con Abel que ya ve los cambios
-Aunque se despliegue, **la tablet tiene que reiniciar la app** (service worker PWA; la pantalla ya cargada sigue con el JS viejo en memoria). Ya provocó una recaída real: `CONF-A-C042` se rompió **un día después** del primer despliegue porque la tablet seguía con el bundle viejo.
-
-**Mientras tanto**, si en Xochimilco necesitan cerrar caja y la tablet va por el APK, el cierre debe hacerse desde el
-**navegador** (`pasteleria-confetti.vercel.app`), que ya tiene el arreglo.
-
-### 3. Fase 2 — P0 dinero: truncación PARCIAL
-`CONF-A-C032` tiene **$1,420 sin reflejar** y estaba mal clasificado como "descuadre de otra causa". El trigger `0058`
-**no** cubre ese caso (sólo `total_general = 0`), y `scripts/cierre_caja_verify.mjs` **excluye el folio por nombre**,
-así que la suite da verde encima del agujero. Barrido de los 111 cortes cerrados: pendiente.
-**Usa el criterio causal (ventana de 1.000 por sucursal), nunca el proxy "N más antiguas del corte".**
+### 2. Ante dos soluciones, gana la que llega SIN APK nuevo
+Un APK nuevo exige keystore, republicar instalador y visitar 3 tablets. El canal de rama entrega lo mismo en el
+siguiente push. Lo único que el canal **no** puede hacer es repuntar `server.url`: eso es la Fase 7.
 
 ---
 
-## 🟠 IMPORTANTE
+## 🚨 Requiere FIRMA de Miguel (bloqueado hasta entonces)
 
-### 3. Envolver el árbol de rutas en `ErrorBoundary`
-`ErrorBoundary.jsx` ya existe y **no lo usa nadie**. Sin él, cualquier throw en render apaga la app entera en las 3 sucursales — que es exactamente lo que pasó con el `Illegal invocation`. Cambio **aditivo**: envolver `AppLayout` y mostrar un fallback con botón de recarga.
+### El archivo de `0059_crear_venta_directa_guards` no existe en el repo
+**Es lo más grave que queda abierto, y es de trazabilidad de DINERO.**
 
-### 4. Arreglar la sesión colgada al recargar
-Tras recargar tras haber usado dueño/pastelero, la sesión Supabase puede seguir siendo la **global** mientras la UI dice "Modo empleado". Archivos: `TerminalGate.jsx:88`, `supabaseClient.js:84`.
+`crear_venta_directa_tx` —la función que crea **cada venta directa de mostrador**— se aplicó el 2026-07-13 (`0049`) y
+se **reemplazó el mismo día** por `0059_crear_venta_directa_guards`, que **nunca tuvo archivo en el repo**. El cuerpo
+vivo es ~2.100 caracteres más largo que el del archivo `0049` y añade guards que ese archivo ni menciona
+(`TOTAL_INVALIDO`, `TOTAL_NO_CUADRA`, `LINEA_INVALIDA`, `LINEA_NO_CUADRA`, `SIN_DETALLE`, `SIN_CAJA`, `SIN_SUCURSAL`).
 
-### 5. Normalizar la tilde del rol donde deja al dueño sin funciones
-- `MobileAdminRadialMenu.jsx:189` — menú radial de tablet.
-- `Registros.jsx:48` — eliminar cortes.
-- `LimpiarSeccionButton.jsx:40` — limpiar sección.
-- `Configuracion.jsx:470` — rol en blanco en Usuarios POS.
-- `ReiniciarSistemaSection.jsx:31` — sección inalcanzable.
+Y hay **dos migraciones numeradas 0059**: la de arriba (sin archivo) y `0059_recalculo_cortes_en_cero_ronda2` (con
+archivo). El 0059 del repo no es el 0059 de la base.
 
-> ⚠️ **NO toques `ModalPinAdmin.jsx:18`**: es el único punto que exige la tilde a propósito. Normaliza en el código, **nunca en el dato**: si el rol de la base pasa a `dueno`, el dueño se queda fuera del sistema.
+**Consecuencia:** leer el repo para saber qué valida el cobro de mostrador da una respuesta **falsa** — y falsa por el
+lado peligroso, porque la versión viva es **más estricta** que la documentada.
 
-### 6. Desplegar el frontend del pastelero
-La migración `0060` **ya está aplicada** en Supabase, pero el frontend que le devuelve los botones (Guardar nota / Confirmar / Entregado) **sigue en la rama de trabajo**. Requiere la firma de Miguel sobre el cambio de RLS.
+**Qué hay que hacer:** reconstruir el archivo desde la base (`supabase_migrations.schema_migrations`), renumerarlo sin
+colisión y commitearlo. Es SQL de dinero: **lo decide y lo firma Miguel.** La cabecera de
+`0049_PREPARADA_crear_venta_directa_atomico.sql` ya lleva la nota fechada con las dos consultas de comprobación.
 
----
+### SEG-2 — `pin_hash` legible por cualquier terminal
+Migración `0042` **preparada y sin aplicar**, en la rama `fix/auditoria-codex`. Toca RLS → firma de Miguel.
+Va con toda la pila diferida (`0042` → `0044` → `0045` → `0046` → `0047`), que sigue sin firmar.
 
-## 🟡 DESPUÉS
-
-7. `CorteAutoDownloader`: filtrar por sucursal y `corte_caja_id`, no sólo por ventana de tiempo.
-8. `SidebarContent` declarado dentro de `Sidebar`: sacarlo fuera (hoy remonta el subárbol y puede borrar el PIN a medio teclear).
-9. `AccesoDuenoGate`: no pasar `_pin` a `activarAdmin`.
-10. Acotar los `filter()` sin límite del adaptador.
-11. Bloques nunca abiertos de la auditoría: 6 políticas `USING true`, 3 vistas `security_invoker=false`, grants y RPCs; Storage/imágenes; endurecimiento adicional del Edge Function de audio; renombrar la fachada Base44; **borrar `poc-auth-magiclink`** (por dashboard o CLI: el MCP no borra funciones).
+### Frontend del pastelero
+`0060` está aplicada, pero el frontend que le devuelve los botones (Guardar nota / Confirmar / Entregado) sigue en la
+rama de trabajo. Requiere la firma del cambio de RLS.
 
 ---
 
-## 💡 IDEAS FUTURAS
+## 🟠 Pendiente, sin bloqueo
 
-12. **Realtime del estado de caja**: `suscribirRealtimeCaja()` está **escrito y desactivado**; la publicación `supabase_realtime` está vacía y encenderla es DDL en producción + validación en tablet.
-13. Cutover de Auth a `generateLink` + `verifyOtp` (PoC validado 8/8), gated en `MIGUEL_OK_AUTH_TABLETS`.
-14. Enrolamiento de terminales por dispositivo.
-15. Bajar la línea base de `lint` (39) y `typecheck` (1249) — hoy sólo se vigila que no suba.
+### Ticket de pastel — "FAVOR DE REGRESAR LA BASE LIMPIA"
+Línea al final del ticket de pastel **solamente**, en mayúsculas y con emojis, conviviendo con el bloque de domicilio,
+dentro de `.ticket-printable` y con estilos **inline** (el raster no ve las hojas de estilo). Punto de inserción en
+`src/components/tickets/TicketPastelConfetti.jsx`. Validar en el banco con un pedido ANTIGUO y con uno con domicilio.
+
+### UI para `avanceAntesCorteDots`
+Hoy el avance de papel antes del corte es un valor de `src/native/printerConfig.js` (150 puntos = 18,75 mm) que sólo se
+cambia tocando código. Falta exponerlo **en milímetros** en Config → Operación → "Impresora y cajón (app)", con un
+botón **PROBAR** que imprima y corte para medir en sitio. La distancia real cabezal→cuchilla de la Easytime **no se
+puede saber sin la impresora delante**.
+
+### Barrido de la familia "catch que se traga el mensaje"
+`handleCierreDiario` está corregido (`src/lib/cierreBloqueado.js`), pero **no se ha barrido el resto del POS**.
+Cualquier `catch` que sustituya un error accionable por un genérico tiene el mismo defecto: el usuario lee "intenta de
+nuevo", reintenta y vuelve a fallar.
+
+### Sesión: comprobar IDENTIDAD, no existencia
+`TerminalGate` sólo hace auto-login **si no hay `posUser`**, y `ensureSession()` puede degradar en silencio la sesión
+del dueño a la de una terminal. Resultado: tras recargar, la sesión Supabase puede seguir siendo la **global** mientras
+la interfaz dice "Modo empleado" — y desde `0060` esa sesión colgada **puede escribir**. Hay que comprobar **quién** es
+la sesión, no si existe; y **sólo degradar**, nunca ampliar.
+*(El latch que dejaba el spinner infinito ya está arreglado; esto es lo otro.)*
+
+### Mecanismo de actualización unificado
+Hoy una tablet puede quedarse con el JS viejo en memoria indefinidamente, y **pedirle a Abel que reinicie es trabajo
+nuestro, no suyo**. Falta: aviso a nivel web + recarga segura + red de seguridad en horas muertas; y a nivel nativo,
+aviso hacia la página del instalador. De paso, corregir el comentario falso de `vite.config.js:11-12` y buscar sus
+repeticiones.
+
+### ErrorBoundary
+`src/components/common/ErrorBoundary.jsx` existe y **no lo importa nadie**. Sin él, cualquier throw en render apaga la
+app entera en las 3 sucursales — que es exactamente lo que pasó con el `Illegal invocation`. Aditivo: envolver
+`AppLayout` y mostrar un fallback con botón de recarga.
+
+### Tilde del rol, donde deja al dueño sin funciones
+`MobileAdminRadialMenu.jsx` (menú radial), `Registros.jsx` (eliminar cortes), `LimpiarSeccionButton.jsx`,
+`Configuracion.jsx` (rol en blanco en Usuarios POS), `ReiniciarSistemaSection.jsx` (inalcanzable por diseño).
+
+> ⚠️ **NO toques `ModalPinAdmin.jsx` (`ROLES_ADMIN = ['dueño', …]`)**: es el único punto que exige la tilde a
+> propósito. **Normaliza en el código, JAMÁS en el dato.** Si el rol de la base pasa a `dueno`, el dueño se queda
+> fuera del sistema.
+
+### `SidebarContent` declarado dentro de `Sidebar`
+React lo trata como componente nuevo en cada render y remonta el subárbol, incluido el modal del PIN: puede **borrar el
+PIN a medio teclear**. Sacarlo fuera.
+
+### `AccesoDuenoGate` pasa `_pin` a `activarAdmin`
+El PIN en claro queda vivo dentro de `TerminalContext.adminUser`. (`handleAdminSuccess` del Sidebar sí lo limpia; este
+camino no.)
+
+### `CorteAutoDownloader` empareja ventas sólo por ventana de tiempo
+No filtra por sucursal ni por `corte_caja_id`. Con una sola sucursal es correcto; con varias abiertas a la vez puede
+mezclar. Misma familia que el incidente de los ceros.
+*(Archivo: `src/components/cortes/CorteAutoDownloader.jsx` — **no** `components/caja/`, como decía esta documentación.)*
+
+### Rutas profundas → 404 del servidor
+`GET /caja` devuelve **404** en los dos canales; hoy lo tapa el service worker, pero sólo **después** de instalarse. Un
+dispositivo nuevo, un incógnito o un enlace pegado ven el 404. Arreglo probable: reescritura SPA en `vercel.json`.
+Es config de despliegue: no se toca con cajas abiertas.
+
+### `filter()` sin límite en el adaptador
+Mismo patrón que truncó el corte. Hoy ninguno alimenta la matemática del dinero, pero están.
+
+### Bloques de la auditoría original nunca abiertos
+6 políticas `USING true`, 3 vistas `security_invoker=false`, grants y RPCs; Storage/imágenes; endurecimiento del Edge
+Function de audio; renombrar la fachada Base44; **borrar `poc-auth-magiclink`** (por dashboard o CLI: el MCP no borra
+funciones).
+
+---
+
+## 🟡 Fuera de alcance mientras nadie lo pida
+
+- **Fase 7 — APK definitivo**: repuntar `server.url` a producción, compilar sin firmar, **firma Miguel**, publicar,
+  reinstalar en las 3 tablets. Es lo único que acaba con la dependencia del canal de rama.
+- **Cuadre del efectivo físico**: ruidoso en todo el histórico. `diferencia_efectivo` **no debe leerse como faltante o
+  sobrante de un cajero** sin `dinero_dejado_en_caja` y `efectivo_inicial_contado`. La fórmula es CANDADO y está
+  firmada: no se "mejora". Si algún día se quiere un cuadre fiable es una decisión de negocio, no de código.
+- **Realtime del estado de caja**: `suscribirRealtimeCaja()` está escrito y desactivado; encenderlo es DDL en
+  producción + validación en tablet.
+- Cutover de Auth a `generateLink` + `verifyOtp` (PoC 8/8), gated en `MIGUEL_OK_AUTH_TABLETS`.
+- Enrolamiento de terminales por dispositivo.
+- Bajar la línea base de `lint` (39) y `typecheck` (1249) — hoy sólo se vigila que **no suba**.
 
 ---
 
 ## Gates humanos pendientes (Miguel)
 
+- **Firma** de la matemática del dinero y del aislamiento RLS (incluida la `0060` del pastelero y la pila
+  `0042`/`0044`/`0045`/`0046`/`0047`).
+- **Decisión** sobre el archivo perdido de `0059_crear_venta_directa_guards`.
 - **`MIGUEL_OK_AUTH_TABLETS`** — cutover de Auth en tablets.
 - **`MIGUEL_OK_CIERRE_CONFETTI`** — cierre definitivo del proyecto.
-- **Firma** de la matemática del dinero y del aislamiento RLS (incluida la `0060` del pastelero).
-- **Decisión sobre el APK** (punto 1).
 - **Rotar la api_key de Base44** `847df…`, que sigue viva en la app de Abel.
 - Decidir qué hacer con `ADMIN_1234`, que quedó como un segundo `dueño` **desactivado**.
 
 ---
 
-## Histórico (fases ya cerradas)
+## Histórico
 
-Fases 0–5 de la migración Base44 → Supabase: **completas y firmadas**. WEB-0 a WEB-3: hechas. Bot de paridad de 60 días: 60/60 días limpios. Detalle en `docs/CHANGELOG.md` y en los reportes de `docs/`.
+Fases 0–5 de la migración Base44 → Supabase: **completas y firmadas**. WEB-0 a WEB-3: hechas. Bot de paridad de 60
+días: 60/60 limpios. El detalle fechado de todo lo hecho está en `docs/CHANGELOG.md`, que **sí** cita commits porque
+es un registro histórico.

@@ -1,5 +1,84 @@
 # CHANGELOG
 
+## 2026-08-09 — Reconciliación de la documentación (la doc reclamaba dinero ya reparado)
+
+**No es higiene: era riesgo de corrupción de datos.** La documentación afirmaba en cinco sitios que había
+**$1,420 sin reparar** en `CONF-A-C032` cuando se habían reflejado horas antes, y anunciaba como "⏳ siguiente" la
+Fase 1, hecha y desplegada. Una afirmación caducada sobre dinero **invita a "reparar" lo que ya está reparado**.
+
+**Regla nueva en `CLAUDE.md` — los documentos de traspaso NO llevan estado volátil.** Nada de hashes de commit ni de
+bundle, "la fase X es la siguiente", ni contadores de commits de retraso: caducan en horas y luego **mienten**. Llevan
+conocimiento duradero (causas, mecanismos, decisiones, reglas) y dicen **dónde** se consulta el estado vivo: la base y
+la rama. La regla trae la tabla de los seis casos reales que la originaron, y la excepción: los **registros históricos
+fechados** (este CHANGELOG, cabeceras de migración, actas de incidente) **sí** citan commits, porque describen un
+momento del pasado. La diferencia es el tiempo verbal.
+
+**Corregido, con el estado sustituido por cómo se consulta:** `HANDOFF.md` (§3 pasa de tabla de estado a tabla de
+comprobaciones; §5 con los dos P0 de dinero cerrados; §10 deja de anunciar fases), `docs/NEXT_STEPS.md` (reescrito:
+lista de trabajo **sin** "cuál toca ahora"), `PROJECT_CONTEXT.md`, `docs/BUGS_PENDING.md` (bloques que decían
+"abierto" dentro de secciones ya resueltas), `docs/DATABASE.md`, `docs/FILE_MAP.md`, `CLAUDE.md`.
+
+**Mentiras concretas cazadas y corregidas, además de las de estado:**
+- `docs/DATABASE.md` se titulaba **"Supabase staging"**. Es **producción en vivo**, compartida con la web pública.
+- `CLAUDE.md` y `HANDOFF.md` afirmaban que **todas** las suites corren sin credenciales. **Tres** exigen un `.env` que
+  no está en el repo: `fase4_rls_adversarial`, `fase5_corte_fidelity`, `web1_gaps_verify`.
+- `CorteAutoDownloader.jsx` figuraba en `src/components/caja/`. **No existe ahí**: vive en `src/components/cortes/`.
+- `CONF-C-C002` seguía clasificado como *"causa AÚN NO DEMOSTRADA"*. Se demostró (carrera de refresco) y se reparó.
+
+**Condición escrita como condición, no como costumbre:** el aplazamiento del APK 1.2 **sólo es seguro mientras
+`apk/capacitor` se sincronice en cada push**. Quien empuje sin sincronizar no olvida un paso: **revoca el aplazamiento
+sin decírselo a nadie**, y reproduce el mecanismo exacto que congeló las tablets en julio.
+
+---
+
+## 2026-08-09 — DINERO: estado que sobrevive de un cobro al siguiente (4 defectos)
+
+Commit `eec5973`. Desplegado a producción y **sincronizado al canal del APK**; ambos sirven el mismo bundle
+byte-idéntico (`sha256 535bd31f…`), con los marcadores `Pedido guardado` y `Pago mixto` dentro.
+
+Los cuatro son el mismo patrón: algo que debería morir con la operación y no muere.
+
+**(a) `NuevoPedidoPastel` — DOBLE PEDIDO Y DOBLE COBRO.** El único que le cobraba dos veces a un cliente real. El botón
+llevaba sólo `disabled={guardando}`, y `guardando` vuelve a `false` en el `finally`: al terminar quedaba otra vez
+activo y **seguía diciendo "Guardar pedido"**. Un segundo toque no entra por la rama de edición (`editId` es null):
+cae al `else` y crea **otro pedido, otro folio y otro abono con otra venta paralela** cobrada en el corte del día.
+**La base no lo para**, comprobado en producción: `pedidos`/`abonos` sólo tienen su PK y **`ventas.folio` no es único**.
+Arreglo: `guardandoRef` **síncrona** (en tablet el doble toque es más rápido que un render), el botón se **desarma**
+con `!editId && !!pedidoGuardado?.id` y **lo dice**: "Pedido guardado ✓". Matemática y flujo de anticipo sin tocar.
+
+**(b) `TerminalGate` — spinner infinito, POS muerto.** *Lo introdujo el arreglo de la sesión colgada, y así queda
+escrito.* `Sidebar.handleSalirAdmin` hace `logout()` si falla `loginTerminal` (correcto). Pero `TerminalGate` es el
+`element` de la ruta de layout —**nunca se desmonta**— y `autoLoginRef` no se soltaba: era un latch de por vida. El
+efecto moría en `if (autoLoginRef.current) return`, y como `sesionError` seguía en `null` tampoco salía el botón
+"Reintentar", el único otro sitio que soltaba el ref. La caja no cobraba hasta recargar la página.
+
+**(c) `Caja` — el método de pago del ticket anterior + el mixto sin comprobar.** `abrirVenta` limpiaba los importes
+pero **no `metodoPago`**, que sólo se reponía tras un cobro correcto: elegir "Tarjeta", salirse sin cobrar y abrir el
+siguiente ticket lo dejaba **ya en "Tarjeta"** → un cobro en efectivo registrado como tarjeta, y un descuadre
+inexplicable **con el cajero cargando la culpa**. La búsqueda por folio (la puerta de los pedidos web) no limpiaba
+nada. Y "mixto" es el **único** método sin reparto automático: se guardaba tal cual, así que con los campos vacíos la
+venta quedaba **pagada con 0 + 0 + 0**. Arreglo: `limpiarCamposCobro()` desde las dos puertas + una guarda que
+**estrictamente lee** y se niega a guardar un cobro incoherente — tolerancia y forma calcadas de la comprobación de
+propinas que ya vivía veinte líneas más abajo. **No se tocó cómo se calcula nada**, y la suite verifica **byte a
+byte** las tres líneas del reparto automático.
+
+**(d) Cabecera de `0049` — documentación que miente sobre dinero en producción.** Sin tocar una línea del SQL.
+Comprobado contra la base: la migración **está aplicada** desde el 2026-07-13, **está mergeada**, y el frontend la usa
+en cada venta directa de mostrador — cuando su cabecera dice `PREPARADA — NO APLICADA` y `NO mergear hasta la firma`.
+El orden de firma que declara (`0042 → 0044 → … → 0049 → frontend`) **no se siguió**. Y lo más grave: **el SQL del
+archivo no es el que corre**. `0059_crear_venta_directa_guards` reemplazó la función el mismo día y **no tiene archivo
+en el repo**; el cuerpo vivo es ~2.100 caracteres más largo y añade `TOTAL_INVALIDO`, `TOTAL_NO_CUADRA`,
+`LINEA_INVALIDA`, `LINEA_NO_CUADRA`, `SIN_DETALLE`, `SIN_CAJA`, `SIN_SUCURSAL`. **La versión viva es más estricta que
+la documentada.** Además hay **dos migraciones numeradas 0059**. Reconstruir el archivo perdido es SQL de dinero:
+**lo firma Miguel** (anotado en `BUGS_PENDING.md`).
+
+**Prueba:** `scripts/dinero_estado_cobro_verify.mjs` **26/26**, con `SRC_DIR` conmutable; **16 FAIL contra el código
+viejo**. Las 10 que pasan en ambos lados son las de "intacto" — ése es su trabajo.
+**Puerta:** build exit 0 · lint 39 = línea base · typecheck 1249 = línea base · 11 suites verdes (las 3 restantes
+fallan por falta de `.env`, igual que antes).
+
+---
+
 ## 2026-08-09 (Fase 2.7, parte A) — El ticket se cortaba SIN avanzar el papel
 
 **Es el bug que reportó Abel**, y no era el de las bandas. Confirmado desensamblando la librería real
@@ -158,7 +237,8 @@ rama para siempre. Todo push a producción va seguido de un fast-forward a `apk/
 
 ### Qué estaba mal y por qué importa
 
-**A) `CONF-A-C032` NO es "un descuadre preexistente de otra causa". Es el MISMO bug, en forma PARCIAL, y sigue sin reparar.**
+**A) `CONF-A-C032` NO es "un descuadre preexistente de otra causa". Es el MISMO bug, en forma PARCIAL.**
+*(Al escribir esto seguía sin reparar. **Se reparó el mismo día** — ver la entrada de la Fase 2 más abajo.)*
 
 Lo afirmaban `HANDOFF.md`, `PROJECT_CONTEXT.md`, `docs/BUGS_PENDING.md`, este `CHANGELOG`, `docs/DECISIONS.md` (D-23),
 `docs/INCIDENTE_CIERRE_EN_CERO_2026-08-08.md`, el comentario de cabecera de la migración `0057` y los mensajes de
@@ -173,7 +253,8 @@ commit. **Nadie lo verificó.** Comprobación (SQL de solo lectura, reproducible
 | proxy "las N más antiguas del corte" | 23 | $4,995.00 | coincide aquí, pero es proxy |
 
 Las **dos** magnitudes coinciden a la vez (`numero_ventas` = 23 y `total_general` = $4,995) y las 8 ventas que quedan
-fuera suman **exactamente** el descuadre ($1,420.00). **Dinero no reflejado: $1,420.00, aún sin reparar.**
+fuera suman **exactamente** el descuadre ($1,420.00). **Dinero no reflejado: $1,420.00** — reflejado ese mismo día
+por `0063`, junto con los $70 de `CONF-C-C002`.
 
 **B) La suite daba verde encima de ese agujero.** `scripts/cierre_caja_verify.mjs:124` tiene
 `const CONOCIDOS = new Set(['CONF-A-C032','CONF-C-C002'])` y cuenta esos folios como "cuadran". **Sí** imprimía la
@@ -434,7 +515,10 @@ Es un bug **distinto** del anterior y **ya está desplegado en producción** (co
   3. **Red de seguridad en la BASE** (`0058_guard_cierre_en_cero.sql`): trigger `BEFORE UPDATE` que **rechaza** cerrar un corte con total 0 cuando tiene ventas pagadas. Es independiente del frontend — protege incluso a una tablet que siga con el bundle viejo, que es exactamente como se rompió `CONF-A-C042` un día después del primer deploy. **⚠️ Alcance real (corregido 2026-08-09): SÓLO el caso `total_general = 0`. La truncación PARCIAL pasa de largo.**
 - **Reparación de datos:** `0056` respaldo → `0057` recálculo de los 10 cortes → `0059` recálculo de `CONF-A-C042`. Fórmulas validadas contra los cortes sanos (90/92 en totales, 82/82 en `diferencia_efectivo`). **0 ventas huérfanas.**
 - ~~**Descuadres PREEXISTENTES declarados y NO tocados** (otra causa, anteriores al incidente): `CONF-A-C032`, `CONF-C-C002`.~~
-  **⚠️ FALSO PARA `CONF-A-C032`. Corregido el 2026-08-09 — ver la entrada del 2026-08-09 (Fase 0) al principio de este archivo.** `CONF-A-C032` es **el mismo bug**, en forma **parcial**, y **sigue sin reparar** ($1,420). `CONF-C-C002` queda **por clasificar** (causa no demostrada).
+  **⚠️ FALSO PARA `CONF-A-C032`. Corregido el 2026-08-09.** `CONF-A-C032` es **el mismo bug**, en forma **parcial**.
+  **DESENLACE (mismo día, Fase 2):** los dos quedaron **reparados** con `0062`+`0063` — `CONF-A-C032` $1,420 por
+  truncación parcial y `CONF-C-C002` $70 por una **carrera de refresco** (causa demostrada, no supuesta). El hueco lo
+  cerró el trigger `0064`. **No queda nada que reparar aquí.**
 - **Evidencia (2026-08-09):** 0 cortes cerrados en cero con ventas reales; el trigger bloquea un cierre en cero (probado en una transacción **revertida**, sin alterar datos); el corte abierto `CONF-A-C043` devuelve sus 3 ventas / $860.
 
 ### B) LA NOTA DEL PASTEL NUNCA SE GUARDABA (visible para CUALQUIER usuario)

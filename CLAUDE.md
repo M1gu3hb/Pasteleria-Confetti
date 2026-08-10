@@ -82,7 +82,10 @@ Dos bugs graves se colaron porque **las pruebas probaban el arnés, no el códig
 - `npm run build` debe salir **0**.
 - `npm run lint` → **39 errores es la LÍNEA BASE**, no cero. Lo que importa es que **no suba**.
 - `npm run typecheck` → **1249 es la LÍNEA BASE**. Igual: que no suba.
-- Corre las suites de `scripts/*.mjs` (todas funcionan sin credenciales).
+- Corre las suites de `scripts/*.mjs`. **Corrección 2026-08-09:** este documento afirmaba que **todas** funcionan sin
+  credenciales, y es **falso**. Tres exigen un `.env` que no está en el repo y mueren con `ENOENT ... .env`:
+  `fase4_rls_adversarial.mjs`, `fase5_corte_fidelity.mjs` y `web1_gaps_verify.mjs`. Las demás sí corren en seco. Si
+  ves esos tres en rojo, **no es tu cambio**: compruébalo con `node <script> 2>&1 | head -3` y sigue.
 - Tras desplegar: confirma en Vercel que el deployment es `target: "production"` y **descarga el bundle servido** para comprobar que trae el cambio.
 - **Recuerda que las tablets tienen que recargar** para tomar el bundle nuevo. Un arreglo desplegado no es un arreglo entregado.
 
@@ -136,6 +139,39 @@ trabajo — detectado por Miguel en la auditoría, no por quien las aplicó.
 
 **Regla de transferencia:** `PROJECT_CONTEXT.md` + `HANDOFF.md` son la fuente principal para pasar el proyecto a otra sesión o IA. Siempre actualizados, claros y accionables.
 
+### 🔒 REGLA — los documentos de traspaso NO llevan estado volátil
+
+**Los documentos de traspaso NO llevan estado volátil. Nada de hashes de commit, hashes de bundle, "la fase X es la
+siguiente", ni contadores de commits de retraso: caducan en horas y luego MIENTEN. Llevan conocimiento duradero
+(causas, mecanismos, decisiones, reglas) y dicen DÓNDE se verifica el estado vivo: la base y la rama. Si un dato
+caduca, no se escribe: se explica cómo consultarlo.**
+
+*Casos que originan la regla, todos reales y todos de esta documentación:*
+
+| Dato volátil escrito | Qué acabó diciendo |
+|---|---|
+| "18 commits de retraso" | eran 20, y al día siguiente 21 |
+| bundle `index-DOafkEZU.js` como el de producción | ese commit servía `index-B5y-Tcrd.js`; el hash nunca fue el citado |
+| "commit desplegado: `04bd33c`" | producción llevaba días por delante |
+| "Fase 1 ⏳ **siguiente**" | las fases 1 y 2 estaban hechas y desplegadas |
+| "`CONF-A-C032`: **$1,420 sin reflejar**, NO reparado" | reparado y verificado horas antes |
+| "PREPARADA — NO APLICADA" en la cabecera de `0049` | aplicada, mergeada y en uso en cada venta de mostrador |
+
+Los dos últimos son los graves: **una afirmación caducada sobre DINERO invita a "reparar" lo que ya está reparado.**
+Eso no es desorden documental, es **riesgo de corrupción de datos**.
+
+**Qué se escribe en su lugar:** el mecanismo, la causa y el criterio (duran), más el comando o la consulta con la que
+cualquiera comprueba el estado de hoy. Ejemplos de sustitución:
+
+- ~~"va 21 commits por detrás"~~ → "`apk/capacitor` es **ancestro estricto**; compruébalo con
+  `git log origin/apk/capacitor..origin/migracion/supabase` (vacío = sincronizada)".
+- ~~"migraciones hasta la 0064"~~ → "`select version, name from supabase_migrations.schema_migrations order by version desc limit 5;`".
+- ~~"la fase X es la siguiente"~~ → una lista de trabajo pendiente **sin** marcar cuál toca ahora.
+
+Excepción: los **registros históricos fechados** (CHANGELOG, cabeceras de migración, actas de incidente) **sí** citan
+commits y fechas, porque describen un momento concreto del pasado y no pretenden describir el presente. La diferencia
+está en el tiempo verbal: *"el 2026-08-09 se desplegó `eec5973`"* dura; *"producción está en `eec5973`"* caduca.
+
 **Regla anti-documentación muerta:** no dejes documentación vieja. Si algo cambió, actualízalo. Si ya no aplica, márcalo obsoleto o bórralo. **Nada de documentación decorativa**: escribe lo que otra IA necesita para continuar sin preguntar.
 
 ---
@@ -178,6 +214,25 @@ cómo se llegó al desastre del cierre en cero.
 
 **Cuándo se puede dejar de sincronizar:** sólo cuando se haya **verificado tablet por tablet** que ninguna conserva un
 APK cuyo `server.url` sea el alias de rama. Mientras quede **una sola**, la regla sigue viva.
+
+#### La versión 1.2 del APK está APLAZADA — y el aplazamiento es CONDICIONAL
+
+Se decidió (2026-08-09) **no** sacar un APK nuevo para nada de lo que se está arreglando, y preferir siempre, ante dos
+soluciones, **la que llega sin APK nuevo**. Un APK nuevo exige el keystore de Miguel, republicar el instalador y
+reinstalar físicamente en 3 tablets; el canal de rama entrega lo mismo en el siguiente `push`.
+
+**Esto NO es "ya veremos". Es una condición con una cláusula de caducidad:**
+
+> **El aplazamiento de la 1.2 sólo es seguro MIENTRAS `apk/capacitor` se sincronice en CADA push a
+> `migracion/supabase`. En el momento en que se deje de sincronizar, el aplazamiento deja de ser una decisión y pasa a
+> ser el mecanismo exacto que congeló las tablets en julio y produjo los cortes en cero.**
+
+Consecuencia práctica: **la sincronización no es una costumbre ni una cortesía, es lo que sostiene la decisión.** Quien
+empuje a producción sin sincronizar no está "olvidando un paso": está revocando el aplazamiento sin decírselo a nadie.
+Si por lo que sea no se puede sincronizar, hay que **decirlo y reabrir la decisión del APK**, no seguir como si nada.
+
+Lo único que la 1.2 arreglaría de verdad y el canal de rama no puede es **repuntar `server.url`** — o sea, dejar de
+depender de esta regla. Eso es la Fase 7.
 
 **Cómo comprobar que no se ha desincronizado:**
 ```bash

@@ -43,7 +43,12 @@ El cierre además **falla cerrado**: si no se puede verificar contra el servidor
 1. **Navegador / PWA** → Vercel, rama **`migracion/supabase`** = producción. Service worker `autoUpdate`, pero **la pantalla ya cargada sigue con el JS viejo**: hace falta recargar.
 2. **APK Android (Capacitor)** → el WebView carga la URL fija de `capacitor.config.ts` (`server.url`), que hoy apunta al **alias de rama de Vercel del preview de `apk/capacitor`**, no a producción.
 
-> **Esto significa que un arreglo desplegado a producción puede no llegar a las tablets.** Es el riesgo abierto más grande del proyecto. Ver `HANDOFF.md` §4.
+> **Esto significa que un arreglo desplegado a producción puede no llegar a las tablets** si la rama del APK se queda
+> atrás. Ocurrió: la rama se congeló en julio y por ese canal no llegó ninguna corrección hasta el 2026-08-09.
+>
+> **Por eso hoy `apk/capacitor` se sincroniza en CADA push a producción, y eso es una CONDICIÓN, no una costumbre**:
+> es lo que sostiene el aplazamiento del APK 1.2 (ver `CLAUDE.md` y `DECISIONS.md` D-34). Comprobación:
+> `git log origin/apk/capacitor..origin/migracion/supabase` → **vacío**. Ver `HANDOFF.md` §4.
 
 **Cómo se relacionan las dos ramas (comprobado 2026-08-09):** `apk/capacitor` **no tiene commits propios** — es
 **ancestro estricto** de `migracion/supabase`, y `capacitor.config.ts` existe idéntico en las dos. Consecuencias:
@@ -52,8 +57,13 @@ El cierre además **falla cerrado**: si no se puede verificar contra el servidor
   actualiza el APK **ya instalado**, sin reinstalar ni re-firmar.
 - Y al revés: mientras `server.url` apunte ahí, **cualquiera que empuje a esa rama cambia lo que ven las tablets de
   producción**. Es el motivo por el que la Fase 7 repunta `server.url` a producción y cierra este canal paralelo.
-- **Un commit de sólo documentación produce un `dist` byte-idéntico** (comprobado: `3a90e3c` y `04bd33c` sirven el
-  mismo bundle y el mismo `sw.js`), así que publicar docs **no** dispara actualización en las tablets.
+- **Un commit de sólo documentación produce un `dist` byte-idéntico** (comprobado el 2026-08-09 sobre `3a90e3c` y
+  `04bd33c`: mismo bundle y mismo `sw.js`), así que publicar docs **no** dispara actualización en las tablets.
+- **Cómo se comprueba que un despliegue LLEGÓ de verdad** (los dos canales sirven el mismo `dist`): descarga
+  `index.html` de cada uno, saca el `/assets/index-*.js` que referencia, bájalo y busca dentro un **marcador del
+  código nuevo**. Si los `sha256` de los dos coinciden, el canal del APK está sirviendo exactamente producción.
+  *Escribe el marcador y el resultado en el CHANGELOG; **no** cites el hash del bundle en documentos de traspaso:
+  caduca al siguiente build y ya provocó una afirmación falsa.*
 
 ## Sin ErrorBoundary
 
