@@ -132,6 +132,30 @@
   memoria), y falta la **Fase 7** (repuntar `server.url` a producción + APK nuevo firmado por Miguel).
 - **Ver también:** la 🔒 **REGLA PERMANENTE** de sincronización en `CLAUDE.md`, `HANDOFF.md` §4 y `docs/NEXT_STEPS.md`.
 
+## ✅ RESUELTO (2026-08-09) — El ticket se cortaba SIN avanzar el papel: se perdía el final
+> **Es el bug que reportó Abel** ("al ticket de pastel le falta el total y lo de domicilio"), y **no** era el de
+> las bandas. El troceo de la FASE 4 arregló el desbordamiento de memoria; **esto era otra cosa y seguía viva.**
+
+- **Causa, leída en la librería y no supuesta.** `javap -c` sobre el AAR real de DantSu 3.4.0 (caché de Gradle):
+  ```
+  public EscPosPrinterCommands cutPaper() {
+      ...write(new byte[]{ 29, 86, 1 });   // 0x1D 0x56 0x01 = GS V 1 (corte parcial)
+      ...send(100);
+  }
+  ```
+  **Tres bytes y un flush: no avanza papel.** En una térmica la cuchilla está por debajo del cabezal, así que al
+  cortar de inmediato los últimos milímetros del ticket siguen entre ambos y **se quedan pegados al ticket
+  siguiente** — justo el final, que es donde van el total y el bloque de domicilio.
+- **Alcance:** afectaba a la ruta de **IMAGEN**, que es el default y la que usa el ticket de pastel. La de TEXTO
+  mandaba `texto + '\n\n\n'`, o sea ~10 mm de avance accidental.
+- **Arreglo:** `ESC J n` desde JS antes de cortar, con el avance en la **config local por dispositivo**
+  (`avanceAntesCorteDots`, default **150 puntos = 18,75 mm**). Va en su propio `try` para no romper la garantía de
+  corte de la FASE 4. **Llega sin APK nuevo**, porque `enviarBytes` ya está expuesto en la 1.1.1 instalada.
+- **Pruebas:** `scripts/impresion_avance_corte_verify.mjs` **25/25**, y **8 FAIL contra el código viejo**.
+- **⚠️ Lo que NO se pudo comprobar aquí:** la distancia real cabezal→cuchilla de la Easytime. 150 puntos es una
+  estimación con margen (típico 10–16 mm). **Se mide en el primer ticket real** y se ajusta desde
+  **Config → Operación** sin recompilar.
+
 ## 📋 OBSERVACIÓN — el cuadre del efectivo FÍSICO es ruidoso en todo el histórico
 > **Fuera de alcance. NO es una tarea, NO se investiga y NO se toca.** Requiere decisión de Miguel.
 > La fórmula del efectivo esperado es **CANDADO** y ya está firmada: no se "mejora".

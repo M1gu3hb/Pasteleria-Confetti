@@ -1,5 +1,28 @@
 # CHANGELOG
 
+## 2026-08-09 (Fase 2.7, parte A) — El ticket se cortaba SIN avanzar el papel
+
+**Es el bug que reportó Abel**, y no era el de las bandas. Confirmado desensamblando la librería real
+(`javap -c` sobre el AAR de DantSu 3.4.0 en la caché de Gradle): `cutPaper()` escribe **sólo**
+`0x1D 0x56 0x01` (GS V 1) y hace `send(100)`. **No avanza papel.** Como la cuchilla está por debajo del cabezal,
+los últimos milímetros del ticket se quedaban pegados al siguiente — el final, donde van el total y el bloque de
+entrega a domicilio.
+
+Afectaba a la ruta de **IMAGEN** (el default, la del ticket de pastel). La de TEXTO tenía `'\n\n\n'`, un avance
+accidental de ~10 mm.
+
+**Arreglo:** `ESC J n` desde JS antes de `cortar()`, con el avance **configurable por dispositivo**
+(`avanceAntesCorteDots`, default **150 puntos = 18,75 mm**), en su propio `try` para conservar la garantía de corte
+de la FASE 4. **Llega a las tablets sin APK nuevo**: `enviarBytes` ya está expuesto en la 1.1.1 instalada.
+
+**Pruebas:** `scripts/impresion_avance_corte_verify.mjs` 25/25 · **8 FAIL contra el código viejo** · 7 suites verdes ·
+build 0 · lint 39 · typecheck 1249.
+
+**No comprobable aquí:** la distancia real cabezal→cuchilla de la Easytime. Se mide en el primer ticket real y se
+ajusta desde Config → Operación.
+
+---
+
 ## 2026-08-09 (Fase 2) — P0 DINERO: truncación PARCIAL reparada, blindada y con aviso al cajero
 
 > **Dinero real, firmado por Miguel.** $1,490.00 que estaban sin reflejar.
