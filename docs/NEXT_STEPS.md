@@ -84,10 +84,13 @@ rama de trabajo. Requiere la firma del cambio de RLS.
 
 ## 🟠 Pendiente, sin bloqueo
 
-### Ticket de pastel — "FAVOR DE REGRESAR LA BASE LIMPIA"
-Línea al final del ticket de pastel **solamente**, en mayúsculas y con emojis, conviviendo con el bloque de domicilio,
-dentro de `.ticket-printable` y con estilos **inline** (el raster no ve las hojas de estilo). Punto de inserción en
-`src/components/tickets/TicketPastelConfetti.jsx`. Validar en el banco con un pedido ANTIGUO y con uno con domicilio.
+### ~~Ticket de pastel — "FAVOR DE REGRESAR LA BASE LIMPIA"~~ → HECHO el 2026-08-09
+Estaba escrito desde el import de Base44 en `TicketPedidoPastel.jsx`, **un componente que no renderiza nadie**.
+Añadido al que sí se imprime (`src/components/pedidos/TicketPastelConfetti.jsx`) con estilos en línea, al final del
+todo, sólo para pastel personalizado. Suite: `scripts/ticket_pastel_base_limpia_verify.mjs`.
+**Lo único que queda y NO se puede hacer desde aquí:** confirmar en un ticket real que la fuente del WebView de la
+tablet dibuja los emojis. El aviso está escrito para entenderse sin ellos, así que no bloquea nada.
+**A Abel no se le pide que imprima para validarnos.**
 
 ### UI para `avanceAntesCorteDots`
 Hoy el avance de papel antes del corte es un valor de `src/native/printerConfig.js` (150 puntos = 18,75 mm) que sólo se

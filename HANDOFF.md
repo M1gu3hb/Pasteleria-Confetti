@@ -285,6 +285,14 @@ lección, no porque queden pendientes:
 | `Caja.jsx` | **El método de pago sobrevivía de un ticket al siguiente** (un cobro en efectivo registrado como tarjeta → descuadre inexplicable, con el cajero cargando la culpa); la búsqueda por folio no limpiaba nada; y **"mixto" se guardaba sin comprobar que sumara** (con los campos vacíos: pagada con 0+0+0) |
 | `CorteAutoDownloader.jsx` | El botón «Listo» estaba dentro de `{!done && … {done && …}}` — inalcanzable — así que `onDone` nunca se llamaba y **el PDF del 2.º corte y de todos los siguientes no se descargaba, en silencio** |
 | `printTicket.js` + `avancePapel.js` | **El ticket se cortaba sin avanzar el papel** y se perdía el final (el bug que reportó Abel). `cutPaper()` de DantSu son tres bytes y un flush: no avanza. Arreglado con `ESC J` desde JS — **llega sin APK nuevo** |
+| `TicketPastelConfetti.jsx` | **El aviso "FAVOR DE REGRESAR LA BASE LIMPIA" que pidió Abel estaba en un componente MUERTO** (`TicketPedidoPastel.jsx`, importado y nunca renderizado). Añadido al que sí se imprime |
+
+> ⚠️ **HAY DOS COMPONENTES DE TICKET DE PASTEL Y SÓLO UNO SE IMPRIME.**
+> `src/components/pedidos/TicketPastelConfetti.jsx` es el bueno: lo monta `PedidoPastelDetalleDialog`, y a él
+> llega tanto el botón de la lista de pedidos como el de `NuevoPedidoPastel` (que sólo abre el diálogo).
+> `src/components/pedidos/TicketPedidoPastel.jsx` es **código muerto** heredado de Base44: `NuevoPedidoPastel.jsx`
+> lo importa y **nunca lo usa** (`grep -rn "<TicketPedidoPastel" src/` → 0). Tocar el muerto no cambia nada en el
+> papel — y eso es exactamente lo que pasó con el aviso de la base durante meses.
 
 Resto de hallazgos abiertos:
 
