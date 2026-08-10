@@ -220,8 +220,27 @@ export function safeFileName(str) {
  * abre el PDF en pestaña nueva como fallback para que el usuario use Ctrl+P.
  */
 export function printPDFBlob(blob, title = 'Documento') {
+  return new Promise((resolve, reject) => {
   const url = URL.createObjectURL(blob);
   const iframe = document.createElement('iframe');
+  // FEEDBACK HONESTO (2026-08-09). Antes esta función era `void` y
+  // `printNodeAsPDF` no la esperaba: la promesa resolvía en cuanto existía el
+  // blob, así que el `disabled` del botón se liberaba ~300 ms antes de que
+  // apareciera el diálogo de impresión. Es el mismo patrón que ya se corrigió
+  // en `src/lib/print.js` (ver el comentario de la FASE C sobre "feedback
+  // falso") y que aquí nunca se aplicó.
+  //
+  // OJO CON EL ALCANCE: esto NO convierte el fallo silencioso en visible por
+  // arte de magia. Los fallos MÁS PROBABLES del pipeline (html2canvas por OOM,
+  // `toDataURL` sobre un canvas contaminado por `allowTaint` con el logo
+  // cross-origin) ocurren ANTES, en `generatePDFBlobFromNode`, y ya llegaban al
+  // `catch` del llamador. Lo que se arregla aquí es el tramo final.
+  let resuelto = false;
+  const terminar = (err) => {
+    if (resuelto) return;
+    resuelto = true;
+    if (err) reject(err); else resolve();
+  };
   iframe.setAttribute('aria-hidden', 'true');
   iframe.title = String(title || 'Documento');
   iframe.style.position = 'fixed';
@@ -247,25 +266,38 @@ export function printPDFBlob(blob, title = 'Documento') {
         iframe.contentWindow.print();
         // Diferimos cleanup para que el diálogo de impresión no se cancele.
         setTimeout(cleanup, 3000);
+        terminar();                       // entregado al SO: éxito
       } catch (err) {
         console.warn('[printPDFBlob] iframe.print falló, abriendo en pestaña:', err);
+        let abierta = null;
         try {
-          window.open(url, '_blank');
+          abierta = window.open(url, '_blank');
         } catch (e2) {
           console.error('[printPDFBlob] window.open también falló:', e2);
         }
         cleanup();
+        // Si la pestaña se abrió, el usuario puede imprimir con Ctrl+P → éxito.
+        // Si NI eso, es un fallo real y tiene que llegar al botón, no morir en
+        // la consola.
+        terminar(abierta ? null : (err || new Error('No se pudo imprimir el PDF')));
       }
     }, 300);
   };
 
   iframe.onerror = () => {
     console.error('[printPDFBlob] iframe load error');
-    try { window.open(url, '_blank'); } catch (e) { /* noop */ }
+    let abierta = null;
+    try { abierta = window.open(url, '_blank'); } catch (e) { /* noop */ }
     cleanup();
+    terminar(abierta ? null : new Error('No se pudo cargar el PDF para imprimir'));
   };
 
+  // Failsafe: si `onload` no dispara nunca (iframe bloqueado, PDF corrupto), la
+  // promesa NO puede quedarse colgada para siempre o el botón se queda muerto.
+  setTimeout(() => terminar(), 15000);
+
   document.body.appendChild(iframe);
+  });
 }
 
 /**
@@ -284,6 +316,6 @@ export async function downloadNodeAsPDF(node, filename) {
  */
 export async function printNodeAsPDF(node, title = 'Documento') {
   const blob = await generatePDFBlobFromNode(node);
-  printPDFBlob(blob, title);
+  await printPDFBlob(blob, title);   // ← se ESPERA: antes resolvía con el blob
   return blob;
 }
