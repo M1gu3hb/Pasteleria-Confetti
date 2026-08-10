@@ -1,7 +1,19 @@
 // FASE 4 — Simulador/decodificador ESC/POS para VERIFICAR el troceo en bandas
 // (ConfettiPrinterPlugin.java → imprimirImagenRaster). Pure Node, sin dependencias.
 //
-// Reproduce EXACTAMENTE lo que hace el Java:
+// ⚠️ ALCANCE REAL (corregido 2026-08-09). Este script reproduce el FRAMING del
+// flujo —cabecera GS v 0, troceo en bandas y orden de comandos— y NADA MÁS.
+// Lo que NO reproduce, para que nadie lea de más:
+//   · la BINARIZACIÓN real de DantSu (`r<160 || g<160 || b<160`, con el alfa
+//     ignorado): aquí se usa un patrón sintético, no una imagen;
+//   · el escalado a 576 de `escalarAAncho`;
+//   · la agrupación en `send()` del transporte.
+// Su cabecera decía "Reproduce EXACTAMENTE lo que hace el Java", y eso era
+// falso ya antes; se volvió más falso el 2026-08-09, cuando se añadió el
+// `ESC J` al flujo y este decodificador empezó a LANZAR con el stream real.
+// Ya conoce el `ESC J` y devuelve offsets absolutos.
+//
+// Reproduce el FRAMING de lo que hace el Java:
 //   for (y = 0; y < alto; y += B) banda = rows[y .. y+min(B, alto-y)); printImage(bitmapToBytes(banda,false))
 // y luego el JS manda cortar() (GS V). Cada banda es su propio GS v 0 con el MISMO
 // formato de cabecera de DantSu 3.4.0 (1D 76 30 00 xL xH yL yH; yL=h%256, yH=h/256),
@@ -78,10 +90,23 @@ function decode(bytes) {
   const filas = []; // cada fila reconstruida como array de 0/1 de ancho W
   let widthBytes = null;
   const alturas = [];
+  // Offsets ABSOLUTOS de cada comando, para poder afirmar DÓNDE cae el avance y
+  // dónde el corte respecto al contenido (antes sólo se devolvían booleanos).
+  const offsets = { reset: -1, bandas: [], avances: [], corte: -1 };
+  let avanceDots = 0;
   const eq = (arr, off, pat) => pat.every((b, k) => arr[off + k] === b);
   while (i < bytes.length) {
-    if (eq(bytes, i, RESET)) { reset = true; i += 2; continue; }
-    if (eq(bytes, i, CUT)) { cut = true; i += 3; continue; }
+    if (eq(bytes, i, RESET)) { reset = true; offsets.reset = i; i += 2; continue; }
+    if (eq(bytes, i, CUT)) { cut = true; offsets.corte = i; i += 3; continue; }
+    // ESC J n — avance de papel ANTES del corte. Añadido al flujo el 2026-08-09
+    // (src/native/avancePapel.js). Sin este caso, este decodificador LANZABA
+    // "comando desconocido" con el stream REAL de producción: el simulador se
+    // quedó obsoleto en el mismo momento en que se arregló el corte.
+    if (bytes[i] === 0x1b && bytes[i + 1] === 0x4a) {
+      offsets.avances.push({ offset: i, dots: bytes[i + 2] });
+      avanceDots += bytes[i + 2];
+      i += 3; continue;
+    }
     if (eq(bytes, i, MAGIC)) {
       const wb = bytes[i + 4] | (bytes[i + 5] << 8);
       const h = bytes[i + 6] | (bytes[i + 7] << 8);
@@ -99,13 +124,24 @@ function decode(bytes) {
         filas.push(fila);
       }
       alturas.push(h);
+      offsets.bandas.push({ offset: i, filas: h, bytes: 8 + size });
       i = bodyOff + size;
       continue;
     }
     throw new Error(`comando desconocido en offset ${i}: ${bytes.slice(i, i + 8).map((b) => b.toString(16)).join(' ')}`);
   }
   const cutIsLast = eq(bytes, bytes.length - 3, CUT);
-  return { reset, cut, cutIsLast, filas, alturas, widthBytes };
+  // El avance tiene que ir DESPUÉS de la última banda y ANTES del corte. Si no,
+  // no sirve de nada: el contenido seguiría por debajo de la cuchilla.
+  const ultimaBanda = offsets.bandas.length ? offsets.bandas[offsets.bandas.length - 1].offset : -1;
+  const avanceEntreUltimaBandaYCorte =
+    offsets.avances.length > 0 &&
+    offsets.avances.every((a) => a.offset > ultimaBanda && (offsets.corte < 0 || a.offset < offsets.corte));
+  return {
+    reset, cut, cutIsLast, filas, alturas, widthBytes,
+    offsets, avanceDots, avanceEntreUltimaBandaYCorte,
+    avanceMm: avanceDots * 0.125,
+  };
 }
 
 // ---------- monolítico (comportamiento viejo) para la comparación de no-regresión ----------
