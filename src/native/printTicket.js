@@ -9,6 +9,7 @@ import {
   desconectar,
 } from '@/native/confettiPrinter';
 import { getPrinterConfig } from '@/native/printerConfig';
+import { bytesAvancePapel } from '@/native/avancePapel';
 
 /**
  * Dispatcher NATIVO de impresión (Fase 4).
@@ -147,12 +148,42 @@ async function ejecutarYcortarSiempre(accionRaster) {
   } catch (e) {
     errRaster = e;
   }
+  // AVANCE ANTES DEL CORTE — ver el comentario largo en printerConfig.js.
+  // `cutPaper()` de DantSu NO avanza papel (verificado en el bytecode: escribe
+  // sólo 0x1D 0x56 0x01). Sin este avance, los últimos milímetros del ticket
+  // siguen ENTRE el cabezal y la cuchilla y se quedan pegados al ticket
+  // siguiente: es el "falta el total y lo de domicilio" que reportó Abel.
+  //
+  // Va ANTES del corte y DESPUÉS del raster, y en su propio try: si el avance
+  // fallara, el corte tiene que intentarse igual (garantía de corte de FASE 4).
+  try {
+    await avanzarPapelAntesDelCorte();
+  } catch (e) {
+    // No se pisa un error del raster, que es más informativo.
+    if (!errRaster) errRaster = e;
+  }
   try {
     await cortar();
   } catch (e) {
     if (!errRaster) errRaster = e; // si el raster ya falló, ese error manda
   }
   if (errRaster) throw errRaster;
+}
+
+/**
+ * Manda `ESC J n` (0x1B 0x4A n) tantas veces como haga falta para avanzar los
+ * puntos configurados. `n` es un byte, así que el máximo por comando es 255
+ * puntos (31,9 mm a 203 dpi); para más, se encadenan comandos.
+ *
+ * Se lee la config LOCAL del dispositivo, así que cada sucursal puede ajustar
+ * su avance desde Config → Operación sin recompilar el APK. Con 0 no manda
+ * nada: el comportamiento vuelve a ser EXACTAMENTE el de antes.
+ */
+async function avanzarPapelAntesDelCorte() {
+  const cfg = getPrinterConfig();
+  const bytes = bytesAvancePapel(cfg?.avanceAntesCorteDots);
+  if (bytes.length === 0) return;   // 0 / NaN / negativo -> no se manda nada
+  await enviarBytes(new Uint8Array(bytes));
 }
 
 // 58mm → 384 puntos; cualquier otro (80mm default) → 576. Un solo lugar para que
