@@ -35,6 +35,16 @@
 // =====================================================================
 import { deflateSync } from 'node:zlib';
 import { writeFileSync, mkdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
+
+// La bateria SOLO corre cuando este archivo se invoca DIRECTAMENTE. Otras suites
+// lo IMPORTAN para reusar construirFlujo/decodificarFlujo (p.ej.
+// ticket_pastel_base_limpia_verify.mjs): al importarlo no debe imprimir nada ni,
+// sobre todo, llamar a process.exit() — eso mataria a la suite que lo importa.
+const ES_PRINCIPAL = process.argv[1]
+  ? resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+  : false;
 
 let ok = 0, fail = 0;
 const check = (n, cond, extra = '') => {
@@ -278,6 +288,7 @@ const patronTicket = (x, y) => {
 // =====================================================================
 // SUITE
 // =====================================================================
+if (ES_PRINCIPAL) {
 console.log('=== BANCO DE IMPRESIÓN — codec y framing ===\n');
 
 // A. La regla de binarización, con los casos que un replicador ingenuo falla
@@ -424,5 +435,7 @@ if (process.argv.includes('--png')) {
   console.log(`\nPNGs de la reconstrucción escritos en ${dir}`);
 }
 
-console.log(`\n${ok} PASS, ${fail} FAIL`);
-process.exit(fail === 0 ? 0 : 1);
+  console.log(`\n${ok} PASS, ${fail} FAIL`);
+  process.exit(fail === 0 ? 0 : 1);
+}
+

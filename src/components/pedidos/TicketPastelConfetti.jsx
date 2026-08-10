@@ -195,6 +195,47 @@ export default function TicketPastelConfetti({ pedido, config }) {
           </div>
         </>
       )}
+
+      {/* ── AVISO DE LA BASE — lo pidió Abel y va SIEMPRE AL FINAL DEL TODO ────
+          Se coloca DESPUÉS del bloque de domicilio a propósito: si el pedido
+          lleva entrega, salen los dos, en este orden y sin encimarse (todo el
+          componente es flujo normal, no hay ningún position:absolute).
+
+          POR QUÉ NO ESTABA, aunque el texto existía desde el import de Base44:
+          vivía en `TicketPedidoPastel.jsx`, un componente que NADIE RENDERIZA —
+          `NuevoPedidoPastel.jsx` lo importa pero nunca lo usa; su botón
+          "Imprimir" abre `PedidoPastelDetalleDialog`, que monta ESTE componente.
+          Por eso Abel lo pedía y nunca salía.
+
+          NO se copia su condición `pedido.devolver_base !== false`: la columna
+          `devolver_base` NO EXISTE en la tabla `pedidos` y tampoco está en la
+          whitelist del adaptador, así que el valor se descarta al guardar y al
+          releer siempre vuelve `undefined`. Una condición sobre un campo que
+          nunca llega es una condición que siempre da lo mismo, disfrazada de
+          opción. Aquí es incondicional, que es lo que Abel pidió.
+
+          SÓLO pastel personalizado: un pedido de catálogo web (flan, gelatina)
+          no viene en una base que haya que devolver.
+
+          ESTILOS EN LÍNEA, obligatorio: el iframe térmico de print.js no carga
+          Tailwind (ver la cabecera del archivo), y html2canvas rasteriza lo que
+          se ve. Una clase de Tailwind aquí saldría sin borde y sin centrar.
+
+          EL TEXTO SE ENTIENDE SIN LOS EMOJIS. Van de adorno, nunca cargando el
+          significado: si la fuente del WebView no tuviera el glifo, saldría un
+          recuadro vacío y el aviso seguiría leyéndose igual. Los dos elegidos
+          son de Unicode 6.0 (2010) — 🎂 U+1F382 y 🙏 U+1F64F — la misma quinta
+          que el 🚚 U+1F69A que ya se imprime aquí arriba desde julio. */}
+      {!esCatalogo && (
+        <>
+          <Linea />
+          <div style={{ border: '2px solid #3a2418', borderRadius: 6, padding: '2.5mm 2mm', textAlign: 'center', marginTop: '2mm' }}>
+            <p style={{ fontSize: '14px', fontWeight: 900, lineHeight: 1.25, letterSpacing: '0.3px', margin: 0 }}>
+              🎂 FAVOR DE REGRESAR LA BASE LIMPIA 🙏
+            </p>
+          </div>
+        </>
+      )}
     </div>
   );
 }

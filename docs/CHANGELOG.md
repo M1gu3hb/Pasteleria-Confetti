@@ -1,5 +1,57 @@
 # CHANGELOG
 
+## 2026-08-09 — El aviso de la base que Abel pidió estaba escrito en un componente MUERTO
+
+Es lo único que el cliente había pedido expresamente, llevaba meses dado por hecho, y **nunca salió en el papel**.
+
+**Causa raíz.** El texto existía desde el import de Base44 (`9a281f3`) en
+`src/components/pedidos/TicketPedidoPastel.jsx` — **y ese componente no lo renderiza nadie**.
+`NuevoPedidoPastel.jsx:26` lo importa y nunca lo usa: su botón "Imprimir" hace `setVerDetalle(true)`, que abre
+`PedidoPastelDetalleDialog`, y ése monta **`TicketPastelConfetti`**. Comprobado:
+`grep -rn "<TicketPedidoPastel" src/` → 0 resultados, y `git log -S "<TicketPedidoPastel"` → 0 commits: **nunca
+se renderizó en la historia de este repo**. Nadie mintió; el aviso se escribió en el sitio equivocado y la
+pantalla de captura lo mostraba en el preview, así que parecía hecho.
+
+**Lo que se añadió** (`TicketPastelConfetti.jsx`), al final del todo:
+`🎂 FAVOR DE REGRESAR LA BASE LIMPIA 🙏`
+
+- **Después** del bloque de entrega a domicilio: si el pedido lleva entrega, salen **los dos**, en orden y sin
+  encimarse (todo el componente es flujo normal, ni un `position:absolute`).
+- **Estilos en línea**, obligatorio: el iframe térmico de `print.js` no carga Tailwind — lo dice la cabecera del
+  propio componente — y html2canvas rasteriza lo que se ve.
+- **Sólo `pastel_personalizado`**: un pedido de catálogo web (flan, gelatina) no viene en una base devolvible.
+- **NO se copió la condición `devolver_base` del componente muerto**: esa columna **no existe** en `pedidos` y
+  tampoco está en la whitelist del adaptador, así que el valor se descarta al guardar y al releer siempre vuelve
+  `undefined`. Habría sido una opción falsa. Anotado aparte en `BUGS_PENDING.md`.
+
+**Prueba:** `scripts/ticket_pastel_base_limpia_verify.mjs` **23/23**, **7 FAIL contra el código viejo**.
+Comprueba posición, pertenencia a `.ticket-printable`, estilos en línea, condiciones, y el **sha256 del
+contenido** de los otros 5 componentes de ticket para demostrar que **ninguno cambió**.
+*(Al escribirla, esos 5 hashes se calculaban sobre los bytes crudos y fallaban contra el árbol viejo por los
+finales de línea —`git show` emite LF, el árbol tiene CRLF—: un discriminador falso. Corregido normalizando.)*
+
+**El corte NO se lo come, y se demuestra con los bytes.** `ejecutarYcortarSiempre` emite
+`raster → ESC J → GS V 1`: el avance es un **sufijo de longitud fija** posterior a todo el contenido, así que la
+distancia hasta la cuchilla **no depende de lo alto que sea el ticket**. Construido el flujo real con el banco
+para las dos alturas: **150 puntos = 18,77 mm, idénticos con y sin el aviso**. El bloque añade ~10,8 mm de papel
+a 80 mm y ~7,2 mm a 58 mm (calculado desde el CSS, **no medido en papel**).
+
+**Los emojis, con honestidad.** En modo **TEXTO ESC/POS** saldrían basura: `TextEncoder` es UTF-8 y sólo UTF-8,
+y 🎂/🙏 son 4 bytes cada uno, todos > 0x7F. **Pero eso ya pasaba con `ñ` y los acentos** (`c3 b1`, `c3 a1`), que
+es precisamente por lo que el modo **IMAGEN es el default**. En modo imagen el pipeline conserva lo que el DOM
+dibuje (el banco compara pixel a pixel, 44/44), pero **no se puede comprobar desde aquí si la fuente del
+Android de Abel tiene el glifo**. Riesgo neutralizado por diseño: el aviso **se entiende sin los emojis**, y los
+dos son de **Unicode 6.0 (2010)**, la misma quinta que el 🚚 que ya se imprime en este ticket desde julio.
+
+**Nota de método:** se intentó validar el render con el navegador levantando el dev server, y el servidor
+arrancó **en el worktree `pos`** (rama `fix/auditoria-codex`), no en éste. Sólo se hicieron peticiones GET; ese
+worktree quedó intacto. El banco de navegador se **retiró**: un banco que no se ha ejecutado no demuestra nada.
+
+`scripts/impresion_banco.mjs` pasa a correr su batería **sólo cuando se invoca directamente**, para poder
+importar `construirFlujo`/`decodificarFlujo` desde otra suite sin que se ejecute (ni llame a `process.exit`).
+
+---
+
 ## 2026-08-09 — Reconciliación de la documentación (la doc reclamaba dinero ya reparado)
 
 **No es higiene: era riesgo de corrupción de datos.** La documentación afirmaba en cinco sitios que había

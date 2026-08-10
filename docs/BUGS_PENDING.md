@@ -7,6 +7,59 @@
 > Todos los de abajo **sobrevivieron** a un pase de refutación: un agente independiente intentó demostrar que eran falsos y no pudo. Los que sí se refutaron están al final, para que nadie los persiga otra vez.
 > Contexto completo en `HANDOFF.md`.
 
+## ✅ RESUELTO (2026-08-09) — El aviso "FAVOR DE REGRESAR LA BASE LIMPIA" estaba en un componente MUERTO
+> Es lo único que Abel había pedido expresamente, y llevaba meses "hecho" sin salir nunca en el papel.
+
+- **Por qué no salía:** el texto existía desde el import de Base44 (`9a281f3`) en
+  `src/components/pedidos/TicketPedidoPastel.jsx` — **y ese componente no lo renderiza nadie**.
+  `NuevoPedidoPastel.jsx:26` lo importa y **nunca lo usa**: su botón "Imprimir" hace `setVerDetalle(true)`,
+  que abre `PedidoPastelDetalleDialog`, y ése monta **`TicketPastelConfetti`**, que no tenía el aviso.
+  Comprobado: `grep -rn "<TicketPedidoPastel" src/` → **0 resultados**; `git log -S "<TicketPedidoPastel"` →
+  **0 commits** (nunca se renderizó en la historia de este repo).
+- **Arreglado** en `TicketPastelConfetti.jsx`, al final del todo, después del bloque de domicilio, con estilos
+  **en línea** (el iframe térmico no carga Tailwind) y **sólo** para `pastel_personalizado`.
+- **Prueba:** `scripts/ticket_pastel_base_limpia_verify.mjs` **23/23**, **7 FAIL contra el código viejo**.
+  Incluye el sha256 del **contenido** de los otros 5 componentes de ticket para demostrar que **ninguno cambió**.
+- **Estado: cerrado.** Queda pendiente sólo la comprobación que **no se puede hacer sin la tablet**: ver más abajo.
+
+## 🟡 MEDIA — `devolver_base` es un campo fantasma: la elección del usuario se tira en silencio
+> Encontrado el 2026-08-09 al implementar el aviso de la base. **Mismo patrón que las propinas.**
+
+- **Qué pasa:** `NuevoPedidoPastel.jsx` mantiene `devolver_base` en el formulario (init en :103, relectura en
+  :222, envío en :425, reset en :532) y lo manda al guardar. Pero:
+  - **la columna `devolver_base` NO EXISTE en `pedidos`** (verificado en `information_schema.columns`: la
+    consulta por `column_name ilike '%devolver%'` devuelve **0 filas**);
+  - **tampoco está en `COLUMNS.pedidos`** del adaptador (`src/api/entitiesAdapter.js:41`), y `pickColumns`
+    (:63-69) itera sobre la **lista permitida**, así que lo descarta **sin error y sin aviso**.
+- **Consecuencia:** al releer, `p.devolver_base` es siempre `undefined`, y `p.devolver_base !== false` da
+  siempre `true`. Cualquier condición sobre ese campo es una **opción falsa**: parece configurable y no lo es.
+- **Atenuante comprobado:** hoy **no hay ningún control en la UI** que lo cambie (las 4 apariciones son init,
+  relectura, envío y reset; ningún checkbox). Así que nadie está perdiendo una elección que haya hecho — pero
+  el campo está ahí para que alguien lo "conecte" y crea que funciona.
+- **Por eso el aviso nuevo NO se cuelga de él.** Está escrito en el comentario del componente.
+- **Decisión pendiente de Miguel:** o se borra el campo fantasma del formulario, o se añade la columna y el
+  control. **No se toca sin decidirlo**: `pedidos` es tabla de dinero.
+
+## ⚠️ NO COMPROBABLE DESDE AQUÍ — que el WebView de la tablet dibuje los emojis
+- **Lo que sí está demostrado:**
+  - En modo **TEXTO ESC/POS** un emoji sale **basura**: `TextEncoder` es **UTF-8 y sólo UTF-8** (lo fija la
+    spec), 🎂 = `f0 9f 8e 82` y 🙏 = `f0 9f 99 8f`, **4 bytes cada uno, todos > 0x7F**, que una impresora en
+    CP437 pinta como 4 glifos sueltos. ⚠️ **Pero eso ya pasaba**: `ñ` = `c3 b1` y `á` = `c3 a1` también son
+    > 0x7F, así que el modo texto **ya salía mal con los acentos** — es justo la razón por la que el modo
+    **IMAGEN es el default** (`printerConfig.js`: `modo: 'imagen'`) y está documentada en `DECISIONS.md`.
+  - En modo **IMAGEN** (el que se usa) el pipeline conserva lo que el DOM dibuje: el banco compara **pixel a
+    pixel** y da idéntico (44/44).
+  - **El corte no se lo come:** el avance `ESC J` es un **sufijo de longitud fija** que va después de TODO el
+    contenido (`ejecutarYcortarSiempre`), así que el margen hasta la cuchilla **no depende de lo alto que sea
+    el ticket**. Comprobado con los bytes reales: 150 puntos = 18,77 mm, **idénticos** con y sin el aviso.
+- **Lo que NO se puede comprobar sin la tablet:** si la fuente del Android de Abel tiene el glifo. Un navegador
+  de escritorio no responde esa pregunta.
+- **Cómo se ha neutralizado el riesgo:** el aviso **se entiende sin los emojis** (van de adorno, nunca cargando
+  el significado) y los dos elegidos son de **Unicode 6.0 (2010)** — 🎂 `U+1F382` y 🙏 `U+1F64F` —, la misma
+  quinta que el 🚚 `U+1F69A` que **ya se imprime en este mismo ticket desde julio**. Si no hubiera glifo saldría
+  un recuadro vacío y el aviso seguiría leyéndose.
+- **Qué falta para cerrarlo:** un ticket real impreso. **No se le pide a Abel.**
+
 ## 🚨 ALTA — `0059_crear_venta_directa_guards` no tiene archivo en el repo (trazabilidad de DINERO)
 > **Requiere decisión y firma de Miguel.** Encontrado el 2026-08-09 al corregir la cabecera de `0049`.
 
