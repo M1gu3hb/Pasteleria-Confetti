@@ -1,5 +1,37 @@
 # CHANGELOG
 
+## 2026-08-09 — La palabra es DEVOLVER, y el componente fósil se eliminó
+
+**3-A · «REGRESAR» era un error de transcripción nuestro, no la palabra de Abel.**
+Este POS se construyó replicando el ticket de PAPEL que Abel ya usaba antes del sistema, y ese papel decía
+**«FAVOR DE DEVOLVER LA BASE LIMPIA»**. La frase se transcribió entera en el import de Base44 y luego se quitó por
+no vérsele sentido. Comprobado:
+`git log --oneline -1 -S "DEVOLVER LA BASE LIMPIA" -- src/components/pedidos/TicketPedidoPastel.jsx` → **`9a281f3`**,
+el import baseline. Sus clientes llevan años leyendo «devolver». Cambiada la palabra en el ticket; **nada más**: ni el
+recuadro, ni la posición, ni los emojis, ni el gate `!esCatalogo`.
+*La suite se cambió PRIMERO y se comprobó que **fallaba** contra el código de entonces (7 FAIL), para demostrar que
+mira el texto de verdad y no sólo la forma del bloque.*
+
+**3-B · El fósil `TicketPedidoPastel.jsx` se ELIMINÓ, con su import muerto.**
+Documentarlo no bastaba: la trampa costó meses porque el preview de la pantalla de captura enseñaba el aviso y
+parecía puesto. Antes de borrar se agotó la búsqueda:
+
+| Comprobación | Resultado |
+|---|---|
+| `grep -rn "<TicketPedidoPastel" src/` | **0** |
+| `git log --all -S "<TicketPedidoPastel" -- src/` | **0 commits, en todas las ramas** — nunca se renderizó |
+| imports dinámicos / `React.lazy` / barrels | ninguno lo alcanza |
+| build tras borrar | **exit 0** |
+| typecheck | **1249**, sin cambio |
+
+**Y lo que lo cierra: ESLint llevaba tiempo diciéndolo.** En el árbol anterior, `npm run lint` reportaba
+`NuevoPedidoPastel.jsx:26 error 'TicketPedidoPastel' is defined but never used`. La señal estaba, pero se leía como
+parte de «los 39 de la línea base». **Al borrarlo, lint bajó de 39 a 38** — y la línea base se bajó a 38 en
+`CLAUDE.md` y `HANDOFF.md`, con la lección escrita: una línea base congelada esconde señal, y si no se baja al
+bajar, el hueco se rellena solo.
+
+---
+
 ## 2026-08-09 — El aviso de la base que Abel pidió estaba escrito en un componente MUERTO
 
 Es lo único que el cliente había pedido expresamente, llevaba meses dado por hecho, y **nunca salió en el papel**.

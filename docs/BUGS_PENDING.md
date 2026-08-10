@@ -7,7 +7,7 @@
 > Todos los de abajo **sobrevivieron** a un pase de refutación: un agente independiente intentó demostrar que eran falsos y no pudo. Los que sí se refutaron están al final, para que nadie los persiga otra vez.
 > Contexto completo en `HANDOFF.md`.
 
-## ✅ RESUELTO (2026-08-09) — El aviso "FAVOR DE REGRESAR LA BASE LIMPIA" estaba en un componente MUERTO
+## ✅ RESUELTO (2026-08-09) — El aviso "FAVOR DE DEVOLVER LA BASE LIMPIA" estaba en un componente MUERTO
 > Es lo único que Abel había pedido expresamente, y llevaba meses "hecho" sin salir nunca en el papel.
 
 - **Por qué no salía:** el texto existía desde el import de Base44 (`9a281f3`) en
@@ -18,6 +18,15 @@
   **0 commits** (nunca se renderizó en la historia de este repo).
 - **Arreglado** en `TicketPastelConfetti.jsx`, al final del todo, después del bloque de domicilio, con estilos
   **en línea** (el iframe térmico no carga Tailwind) y **sólo** para `pastel_personalizado`.
+- **La palabra es DEVOLVER, no REGRESAR.** El POS se construyó replicando el ticket de **papel** que Abel ya usaba,
+  y ese papel decía "FAVOR DE DEVOLVER LA BASE LIMPIA": el componente fósil era la transcripción de aquel papel
+  (`git log -1 -S "DEVOLVER LA BASE LIMPIA"` sobre él → `9a281f3`, el import baseline). "REGRESAR" fue un error de
+  transcripción por el camino. Corregido el mismo día.
+- **El fósil se ELIMINÓ** (componente + import muerto), porque documentarlo no evita que el próximo caiga igual.
+  Antes de borrar: `git log --all -S "<TicketPedidoPastel" -- src/` → **0 commits en todas las ramas**; sin imports
+  dinámicos ni barrels; build `exit 0` y typecheck sin cambio después.
+  **Lo confirmaba ESLint desde hacía tiempo**: `NuevoPedidoPastel.jsx:26 'TicketPedidoPastel' is defined but never
+  used`. Nadie lo leyó porque estaba dentro de "los 39 de la línea base" — que ahora es **38**.
 - **Prueba:** `scripts/ticket_pastel_base_limpia_verify.mjs` **23/23**, **7 FAIL contra el código viejo**.
   Incluye el sha256 del **contenido** de los otros 5 componentes de ticket para demostrar que **ninguno cambió**.
 - **Estado: cerrado.** Queda pendiente sólo la comprobación que **no se puede hacer sin la tablet**: ver más abajo.

@@ -80,7 +80,14 @@ Dos bugs graves se colaron porque **las pruebas probaban el arnés, no el códig
 ## Verificación antes y después de desplegar
 
 - `npm run build` debe salir **0**.
-- `npm run lint` → **39 errores es la LÍNEA BASE**, no cero. Lo que importa es que **no suba**.
+- `npm run lint` → **38 errores es la LÍNEA BASE** (era 39 hasta el 2026-08-09), no cero. Lo que importa es que **no suba**.
+
+  > ⚠️ **Una línea base de errores aceptados ESCONDE señal, y ya costó meses.** Entre esos 39 llevaba tiempo
+  > `NuevoPedidoPastel.jsx:26 error 'TicketPedidoPastel' is defined but never used`. ESLint estaba diciendo, con
+  > todas las letras, que ese componente no lo usaba nadie — y dentro de él estaba el aviso "FAVOR DE DEVOLVER LA
+  > BASE LIMPIA" que Abel pedía y nunca salía en el papel. Nadie lo leyó porque "39 es la línea base".
+  > **Cuando la cifra BAJE, bájala aquí también**: si se queda en 39, el hueco que acabas de liberar se rellena con
+  > un error nuevo sin que nadie se entere. Y de vez en cuando **lee la lista**, no sólo el número.
 - `npm run typecheck` → **1249 es la LÍNEA BASE**. Igual: que no suba.
 - Corre las suites de `scripts/*.mjs`. **Corrección 2026-08-09:** este documento afirmaba que **todas** funcionan sin
   credenciales, y es **falso**. Tres exigen un `.env` que no está en el repo y mueren con `ENOENT ... .env`:

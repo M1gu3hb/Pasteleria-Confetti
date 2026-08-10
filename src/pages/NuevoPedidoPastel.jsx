@@ -23,7 +23,14 @@ import {
 import { parseExtrasSeleccionados } from '@/utils/extrasPedido';
 import { calcularImporteBase } from '@/utils/baseRangos';
 import { normalizarRelleno } from '@/utils/rellenoPastel';
-import TicketPedidoPastel from '@/components/pedidos/TicketPedidoPastel';
+// Aquí vivía `import TicketPedidoPastel from '@/components/pedidos/TicketPedidoPastel'`.
+// Era un import MUERTO: el componente nunca se renderizó — `git log --all -S
+// "<TicketPedidoPastel" -- src/` devuelve CERO commits en toda la historia y en
+// todas las ramas. El botón "Imprimir" de esta página hace `setVerDetalle(true)`
+// y abre `PedidoPastelDetalleDialog`, que monta `TicketPastelConfetti`.
+// Ese import fantasma costó MESES: el aviso "FAVOR DE DEVOLVER LA BASE LIMPIA"
+// que pidió Abel estaba escrito ahí dentro, parecía hecho, y no salía en el papel.
+// Componente y import eliminados el 2026-08-09 para que no vuelva a morder.
 import PedidoPastelDetalleDialog from '@/components/pedidos/PedidoPastelDetalleDialog';
 import CanvasDibujo from '@/components/pedidos/CanvasDibujo';
 import MetodoPagoSelector from '@/components/pos/MetodoPagoSelector';

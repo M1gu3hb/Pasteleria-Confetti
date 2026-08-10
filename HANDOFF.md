@@ -151,7 +151,7 @@ delante, y "al menos 1 corte sin reparar" cuando ya estaban reparados. Lo que du
 | Comprobación | Criterio |
 |---|---|
 | `npm run build` | **exit 0** |
-| `npm run lint` | **39** = línea base. Lo que importa es que **no suba** |
+| `npm run lint` | **38** = línea base (era 39 hasta el 2026-08-09). Que **no suba** — y cuando **baje**, se baja la cifra aquí. Una línea base congelada esconde señal: dentro de los 39 vivía `'TicketPedidoPastel' is defined but never used`, que era exactamente el bug del aviso de la base |
 | `npm run typecheck` | **1249** = línea base. Igual: que no suba |
 | Suites `scripts/*.mjs` | todas en verde **menos tres**, que exigen un `.env` que no está en el repo: `fase4_rls_adversarial`, `fase5_corte_fidelity`, `web1_gaps_verify`. Si esos tres fallan con `ENOENT … .env`, **no es tu cambio** |
 
@@ -285,14 +285,21 @@ lección, no porque queden pendientes:
 | `Caja.jsx` | **El método de pago sobrevivía de un ticket al siguiente** (un cobro en efectivo registrado como tarjeta → descuadre inexplicable, con el cajero cargando la culpa); la búsqueda por folio no limpiaba nada; y **"mixto" se guardaba sin comprobar que sumara** (con los campos vacíos: pagada con 0+0+0) |
 | `CorteAutoDownloader.jsx` | El botón «Listo» estaba dentro de `{!done && … {done && …}}` — inalcanzable — así que `onDone` nunca se llamaba y **el PDF del 2.º corte y de todos los siguientes no se descargaba, en silencio** |
 | `printTicket.js` + `avancePapel.js` | **El ticket se cortaba sin avanzar el papel** y se perdía el final (el bug que reportó Abel). `cutPaper()` de DantSu son tres bytes y un flush: no avanza. Arreglado con `ESC J` desde JS — **llega sin APK nuevo** |
-| `TicketPastelConfetti.jsx` | **El aviso "FAVOR DE REGRESAR LA BASE LIMPIA" que pidió Abel estaba en un componente MUERTO** (`TicketPedidoPastel.jsx`, importado y nunca renderizado). Añadido al que sí se imprime |
+| `TicketPastelConfetti.jsx` | **El aviso "FAVOR DE DEVOLVER LA BASE LIMPIA" que pidió Abel estaba en un componente MUERTO** (`TicketPedidoPastel.jsx`, importado y nunca renderizado). Añadido al que sí se imprime |
 
-> ⚠️ **HAY DOS COMPONENTES DE TICKET DE PASTEL Y SÓLO UNO SE IMPRIME.**
-> `src/components/pedidos/TicketPastelConfetti.jsx` es el bueno: lo monta `PedidoPastelDetalleDialog`, y a él
-> llega tanto el botón de la lista de pedidos como el de `NuevoPedidoPastel` (que sólo abre el diálogo).
-> `src/components/pedidos/TicketPedidoPastel.jsx` es **código muerto** heredado de Base44: `NuevoPedidoPastel.jsx`
-> lo importa y **nunca lo usa** (`grep -rn "<TicketPedidoPastel" src/` → 0). Tocar el muerto no cambia nada en el
-> papel — y eso es exactamente lo que pasó con el aviso de la base durante meses.
+> ⚠️ **HABÍA DOS COMPONENTES DE TICKET DE PASTEL Y SÓLO UNO SE IMPRIMÍA. Ya sólo queda el bueno.**
+> `src/components/pedidos/TicketPastelConfetti.jsx` es el que se imprime: lo monta `PedidoPastelDetalleDialog`, y a
+> él llega tanto el botón de la lista de pedidos como el de `NuevoPedidoPastel` (que sólo abre el diálogo).
+> `src/components/pedidos/TicketPedidoPastel.jsx` era **el fósil del ticket de PAPEL de Abel** —transcrito entero en
+> el import de Base44 (`9a281f3`) y luego dejado de lado—, y **nunca lo renderizó nadie**:
+> `git log --all -S "<TicketPedidoPastel" -- src/` → **0 commits**. Ahí dentro estaba el aviso de la base, por eso
+> parecía hecho y no salía en el papel. **Eliminado el 2026-08-09**, junto con su import muerto.
+>
+> **La lección, que vale más que el archivo:** un componente que se ve en el preview de una pantalla y no se
+> imprime es indistinguible de uno que sí, hasta que alguien mira el papel. Cuando algo "ya está hecho" y el
+> cliente insiste en que no lo ve, **comprueba quién RENDERIZA, no quién CONTIENE el texto**.
+> Y **lee la lista del lint, no sólo el número**: ESLint llevaba tiempo diciendo
+> `'TicketPedidoPastel' is defined but never used` y estaba camuflado entre "los 39 de la línea base".
 
 Resto de hallazgos abiertos:
 

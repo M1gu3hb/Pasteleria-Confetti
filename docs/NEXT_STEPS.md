@@ -84,7 +84,7 @@ rama de trabajo. Requiere la firma del cambio de RLS.
 
 ## 🟠 Pendiente, sin bloqueo
 
-### ~~Ticket de pastel — "FAVOR DE REGRESAR LA BASE LIMPIA"~~ → HECHO el 2026-08-09
+### ~~Ticket de pastel — "FAVOR DE DEVOLVER LA BASE LIMPIA"~~ → HECHO el 2026-08-09
 Estaba escrito desde el import de Base44 en `TicketPedidoPastel.jsx`, **un componente que no renderiza nadie**.
 Añadido al que sí se imprime (`src/components/pedidos/TicketPastelConfetti.jsx`) con estilos en línea, al final del
 todo, sólo para pastel personalizado. Suite: `scripts/ticket_pastel_base_limpia_verify.mjs`.

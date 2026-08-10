@@ -1,5 +1,5 @@
 // =====================================================================
-// "FAVOR DE REGRESAR LA BASE LIMPIA" — el aviso que pidió Abel.
+// "FAVOR DE DEVOLVER LA BASE LIMPIA" — el aviso que pidió Abel.
 //
 // POR QUÉ NO ESTABA, aunque el texto llevaba meses en el repo:
 //   El texto existía en `src/components/pedidos/TicketPedidoPastel.jsx` desde
@@ -68,17 +68,29 @@ const RUTA_TICKET = 'components/pedidos/TicketPastelConfetti.jsx';
 const crudo = leer(RUTA_TICKET);
 const src = sinComentarios(crudo);
 
-const TEXTO = 'FAVOR DE REGRESAR LA BASE LIMPIA';
+// LA PALABRA ES **DEVOLVER**, Y NO ES UN DETALLE DE ESTILO.
+// Este POS se construyó replicando el ticket de PAPEL que Abel ya usaba antes
+// del sistema, y ese papel decía "FAVOR DE DEVOLVER LA BASE LIMPIA". La frase
+// se transcribió entera en el import de Base44 y luego se quitó por no vérsele
+// sentido; el componente muerto era el FÓSIL de ese ticket. Comprobable:
+//   git log --oneline -1 -S "DEVOLVER LA BASE LIMPIA" \
+//     -- src/components/pedidos/TicketPedidoPastel.jsx   → 9a281f3 (baseline)
+// "REGRESAR" fue un error de transcripción en la cadena de peticiones, no de
+// Abel: sus clientes llevan años leyendo "devolver" en ese papel.
+const TEXTO = 'FAVOR DE DEVOLVER LA BASE LIMPIA';
 
 // ── 1. Está en el componente que SÍ se imprime ─────────────────────────
 check('1. el aviso está en TicketPastelConfetti (el que se imprime de verdad)',
   src.includes(TEXTO));
 
-// El componente muerto sigue existiendo; que nadie lo confunda con éste.
-let muerto = '';
-try { muerto = leer('components/pedidos/TicketPedidoPastel.jsx'); } catch { /* puede no existir */ }
-check('1b. TicketPedidoPastel sigue sin renderizarse en ningún sitio (es código muerto)',
-  muerto === '' || !/<TicketPedidoPastel/.test(leer('pages/NuevoPedidoPastel.jsx')));
+// El componente FÓSIL se ELIMINÓ el 2026-08-09. Estas dos comprobaciones existen
+// para que no vuelva: mientras el archivo no exista y no haya import, nadie puede
+// volver a escribir un aviso en el sitio que no se imprime.
+let existeMuerto = true;
+try { leer('components/pedidos/TicketPedidoPastel.jsx'); } catch { existeMuerto = false; }
+check('1b. el componente fósil TicketPedidoPastel ya NO existe', !existeMuerto);
+check('1c. y no queda ningún import suyo en NuevoPedidoPastel',
+  !/from '@\/components\/pedidos\/TicketPedidoPastel'/.test(sinComentarios(leer('pages/NuevoPedidoPastel.jsx'))));
 
 // ── 2. Posición: después de domicilio, dentro de .ticket-printable ─────
 const iDomicilio = src.indexOf('PIDIERON ENTREGA A DOMICILIO');
@@ -153,7 +165,8 @@ const HASHES = {
   'components/tickets/CorteTicketTermico.jsx': 'ce96b89dce405bd3eb51441263bf1b289e00fcd19d315288b6895cd29e2099a9',
   'components/tickets/PreCuentaTicket.jsx':    'adf90ead8361cbc4539f39b47451bf584bae2f007a7a0176114bee737b64b10a',
   'components/tickets/TicketViewerDialog.jsx': '66b3145abeacab0a8d6ce1039b491a412a6cbc49b706ef85e5be102b97365f3c',
-  'components/pedidos/TicketPedidoPastel.jsx': '6fd58923b0ad7ad146ad92983a65dfae6039dfb09678599840bba7ea7bc0bb72',
+  // TicketPedidoPastel.jsx ya no está en la lista: se ELIMINÓ (era el fósil).
+  // Su ausencia la vigilan las comprobaciones 1b y 1c.
 };
 for (const [ruta, esperado] of Object.entries(HASHES)) {
   let real = '(no se pudo leer)';
@@ -166,7 +179,6 @@ for (const [ruta, esperado] of Object.entries(HASHES)) {
 for (const ruta of Object.keys(HASHES)) {
   let c = '';
   try { c = readFileSync(join(RAIZ, ruta), 'utf8'); } catch { /* falta */ }
-  if (ruta.endsWith('TicketPedidoPastel.jsx')) continue; // éste tiene el texto VIEJO ("DEVOLVER"), a propósito
   check(`11. no se coló el aviso en ${ruta.split('/').pop()}`, !c.includes(TEXTO));
 }
 

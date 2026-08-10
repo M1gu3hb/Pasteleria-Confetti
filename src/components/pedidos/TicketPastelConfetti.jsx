@@ -201,11 +201,20 @@ export default function TicketPastelConfetti({ pedido, config }) {
           lleva entrega, salen los dos, en este orden y sin encimarse (todo el
           componente es flujo normal, no hay ningún position:absolute).
 
+          LA PALABRA ES "DEVOLVER", NO "REGRESAR", y no es un detalle de estilo.
+          Este POS se construyó replicando el ticket de PAPEL que Abel ya usaba
+          antes del sistema, y ese papel decía "FAVOR DE DEVOLVER LA BASE
+          LIMPIA". Sus clientes llevan años leyendo esa palabra. "REGRESAR" fue
+          un error de transcripción por el camino, no de Abel.
+
           POR QUÉ NO ESTABA, aunque el texto existía desde el import de Base44:
-          vivía en `TicketPedidoPastel.jsx`, un componente que NADIE RENDERIZA —
-          `NuevoPedidoPastel.jsx` lo importa pero nunca lo usa; su botón
-          "Imprimir" abre `PedidoPastelDetalleDialog`, que monta ESTE componente.
-          Por eso Abel lo pedía y nunca salía.
+          vivía en `TicketPedidoPastel.jsx` — el FÓSIL de aquel ticket de papel,
+          transcrito entero y luego dejado de lado— y ese componente NO LO
+          RENDERIZA NADIE. `NuevoPedidoPastel.jsx` lo importaba y nunca lo usaba;
+          su botón "Imprimir" abre `PedidoPastelDetalleDialog`, que monta ESTE
+          componente. Por eso Abel lo pedía y nunca salía.
+          Comprobable: git log --oneline -1 -S "DEVOLVER LA BASE LIMPIA" sobre
+          aquel archivo devuelve 9a281f3, el import baseline de Base44.
 
           NO se copia su condición `pedido.devolver_base !== false`: la columna
           `devolver_base` NO EXISTE en la tabla `pedidos` y tampoco está en la
@@ -231,7 +240,7 @@ export default function TicketPastelConfetti({ pedido, config }) {
           <Linea />
           <div style={{ border: '2px solid #3a2418', borderRadius: 6, padding: '2.5mm 2mm', textAlign: 'center', marginTop: '2mm' }}>
             <p style={{ fontSize: '14px', fontWeight: 900, lineHeight: 1.25, letterSpacing: '0.3px', margin: 0 }}>
-              🎂 FAVOR DE REGRESAR LA BASE LIMPIA 🙏
+              🎂 FAVOR DE DEVOLVER LA BASE LIMPIA 🙏
             </p>
           </div>
         </>
