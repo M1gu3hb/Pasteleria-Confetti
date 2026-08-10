@@ -22,6 +22,9 @@ export default function CorteViewerDialog({ corte, open, onClose }) {
   const isRP = paquete_modo === 'restaurante_pro';
   const ticketRef = useRef(null);
   const termicoRef = useRef(null);
+  // Ocupado = hay una impresión o una descarga en curso. Es un ref, no state,
+  // porque tiene que verse en el MISMO tick que el segundo clic.
+  const ocupadoRef = useRef(false);
   const [downloading, setDownloading] = useState(false);
 
   const corteId = corte?.id || null;
@@ -186,10 +189,26 @@ export default function CorteViewerDialog({ corte, open, onClose }) {
   // y lo imprimimos vía iframe offscreen visible. Así NUNCA imprime el POS
   // completo, modal vacío ni hoja en blanco: imprime el PDF real.
   const handlePrintCashCut = async () => {
+    // GUARDA DE REENTRADA. El botón sólo llevaba `disabled={loading}`, y
+    // `loading` es únicamente el `isPending` de la query: una vez cargados los
+    // datos vale false DURANTE TODA la impresión. Su botón hermano (Descargar)
+    // ya tenía `disabled={loading || downloading}`; a éste se le olvidó.
+    // El ref hace falta además del state porque `setDownloading` no se ve hasta
+    // el siguiente render y un doble toque rápido entra dos veces.
+    if (ocupadoRef.current) return;
     if (loading) {
       toast.info('Espera a que termine de prepararse el PDF.');
       return;
     }
+    ocupadoRef.current = true;
+    try {
+      await ejecutarImpresionCorte();
+    } finally {
+      ocupadoRef.current = false;
+    }
+  };
+
+  const ejecutarImpresionCorte = async () => {
     // Ruta TÉRMICA (SOLO en el APK y si la config del corte es 'termico'):
     // imprime el corte por la impresora ESC/POS reusando los MISMOS datos que el
     // PDF (CorteTicketTermico). En el NAVEGADOR esto nunca corre → la ruta PDF
@@ -228,6 +247,7 @@ export default function CorteViewerDialog({ corte, open, onClose }) {
 
   // === Descargar PDF (NO abre imprimir) ===
   const handleDownloadCashCutPDF = async () => {
+    if (ocupadoRef.current) return;   // no solapar con la impresión ni consigo misma
     if (loading) {
       toast.info('Espera a que termine de prepararse el PDF.');
       return;
@@ -258,8 +278,10 @@ export default function CorteViewerDialog({ corte, open, onClose }) {
         <DialogHeader className="no-print px-6 pt-5 pb-3 border-b sticky top-0 bg-white z-10 flex-row items-center justify-between">
           <DialogTitle className="font-heading">PDF de corte · {corte?.folio}</DialogTitle>
           <div className="flex gap-2">
-            <Button size="sm" onClick={handlePrintCashCut} disabled={loading}>
-              <Printer className="w-4 h-4 mr-1" /> Imprimir / PDF
+            <Button size="sm" onClick={handlePrintCashCut} disabled={loading || downloading} aria-busy={downloading}>
+              {downloading
+                ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Imprimiendo…</>
+                : <><Printer className="w-4 h-4 mr-1" /> Imprimir / PDF</>}
             </Button>
             <Button size="sm" variant="outline" onClick={handleDownloadCashCutPDF} disabled={loading || downloading}>
               {downloading

@@ -20,6 +20,9 @@ export default function CorteAutoDownloader({ corte, onDone }) {
   const isEsencial = paquete_modo === 'esencial';
   const isRP = paquete_modo === 'restaurante_pro';
   const ref = useRef(null);
+  // Guarda de reentrada SÍNCRONA para que el disparo automático y el botón
+  // manual no se pisen (el state llega tarde a un setTimeout).
+  const enCursoRef = useRef(false);
   const [data, setData] = useState(null);
   const [downloading, setDownloading] = useState(false);
   const [done, setDone] = useState(false);
@@ -118,6 +121,12 @@ export default function CorteAutoDownloader({ corte, onDone }) {
 
   const triggerDownload = async () => {
     if (!ref.current || !data) return;
+    // GUARDA SÍNCRONA. El `downloading` de estado NO sirve aquí: el disparo
+    // automático es un setTimeout de 300 ms y el botón manual ya está activo en
+    // esa ventana, así que los dos podían entrar a la vez y generar DOS PDFs
+    // idénticos. Un ref se ve al instante; un setState, no.
+    if (enCursoRef.current) return;
+    enCursoRef.current = true;
     setDownloading(true);
     setError(false);
     try {
@@ -127,11 +136,21 @@ export default function CorteAutoDownloader({ corte, onDone }) {
       await downloadNodeAsPDF(ref.current, `Corte_${folio}_${fecha}_${negocio}.pdf`);
       setDone(true);
       toast.success('PDF del corte descargado');
+      // AVISAR AL PADRE. Antes esto sólo colgaba del botón "Listo", que era
+      // INALCANZABLE (estaba anidado dentro de `{!done && …}`), así que `onDone`
+      // no se llamaba nunca y `autoDownloadCorte` se quedaba puesto en Caja.jsx.
+      // Consecuencia real, silenciosa: al cerrar un SEGUNDO corte sin salir de
+      // /caja, el componente no se remontaba, `done` seguía en true, el efecto
+      // no descargaba y el botón de rescate tampoco se mostraba -> el PDF de ese
+      // corte y de todos los siguientes NO se descargaba y no había forma de
+      // pedirlo. Se recuperaba sólo navegando fuera de /caja y volviendo.
+      onDone?.();
     } catch (err) {
       console.error('Error generando PDF auto:', err);
       setError(true);
       toast.error('No se pudo descargar automáticamente. Usa el botón.');
     } finally {
+      enCursoRef.current = false;
       setDownloading(false);
     }
   };
@@ -156,9 +175,17 @@ export default function CorteAutoDownloader({ corte, onDone }) {
               ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Generando PDF…</>
               : <><Download className="w-4 h-4 mr-1" /> Descargar PDF del corte</>}
           </Button>
-          {done && (
-            <Button variant="ghost" size="sm" className="ml-2" onClick={onDone}>Listo</Button>
-          )}
+        </div>
+      )}
+
+      {/* Escape manual. Vive FUERA del bloque `{!done && …}` a propósito: antes
+          estaba DENTRO, o sea dentro de `!done && done`, una contradicción que
+          lo hacía inalcanzable. Hoy el camino normal ya llama `onDone` solo al
+          terminar la descarga, así que esto sólo se ve si algo dejó `done` en
+          true sin que el padre se enterara: es la salida de rescate. */}
+      {done && (
+        <div className="fixed bottom-6 right-6 z-[60] no-print">
+          <Button variant="ghost" size="sm" onClick={onDone}>Listo</Button>
         </div>
       )}
 
