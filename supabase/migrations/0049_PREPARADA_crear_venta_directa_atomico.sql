@@ -2,8 +2,60 @@
 -- 0049_PREPARADA_crear_venta_directa_atomico.sql
 -- FASE II-B.2 (blindaje MNY-I-13, R2) — venta directa de mostrador ATÓMICA.
 --
+-- ############################################################################
+-- ## NOTA AÑADIDA EL 2026-08-09 — LEE ESTO ANTES QUE NADA DE LO DE ABAJO     ##
+-- ##                                                                        ##
+-- ## TODO EL TEXTO ORIGINAL DE ESTA CABECERA ES FALSO DESDE EL 2026-07-13.   ##
+-- ## Se deja tal cual (no se toca ni una línea del SQL ni del texto) porque  ##
+-- ## es el registro de lo que se pensaba entonces. Pero no describe lo que   ##
+-- ## corre hoy en producción. Lo comprobado contra la base el 2026-08-09:    ##
+-- ##                                                                        ##
+-- ## 1. SÍ ESTÁ APLICADA. Se aplicó el 2026-07-13 con el nombre              ##
+-- ##    `0049_crear_venta_directa_atomico` (sin el `PREPARADA_` del archivo, ##
+-- ##    que nadie renombró). Donde dice "NO APLICADA", léase APLICADA.       ##
+-- ##                                                                        ##
+-- ## 2. SÍ ESTÁ EN PRODUCCIÓN Y EL FRONTEND YA LA USA. Donde dice "NO        ##
+-- ##    mergear a migracion/supabase hasta la firma": ya está mergeada, y    ##
+-- ##    `src/utils/crearVentaDirecta.js` llama a `crear_venta_directa_tx`    ##
+-- ##    en CADA venta directa de mostrador. El "Orden de firma" de abajo     ##
+-- ##    (0042 → 0044 → … → 0049 → … → frontend) no se siguió: 0049 y su      ##
+-- ##    frontend se adelantaron a toda la cadena, y 0042/0044/0045/0046/0047 ##
+-- ##    siguen sin firmar, en la rama `fix/auditoria-codex`.                 ##
+-- ##                                                                        ##
+-- ## 3. ⚠️ EL SQL DE ESTE ARCHIVO NO ES EL QUE CORRE. La función se          ##
+-- ##    reemplazó el MISMO 2026-07-13 por una migración posterior,           ##
+-- ##    `0059_crear_venta_directa_guards`, que NO TIENE ARCHIVO EN EL REPO.  ##
+-- ##    El cuerpo vivo es ~2.100 caracteres más largo que el de aquí y añade ##
+-- ##    guards que abajo ni se mencionan: TOTAL_INVALIDO, TOTAL_NO_CUADRA,   ##
+-- ##    LINEA_INVALIDA, LINEA_NO_CUADRA, SIN_DETALLE, SIN_CAJA,              ##
+-- ##    SIN_SUCURSAL. Es decir: la versión viva es MÁS estricta que ésta.    ##
+-- ##    Leer este archivo para saber qué valida el cobro de mostrador lleva  ##
+-- ##    a conclusiones equivocadas.                                          ##
+-- ##                                                                        ##
+-- ## 4. ⚠️ HAY DOS MIGRACIONES CON EL NÚMERO 0059. La de aquí               ##
+-- ##    (`0059_crear_venta_directa_guards`, 2026-07-13, sin archivo) y       ##
+-- ##    `0059_recalculo_cortes_en_cero_ronda2` (2026-08-09, sí con archivo). ##
+-- ##    El número 0059 del repo NO es el 0059 de la base.                    ##
+-- ##                                                                        ##
+-- ## PENDIENTE (no lo arregla esta nota): reconstruir el archivo de          ##
+-- ## `0059_crear_venta_directa_guards` desde la base y renumerarlo, para que ##
+-- ## el repo vuelva a ser el registro de lo que corre. Es DINERO: lo decide  ##
+-- ## y lo firma Miguel. Anotado en docs/BUGS_PENDING.md.                     ##
+-- ##                                                                        ##
+-- ## CÓMO COMPROBAR TODO ESTO TÚ MISMO (no te fíes de esta nota; caduca      ##
+-- ## igual que caducó la de abajo):                                          ##
+-- ##   -- ¿aplicada, cuándo, y con qué nombre?                               ##
+-- ##   select version, name from supabase_migrations.schema_migrations       ##
+-- ##     where name ~ 'venta_directa' order by version;                      ##
+-- ##   -- ¿qué cuerpo corre HOY?                                             ##
+-- ##   select md5(prosrc), length(prosrc) from pg_proc p                     ##
+-- ##     join pg_namespace n on n.oid=p.pronamespace                         ##
+-- ##    where n.nspname='public' and p.proname='crear_venta_directa_tx';     ##
+-- ############################################################################
+--
 -- ⚠️ PREPARADA — NO APLICADA. DINERO: requiere la FIRMA de Miguel. No la aplica esta
 --    sesión. Aditiva/retro-compatible. Orden de firma al final.
+--    [2026-08-09: FALSO. Ver la nota de arriba.]
 --
 -- QUÉ REEMPLAZA: el INSERT directo de la venta directa de mostrador —
 --   POS.jsx:282 (crea la venta ya estado='pagada' con desglose + corte) + POS.jsx:363
@@ -49,6 +101,9 @@
 --
 -- >>> Orden de firma: 0042 → 0044 → 0045 → 0046 → 0047 → 0048 → 0049 → (R3…R11) →
 --     revoke DML → frontend. NO mergear a migracion/supabase hasta la firma.
+--     [2026-08-09: este orden NO se siguió. 0049 y su frontend se aplicaron y
+--      se mergearon el 2026-07-13, delante de 0042/0044/0045/0046/0047, que
+--      siguen sin firmar. Ver la nota del principio del archivo.]
 -- ============================================================================
 
 begin;

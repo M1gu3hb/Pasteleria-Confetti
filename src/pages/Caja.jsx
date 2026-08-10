@@ -461,11 +461,45 @@ export default function Caja() {
         // Pendientes (cuenta_solicitada, abierta, etc.) → flujo de cobro.
         setVentaSeleccionada(found);
         setDetallesSeleccionados(Array.isArray(detalles) ? detalles : []);
+        // Esta es la OTRA puerta al cobro (búsqueda por folio, la que usan los
+        // pedidos web) y no limpiaba NADA: aquí sobrevivían el método Y los
+        // importes del ticket anterior. Mismo arranque que abrirVenta.
+        limpiarCamposCobro();
       }
     } catch (err) {
       console.error('[Caja] buscarVenta detalle:', err);
       toast.error('Se encontró la venta pero no se pudieron cargar los productos.');
     }
+  };
+
+  // DINERO — deja los campos del cobro como al montar el componente.
+  // Los mismos valores que `useState` arriba y que la limpieza tras un cobro
+  // correcto. NO calcula nada: sólo borra estado de la venta ANTERIOR.
+  //
+  // El método de pago se resetea AQUÍ, y ésa es la corrección: antes se
+  // limpiaban los importes pero `metodoPago` NO. Sobrevivía de un ticket al
+  // siguiente, y sólo se reponía a 'efectivo' tras un cobro CORRECTO (más
+  // abajo). Si el cajero abría un ticket, elegía «Tarjeta» y luego se salía
+  // sin cobrar —lo normal: el cliente cambia de idea, se equivocó de ticket,
+  // llega otro cliente—, el siguiente ticket se abría YA en «Tarjeta».
+  // Cobrar sin mirar el selector registraba como TARJETA un cobro en
+  // EFECTIVO: el dinero está en el cajón pero el corte no lo espera, y al
+  // cuadrar aparece un SOBRANTE que nadie sabe explicar (o un FALTANTE en el
+  // caso contrario). El cajero carga con la culpa de un fallo de la pantalla.
+  //
+  // Peor con «Mixto», que también sobrevivía: los importes SÍ se borraban, así
+  // que quedaba mixto con los tres campos vacíos. Mixto es el único método sin
+  // reparto automático (ver más abajo), y sin la guarda nueva eso guardaba la
+  // venta como pagada con efectivo=0, tarjeta=0 y transferencia=0: el ticket
+  // entero desaparecía del reparto por método.
+  const limpiarCamposCobro = () => {
+    setMetodoPago('efectivo');
+    setMontoEfectivo('');
+    setMontoTarjeta('');
+    setMontoTransferencia('');
+    setPropinaEfectivo('');
+    setPropinaTarjeta('');
+    setPropinaTransferencia('');
   };
 
   const abrirVenta = async (venta) => {
@@ -502,12 +536,7 @@ export default function Caja() {
 
     setVentaSeleccionada(ventaFinal);
     setDetallesSeleccionados(detallesArr);
-    setMontoEfectivo('');
-    setMontoTarjeta('');
-    setMontoTransferencia('');
-    setPropinaEfectivo('');
-    setPropinaTarjeta('');
-    setPropinaTransferencia('');
+    limpiarCamposCobro();
     // Solo abrir modal de propina si propinas están activas Y la venta lo requiere.
     // Tipos que requieren elección explícita en caja:
     //   - 'pendiente': mesero la dejó pendiente.
@@ -759,6 +788,35 @@ export default function Caja() {
     if (metodoPago === 'efectivo') { mEfec = totalACobrar; mTar = 0; mTrans = 0; }
     if (metodoPago === 'tarjeta') { mTar = totalACobrar; mEfec = 0; mTrans = 0; }
     if (metodoPago === 'transferencia') { mTrans = totalACobrar; mEfec = 0; mTar = 0; }
+
+    // ── GUARDA: el mixto tiene que sumar el total ────────────────────────
+    // ES SÓLO UNA GUARDA. No reparte, no reajusta, no redondea, no calcula
+    // nada: lee lo que ya está calculado tres líneas arriba y se niega a
+    // guardar un cobro incoherente. Si suma bien, el cobro sigue exactamente
+    // igual que siempre.
+    //
+    // Por qué hacía falta: los otros tres métodos se auto-reparten (líneas de
+    // arriba, `mEfec = totalACobrar`, etc.), así que es imposible que no
+    // cuadren. «Mixto» es el ÚNICO que se guarda tal cual lo teclea el cajero,
+    // y no había ninguna comprobación. Con los campos vacíos se guardaba la
+    // venta como pagada con 0 + 0 + 0; con un dedazo (un 5 que no se pulsó,
+    // un 0 de más) se guardaba con el reparto equivocado. En los dos casos la
+    // venta queda cobrada y el corte descuadra, y no hay forma de saber
+    // después cuánto entró en cajón y cuánto por terminal.
+    //
+    // Tolerancia y forma calcadas de la comprobación de propinas que ya vive
+    // veinte líneas más abajo, para no introducir un criterio nuevo.
+    if (metodoPago === 'mixto') {
+      const sumaMetodos = mEfec + mTar + mTrans;
+      if (Math.abs(sumaMetodos - totalACobrar) > 0.01) {
+        toast.error(
+          `Pago mixto: lo repartido (${formatCurrency(sumaMetodos)}) no coincide con el total a cobrar (${formatCurrency(totalACobrar)}). Corrige los importes.`
+        );
+        setProcesando(false);
+        setProcesandoMsg('');
+        return;
+      }
+    }
 
     // === Propinas EXACTAS por método (no proporcional) ===
     // Regla:

@@ -133,6 +133,9 @@ export default function NuevoPedidoPastel() {
   // Precio/kilo impuesto por el último relleno especial elegido (para saber si el
   // usuario lo editó manualmente: su edición manda).
   const rellenoPKRef = useRef(null);
+  // Guarda de reentrada del guardado. Es DINERO: sin ella, un doble toque crea
+  // dos pedidos, dos folios y cobra el anticipo dos veces.
+  const guardandoRef = useRef(false);
 
   // Elegir/quitar un relleno. Si es 'precio_kilo' (especial), fija el precio por
   // kilo del form a su monto (editable después: manda la edición manual). Al
@@ -371,6 +374,12 @@ export default function NuevoPedidoPastel() {
       }
     }
 
+    // GUARDA SÍNCRONA. `setGuardando(true)` no se ve hasta el siguiente render,
+    // así que un doble toque rápido en tablet entra dos veces. Un ref sí se ve
+    // en el mismo tick. Va DESPUÉS de todas las validaciones para no dejar la
+    // guarda puesta en un camino que devuelve temprano.
+    if (guardandoRef.current) return;
+    guardandoRef.current = true;
     setGuardando(true);
     try {
       // Lista genérica de extras elegidos (fuente para ticket/detalle/PDF de pedidos
@@ -494,6 +503,7 @@ export default function NuevoPedidoPastel() {
       console.error('[NuevoPedidoPastel] guardar:', err);
       toast.error('No se pudo guardar el pedido. Intenta de nuevo.');
     } finally {
+      guardandoRef.current = false;
       setGuardando(false);
     }
   };
@@ -879,10 +889,30 @@ export default function NuevoPedidoPastel() {
 
       {/* SECCIÓN 8 — Guardado */}
       <div className="space-y-2">
-        <Button onClick={guardar} disabled={guardando}
+        {/* DINERO — el botón se DESARMA tras crear el pedido.
+            Antes sólo llevaba `disabled={guardando}`, y `guardando` vuelve a
+            false en el `finally`: al terminar, el botón quedaba otra vez activo
+            y seguía diciendo "Guardar pedido". Si alguien lo pulsaba de nuevo
+            —basta con creer que no se guardó, porque arriba la pantalla apenas
+            cambia— `editId` es null, así que `if (editId && pedidoGuardado?.id)`
+            fallaba y caía al else: OTRO folio, OTRO pedido y, si había anticipo,
+            OTRO abono con OTRA venta paralela cobrada en el corte del día.
+            Es decir: al cliente se le cobraba el anticipo DOS VECES.
+            Y la base no lo para: `pedidos` y `abonos` sólo tienen su PK, y
+            `ventas.folio` no es único (comprobado en producción).
+            `limpiar()` pone `pedidoGuardado` a null → "Nuevo pedido" lo re-arma. */}
+        <Button onClick={guardar}
+          disabled={guardando || (!editId && !!pedidoGuardado?.id)}
+          aria-busy={guardando}
           className="btn-cobrar w-full rounded-2xl text-lg font-semibold min-h-[56px] text-white">
           <Save className="w-5 h-5 mr-2" />
-          {guardando ? 'Guardando…' : editId ? 'Guardar cambios' : 'Guardar pedido'}
+          {guardando
+            ? 'Guardando…'
+            : editId
+              ? 'Guardar cambios'
+              : pedidoGuardado?.id
+                ? 'Pedido guardado ✓'
+                : 'Guardar pedido'}
         </Button>
         {pedidoGuardado?.id && (
           <>

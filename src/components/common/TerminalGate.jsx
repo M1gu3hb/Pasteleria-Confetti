@@ -28,6 +28,30 @@ export default function TerminalGate({ children }) {
   // Evita doble apertura de sesión terminal mientras posUser aún no se refleja.
   const autoLoginRef = useRef(false);
 
+  // ── EL REF NO PUEDE SER UN LATCH PERMANENTE ─────────────────────────
+  // `autoLoginRef` existe para que NO se abran dos sesiones de terminal a la
+  // vez mientras `posUser` aún no se refleja. Sólo para eso.
+  //
+  // Pero TerminalGate es el `element` de la ruta de layout (`App.jsx`): NO se
+  // desmonta NUNCA. Así que el ref sobrevivía a todo, y eso lo convertía en un
+  // "ya se hizo una vez, no lo vuelvas a intentar jamás".
+  //
+  // El camino que lo rompe lo introdujo el arreglo de la sesión colgada
+  // (`Sidebar.handleSalirAdmin`): si al salir de dueño/pastelero `loginTerminal`
+  // falla por red, hace `logout()` → `posUser` pasa a null. El efecto se vuelve
+  // a disparar, pero muere en `if (autoLoginRef.current) return`. Y como
+  // `sesionError` sigue en null (lo limpió el auto-login inicial), tampoco se
+  // renderiza el bloque de rescate con el botón "Reintentar", que es el ÚNICO
+  // otro sitio que resetea el ref. Resultado: `if (!posUser)` → SPINNER
+  // INFINITO, con el POS muerto hasta recargar la página.
+  //
+  // Al soltar el ref cuando desaparece `posUser`, el reintento vuelve a ser
+  // posible. El guard real contra la doble apertura sigue siendo `if (posUser)
+  // return` más el propio ref durante el await.
+  useEffect(() => {
+    if (!posUser) autoLoginRef.current = false;
+  }, [posUser]);
+
   // Auto-login del empleado virtual cuando hay terminal y aún no hay usuario.
   // Fase 4: ANTES de loguear al empleado, abre la sesión Supabase de la cuenta
   // TERMINAL de la sucursal (scoped por RLS). Rol 'caja' = acceso operativo a
