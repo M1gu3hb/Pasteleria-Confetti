@@ -1,5 +1,60 @@
 # CHANGELOG
 
+## 2026-09-16 — El ticket impreso mentía sobre lo que el cliente ya pagó
+
+**El síntoma lo trajo Abel, y es diario.** Cada vez que un cliente abona, Abel le **reimprime el ticket**: ese papel
+es el recibo del cliente. Y el papel se contradecía a sí mismo:
+
+```
+PP-A-0161 (Alin Pérez nava)
+  Total ....... $3,050
+  A cuenta .... $650      <- había pagado $1,800
+  Resta ....... $1,250    <- correcto
+```
+
+$3,050 − $650 = $2,400, no $1,250.
+
+**Causa:** la línea imprimía `pedido.a_cuenta`, que es **sólo el primer anticipo** y nunca se actualiza. Los pagos
+posteriores van a `total_abonado`, que `registrarPagoPedido` recalcula desde TODOS los abonos en cada cobro.
+
+**Alcance medido en producción:** **161 pedidos** con más de un pago, y en los 161 estaba desfasada —
+**$118,778** pagados por clientes reales que el papel no reflejaba.
+
+**Arreglo:** la línea pasa a llamarse **«Abonado»** y muestra `total_abonado`, con respaldo a `a_cuenta` si aquél
+faltara. Las guardas son `Number.isFinite(x) && x > 0`, no `Number(x) > 0`, por la trampa conocida de
+`Number(null) === 0` que ya costó dos bugs de dinero aquí.
+**`Resta` y `Total` NO se tocaron**, ni la lógica de cobro, ni el aviso de la base, ni el bloque de domicilio.
+
+**Prueba (`scripts/ticket_abonado_verify.mjs`, 40/40):** no se limita a leer el archivo — **extrae la expresión real
+y la ejecuta** con valores crudos (null, undefined, NaN, `''`, `'abc'`, negativos, Infinity, strings numéricos de
+PostgREST). Incluye los cuatro casos reales de producción con sus cifras. Contra el código anterior da **22 FAIL**.
+Además se renderizó el componente en un navegador real: los tres escenarios (liquidado, con saldo, sin pagos)
+imprimen cuadrado y sin errores de página.
+
+### Auditoría del circuito de abonos (misma sesión) — funciona
+
+Abel creía que la función de abonar no existía. **Existe y se usa a diario:** 528 abonos, $374,833, el último el
+mismo 16 de septiembre; **175 de esos pagos se hicieron días o semanas después del pedido** ($123,018), que es
+exactamente el caso que él preguntaba. **524 de 524** abonos tienen su venta paralela, con el corte y el método
+correctos. Prueba funcional en transacción revertida: dos pagos (efectivo $300 + tarjeta $250) entraron al corte por
+$550, separados por método, con el concepto `Anticipo pedido PP-A-0299`.
+
+**Por qué él no la veía:** sin caja abierta el botón se deshabilita y cambia a **«Pago (caja cerrada)»**.
+
+### `CLAUDE.md` corregido — el "quirk" del doble conteo era falso
+
+El documento afirmaba que el doble conteo de `efectivo_esperado` con abono en efectivo era un quirk de Base44
+reproducido a propósito. **Contradecía al código que lleva meses corriendo bien.** Comprobado sobre los **140 cortes
+cerrados con abonos en efectivo**: la fórmula del código cuadra en **140/140**; la del "quirk", en **0/140**.
+Regla reescrita con esa evidencia y con la advertencia de no devolverle el doble conteo.
+
+### Hallazgos registrados, sin tocar (requieren decisión de Miguel)
+
+- **4 anticipos sin venta paralela, $1,700** — todos de la pantalla de *crear pedido*, no del botón de abonar.
+- **6 pedidos donde `total_final − total_abonado ≠ saldo_pendiente`** — datos viejos: el pedido se editó después de
+  pagar y `saldo_pendiente` quedó rezagado.
+
+
 ## 2026-08-09 — La palabra es DEVOLVER, y el componente fósil se eliminó
 
 **3-A · «REGRESAR» era un error de transcripción nuestro, no la palabra de Abel.**

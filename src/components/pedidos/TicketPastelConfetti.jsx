@@ -80,6 +80,30 @@ export default function TicketPastelConfetti({ pedido, config }) {
 
   const colStack = { display: 'flex', flexDirection: 'column', gap: '2px' };
 
+  // ── LO QUE EL CLIENTE YA PAGÓ ───────────────────────────────────────────
+  // Antes esta línea imprimía `a_cuenta`, que es SÓLO el primer anticipo y no
+  // se actualiza nunca. Como Abel reimprime el ticket cada vez que el cliente
+  // abona, el papel acababa contradiciéndose a sí mismo:
+  //     Total 3,050 · A cuenta 650 · Resta 1,250     (3,050 − 650 ≠ 1,250)
+  // El cliente había pagado 1,800, no 650. Comprobado en producción: pasaba en
+  // los 161 pedidos con más de un pago, con $118,778 pagados sin reflejar.
+  //
+  // `total_abonado` es la SUMA de todos los pagos: lo recalcula
+  // registrarPagoPedido desde los abonos en cada cobro. Verificado contra la
+  // base: coincide con la suma real de abonos en 408 de 408 pedidos.
+  //
+  // OJO con `Number(null) === 0` (ya nos costó dos bugs de dinero): se exige
+  // finito Y mayor que cero, así que null/undefined/NaN caen al respaldo en vez
+  // de colarse como 0. El respaldo `a_cuenta` cubre cualquier pedido antiguo
+  // que tuviera anticipo sin total_abonado (hoy no hay ninguno, pero la línea
+  // no puede desaparecer si aparece uno).
+  const abonadoImpreso = (() => {
+    const abonado = Number(pedido.total_abonado);
+    if (Number.isFinite(abonado) && abonado > 0) return abonado;
+    const anticipo = Number(pedido.a_cuenta);
+    return Number.isFinite(anticipo) && anticipo > 0 ? anticipo : 0;
+  })();
+
   return (
     <div
       className="ticket-printable letter-doc mx-auto w-full max-w-sm p-5 rounded-lg"
@@ -166,8 +190,8 @@ export default function TicketPastelConfetti({ pedido, config }) {
           <span style={{ overflowWrap: 'break-word', minWidth: 0, flex: '1 1 auto' }}>Total</span>
           <span style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>{fmt(pedido.total_final)}</span>
         </div>
-        {Number(pedido.a_cuenta) > 0 && (
-          <Fila label="A cuenta" numeric value={fmt(pedido.a_cuenta)} />
+        {abonadoImpreso > 0 && (
+          <Fila label="Abonado" numeric value={fmt(abonadoImpreso)} />
         )}
         {Number(pedido.saldo_pendiente) > 0 && (
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '10px', fontWeight: 700, color: '#b45309' }}>

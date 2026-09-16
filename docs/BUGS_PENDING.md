@@ -2,6 +2,56 @@
 
 ---
 
+# 🔴 ABIERTOS AL 2026-09-16
+
+## ✅ RESUELTO (2026-09-16) — El ticket impreso mentía sobre lo que el cliente ya pagó
+- **Síntoma real, diario:** Abel **reimprime el ticket cada vez que un cliente abona**; ese papel es el recibo del
+  cliente y no cuadraba. `PP-A-0161`: Total $3,050 · «A cuenta» $650 · Resta $1,250, cuando había pagado **$1,800**.
+- **Causa:** la línea imprimía `pedido.a_cuenta` (sólo el PRIMER anticipo, nunca se actualiza) en vez de
+  `total_abonado` (suma de todos los abonos, que recalcula `registrarPagoPedido` en cada cobro).
+- **Alcance:** **161 pedidos** con más de un pago; en los 161 estaba mal. **$118,778** pagados sin reflejar.
+- **Arreglo:** línea renombrada a **«Abonado»**, muestra `total_abonado` con respaldo a `a_cuenta`. Guardas
+  `Number.isFinite(x) && x > 0` (no `Number(x) > 0`) por `Number(null) === 0`. `Total` y `Resta`, intactos.
+- **Prueba:** `scripts/ticket_abonado_verify.mjs` — 40/40; **22 FAIL contra el código anterior**. Ejecuta la
+  expresión REAL extraída del archivo con valores crudos, y renderizado verificado en navegador.
+- **Archivos:** `src/components/pedidos/TicketPastelConfetti.jsx`.
+
+## 🟡 MEDIA — 4 anticipos sin venta paralela ($1,700) · requiere decisión de Miguel
+- **Qué es:** 4 pagos quedaron con su `Abono` pero **sin la `Venta` paralela**, así que ese dinero no entró a su
+  corte como venta. El saldo del cliente SÍ es correcto; lo que queda corto es el corte.
+- **Los cuatro son de la pantalla de CREAR pedido** (`notas = "Anticipo al crear el pedido"`), **no** del botón
+  «Registrar pago». Son 4 de 347 anticipos (**1.2 %**).
+
+| Pedido | Monto | Método | Corte |
+|---|---|---|---|
+| PP-A-0292 (Gabriel) | $640 | tarjeta | CONF-A-C075 |
+| PP-A-0212 (Alyn) | $500 | efectivo | CONF-A-C055 |
+| PP-C-0006 (Alicia) | $280 | efectivo | CONF-C-C013 |
+| PP-C-0007 (Alicia) | $280 | efectivo | CONF-C-C013 |
+
+- **Por diseño el código lo tolera:** si la venta paralela falla, el abono NO se revierte (para no perder el pago) y
+  se avisa con un toast. Lo que falta es que alguien vea ese aviso y lo reponga.
+- **Efecto en el cajón:** `efectivo_esperado` NO suma los abonos positivos (entran por su venta), así que esos días
+  el sistema esperaba MENOS efectivo del que había. En `CONF-C-C013` el corte cerró con **$1,300 de sobrante**, de
+  los cuales $560 son de aquí.
+- **DINERO: lo decide y lo firma Miguel.** No tocado.
+
+## 🟡 MEDIA — 6 pedidos donde `total_final − total_abonado ≠ saldo_pendiente`
+- `PP-A-0074`, `PP-A-0133`, `PP-A-0175`, `PP-A-0185`, `PP-A-0203`, `PP-A-0204`.
+- **Causa:** el pedido se **editó después** de recibir pagos (cambió `total_final`) y `saldo_pendiente` quedó
+  rezagado. No lo provoca el ticket ni el cobro.
+- **Efecto:** en esos 6 el recibo impreso sigue sin cuadrar, aunque ya se arregló la línea «Abonado». Son 6 de 408
+  (**1.5 %**); antes del arreglo no cuadraban 161 de 408 (**39 %**).
+- **DINERO: requiere decisión de Miguel** (recalcular `saldo_pendiente` desde los abonos, o dejarlos).
+
+## ℹ️ NO ES UN BUG (2026-09-16) — «El botón de abonar no existe»
+- Abel reportó que la función de abonar no existía. **Existe, funciona y se usa a diario**: 528 abonos, $374,833,
+  175 de ellos días o semanas después del pedido. Él mismo la usó 4 veces (la última el 9 de septiembre).
+- **Por qué no la veía:** sin caja abierta el botón se deshabilita y cambia su texto a **«Pago (caja cerrada)»**.
+  También desaparece si el pedido está entregado, cancelado o pagado, y para el rol `pastelero`.
+
+---
+
 # 🔴 ABIERTOS AL 2026-08-09 (auditoría multiagente con verificación adversarial)
 
 > Todos los de abajo **sobrevivieron** a un pase de refutación: un agente independiente intentó demostrar que eran falsos y no pudo. Los que sí se refutaron están al final, para que nadie los persiga otra vez.

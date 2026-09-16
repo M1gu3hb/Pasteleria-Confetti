@@ -27,7 +27,26 @@ Instrucciones permanentes para **cualquier** sesión de Claude Code, otra cuenta
 
 > "Idéntico" = todo lo que Abel usa se comporta exactamente igual.
 
-**Además:** el **doble conteo de `efectivo_esperado`** con abono en efectivo es un **quirk de Base44 reproducido a propósito**. No es un bug. No lo "arregles".
+**Además — `efectivo_esperado` (CORREGIDO 2026-09-16).** Este documento afirmaba que el **doble conteo** del efectivo con abono en efectivo era "un quirk de Base44 reproducido a propósito". **Era falso, y contradecía al código que lleva meses corriendo bien.**
+
+La fuente de verdad es `src/utils/efectivoEsperado.js`, y su fórmula es:
+
+```
+efectivo esperado = ventas en efectivo + propinas en efectivo
+                    + devoluciones en efectivo (negativas, restan)
+                    − gastos en efectivo
+```
+
+**Los abonos POSITIVOS no se suman aparte**: ya entran por su **venta paralela** (`registrarPagoPedido` crea una por cada pago). Sumarlos otra vez contaría cada peso dos veces y el cajón saldría corto en cada abono. Sólo entran los abonos **negativos** (devoluciones de anticipo), porque ésos sí sacan efectivo del cajón sin venta que los represente.
+
+Comprobado contra producción el 2026-09-16, sobre los **140 cortes cerrados que tuvieron abonos en efectivo**:
+
+| Fórmula | Cortes que cuadran |
+|---|---|
+| La del código (sin doble conteo) | **140 / 140** |
+| La del "quirk" (con doble conteo) | **0 / 140** |
+
+**Lo que NO se toca es esa función.** `efectivoEsperadoDeResumen()` es el único origen de verdad y la usan tanto el diálogo de cierre como el valor que se guarda, para que nunca diverjan. No la "arregles" ni le devuelvas el doble conteo.
 
 ---
 

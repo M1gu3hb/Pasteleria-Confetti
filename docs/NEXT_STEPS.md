@@ -1,21 +1,33 @@
-# NEXT_STEPS.md — Trabajo pendiente (POS Confetti)
+# NEXT_STEPS.md — Qué sigue (POS Confetti)
 
-> **Este documento no dice "en qué punto estamos".** Lo dice la base y la rama, y este archivo se quedaría viejo en
-> horas — ya pasó: llegó a anunciar como "⏳ siguiente" una fase hecha y desplegada, y a reclamar la reparación de
-> `$1,420` que se habían reparado el mismo día. Ver la regla de estado volátil en `CLAUDE.md`.
->
-> **Cómo saber el estado REAL, siempre, antes de tocar nada:**
-> ```bash
-> git log --oneline -5 origin/migracion/supabase          # qué corre en producción
-> git log origin/apk/capacitor..origin/migracion/supabase # vacío = el canal del APK está al día
-> ```
-> ```sql
-> select version, name from supabase_migrations.schema_migrations order by version desc limit 6;
-> select count(*) from cortes_caja where estado='cerrado';
-> ```
-> Lee antes `HANDOFF.md` (mecanismos y causas) y `PROJECT_CONTEXT.md`.
+> Para saber el estado VIVO no te fíes de este archivo: mira la rama `migracion/supabase`, el deployment de
+> producción en Vercel y la base (`ivqcxdpqxwjxfohiswqb`). Aquí sólo está el trabajo pendiente, sin marcar cuál toca.
 
----
+## Decisiones que esperan a Miguel (DINERO — no se autocertifican)
+
+1. **4 anticipos sin venta paralela, $1,700.** Detalle y cortes afectados en `docs/BUGS_PENDING.md`. Hay que decidir
+   si se reponen las ventas en sus cortes (ya cerrados) o se dejan documentados.
+2. **6 pedidos con `saldo_pendiente` rezagado** respecto a `total_final`. Decidir si se recalculan desde los abonos.
+3. **La política `pos_all_usuarios_pos` es `USING(true)`**: cualquier sesión autenticada —incluida cada tablet—
+   puede leer los `pin_hash`, ascenderse a dueño, cambiar PINs y borrar usuarios. Demostrado en transacción
+   revertida. Es lo más grave abierto y **toca el login**, así que necesita pruebas con las 7 identidades.
+
+## Mejoras invisibles para la operación diaria
+
+4. **Apagar el interruptor de propinas** (hoy es código muerto de la plantilla de restaurante; encenderlo hace que
+   la base rechace toda venta con propina) e invertir sus dos defaults, que hoy asumen propinas ENCENDIDAS si el
+   valor llega nulo.
+5. **Envolver el árbol de rutas en `ErrorBoundary`** — existe y no lo usa nadie.
+6. **Traducir los errores de `crear_venta_directa_tx`** para el cajero, en vez de «Intenta de nuevo».
+7. **Confirmación en el botón de desactivar usuario** (`Configuracion.jsx`): hoy es un bote de basura pegado al
+   lápiz de editar, sin «¿estás seguro?» ni deshacer. Casi con seguridad fue lo que dejó al pastelero sin acceso.
+
+## Decisiones de negocio (no técnicas)
+
+8. **Entrega a domicilio sólo desde 20 kg** en la web pública: un pastel de 20 kg alcanza para ~140 personas, así
+   que en la práctica el domicilio está apagado. Además `base_rangos` sólo llega a 15 kg.
+9. **6 pedidos web en «pendiente», $5,345**, el más viejo del 3 de julio: nadie revisa esa bandeja.
+
 
 ## Cómo se trabaja
 
