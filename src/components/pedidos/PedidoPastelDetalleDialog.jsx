@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { CheckCircle2, PackageCheck, XCircle, Pencil, Printer, MessageCircle, Banknote, Mail, ImageIcon, StickyNote, Mic, User, Loader2 } from 'lucide-react';
-import { ESTADOS_PEDIDO, buildWhatsAppLink, buildMailtoLink } from '@/utils/pedidoPastelUtils';
+import { ESTADOS_PEDIDO, buildWhatsAppLink, buildMailtoLink, fechaCDMX } from '@/utils/pedidoPastelUtils';
 import TicketPastelConfetti from './TicketPastelConfetti';
 import { useConfig } from '@/lib/ConfigContext';
 import { printDocument } from '@/lib/print';
@@ -436,7 +436,11 @@ export default function PedidoPastelDetalleDialog({ pedido: pedidoProp, open, on
           <DialogContent className="sm:max-w-sm">
             <DialogHeader><DialogTitle className="font-heading">Marcar como entregado</DialogTitle></DialogHeader>
             <p className="text-sm text-muted-foreground">
-              Al marcar entregado, este pedido saldrá de la lista de <strong>Pedidos de Pastel</strong>.
+              Al marcarlo entregado, dejará de aparecer en <strong>Por entregar</strong>.
+              Lo encontrarás en <strong>Entregados</strong> para consultar o reimprimir el ticket.
+              {pedido.fecha_entrega && pedido.fecha_entrega > fechaCDMX() && (
+                <span className="block mt-2 font-semibold text-amber-700">Entrega programada: {pedido.fecha_entrega}. Confirma que ya se entregó.</span>
+              )}
             </p>
             <div className="flex gap-2 mt-2">
               <Button variant="outline" className="flex-1 h-11" disabled={accion}
