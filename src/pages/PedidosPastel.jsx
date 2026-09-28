@@ -17,41 +17,51 @@ import { ESTADOS_PEDIDO, fechaCDMX } from '@/utils/pedidoPastelUtils';
 import { paletaSucursal } from '@/utils/coloresSucursal';
 
 const ACCESOS_ESTADO = [
-  { value: 'activos', label: 'Por entregar', color: 'amber' },
-  { value: 'entregado', label: 'Entregados', color: 'emerald' },
-  { value: 'todos', label: 'Todos los estados', color: 'slate' },
+  { value: 'activos', label: 'Por entregar' },
+  { value: 'entregado', label: 'Entregados' },
+  { value: 'todos', label: 'Todos' },
 ];
 const ACCESOS_PAGO = [
-  { value: 'todos', label: 'Todos los pagos', color: 'slate' },
-  { value: 'con_abono', label: 'Con abono', color: 'blue' },
-  { value: 'sin_abono', label: 'Sin abono', color: 'rose' },
+  { value: 'con_abono', label: 'Con abono' },
+  { value: 'sin_abono', label: 'Sin abono' },
+  { value: 'todos', label: 'Todos' },
 ];
 const ACCESOS_FECHA = [
-  { value: 'todos', label: 'Cualquier fecha', color: 'slate' },
-  { value: 'hoy', label: 'Hoy', color: 'rose' },
-  { value: 'manana', label: 'Mañana', color: 'amber' },
-  { value: 'pasado_manana', label: 'Pasado mañana', color: 'blue' },
-  { value: 'semana', label: 'Próximos 7 días', color: 'violet' },
+  { value: 'manana', label: 'Mañana' },
+  { value: 'pasado_manana', label: 'Pasado mañana' },
+  { value: 'semana', label: '7 días' },
+  { value: 'hoy', label: 'Hoy' },
+  { value: 'todos', label: 'Todas' },
 ];
-const COLORES_ACCESO = {
-  slate: 'border-slate-400 bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100',
-  amber: 'border-amber-500 bg-amber-100 text-amber-950 dark:bg-amber-900/50 dark:text-amber-100',
-  emerald: 'border-emerald-500 bg-emerald-100 text-emerald-950 dark:bg-emerald-900/50 dark:text-emerald-100',
-  blue: 'border-blue-500 bg-blue-100 text-blue-950 dark:bg-blue-900/50 dark:text-blue-100',
-  rose: 'border-rose-500 bg-rose-100 text-rose-950 dark:bg-rose-900/50 dark:text-rose-100',
-  violet: 'border-violet-500 bg-violet-100 text-violet-950 dark:bg-violet-900/50 dark:text-violet-100',
+const COLORES_FILA = {
+  pedidos: {
+    fila: 'border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30',
+    titulo: 'text-amber-900 dark:text-amber-200',
+    activo: 'border-amber-600 bg-amber-600 text-white hover:bg-amber-700 hover:text-white',
+  },
+  pagos: {
+    fila: 'border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/30',
+    titulo: 'text-emerald-900 dark:text-emerald-200',
+    activo: 'border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700 hover:text-white',
+  },
+  fecha: {
+    fila: 'border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/30',
+    titulo: 'text-blue-900 dark:text-blue-200',
+    activo: 'border-blue-600 bg-blue-600 text-white hover:bg-blue-700 hover:text-white',
+  },
 };
 
-function AccesosRapidos({ titulo, opciones, valor, onChange }) {
+function AccesosRapidos({ titulo, tono, opciones, valor, onChange }) {
+  const colores = COLORES_FILA[tono];
   return (
-    <div role="group" aria-label={titulo} className="space-y-2">
-      <p className="text-sm font-semibold">{titulo}</p>
-      <div className="flex flex-wrap gap-2">
-        {opciones.map(({ value, label, color }) => (
+    <div role="group" aria-label={titulo} className={`flex items-center gap-2 rounded-lg border px-2 py-1 ${colores.fila}`}>
+      <p className={`w-14 shrink-0 text-xs font-semibold ${colores.titulo}`}>{titulo}</p>
+      <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto">
+        {opciones.map(({ value, label }) => (
           <Button key={value} type="button" variant="outline" aria-pressed={valor === value}
             onClick={() => onChange(value)}
-            className={`min-h-14 h-auto min-w-[132px] flex-1 whitespace-normal px-4 py-2 text-sm font-bold border-2 shadow-sm transition-colors ${
-              valor === value ? COLORES_ACCESO[color] : 'border-border bg-card text-foreground hover:bg-muted'
+            className={`h-10 shrink-0 whitespace-nowrap px-2.5 text-xs font-semibold sm:text-sm ${
+              valor === value ? colores.activo : 'border-border bg-card text-foreground hover:bg-muted'
             }`}
           >{label}</Button>
         ))}
@@ -238,15 +248,6 @@ export default function PedidosPastel() {
         </div>
       )}
 
-      <div className="space-y-4 rounded-2xl border bg-card p-3 sm:p-4">
-        <AccesosRapidos titulo="Pedidos" opciones={ACCESOS_ESTADO}
-          valor={filtroEstado} onChange={setFiltroEstado} />
-        <AccesosRapidos titulo="Pagos" opciones={ACCESOS_PAGO}
-          valor={filtroPago} onChange={setFiltroPago} />
-        <AccesosRapidos titulo="Fecha de entrega" opciones={ACCESOS_FECHA}
-          valor={filtroFecha} onChange={setFiltroFecha} />
-      </div>
-
       {/* Filtros detallados, independientes de los accesos rápidos. */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-2">
         <div className="relative sm:col-span-1">
@@ -297,6 +298,15 @@ export default function PedidosPastel() {
             <SelectItem value="web">Solo Web 🌐</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="space-y-1.5" aria-label="Accesos rápidos a filtros">
+        <AccesosRapidos titulo="Pedidos" tono="pedidos" opciones={ACCESOS_ESTADO}
+          valor={filtroEstado} onChange={setFiltroEstado} />
+        <AccesosRapidos titulo="Pagos" tono="pagos" opciones={ACCESOS_PAGO}
+          valor={filtroPago} onChange={setFiltroPago} />
+        <AccesosRapidos titulo="Entrega" tono="fecha" opciones={ACCESOS_FECHA}
+          valor={filtroFecha} onChange={setFiltroFecha} />
       </div>
 
       {!isLoading && !isError && (
