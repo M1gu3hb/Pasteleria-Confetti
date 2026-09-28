@@ -64,25 +64,27 @@ export default function PedidosPastel() {
   // `sucIdQuery === sucId` → mismo alcance de sucursal que hoy.
   const sucIdQuery = (esPastelero && sucursalTab !== 'todas') ? sucursalTab : sucId;
 
-  // FASE B (v1.1.1): quitar el techo de 100 que ocultaba pedidos ACTIVOS. Antes se traían 100
-  // (orden fecha_entrega) y el estado se filtraba EN MEMORIA → un activo con fecha_entrega lejana
-  // quedaba fuera de la ventana de 100. Ahora el estado se filtra EN EL SERVIDOR:
-  //  - 'activos' (default) → `$nin [entregado, cancelado]` (negativo, casa EXACTO con el filtro en
-  //    memoria 'activos') → trae TODOS los activos sin importar la fecha, ninguno oculto.
-  //  - un estado concreto → ese estado.  - 'todos' → sin filtro de estado.
-  // + límite holgado (500) de respaldo: los activos reales de una pastelería caben de sobra. El
-  // filtro en memoria (`filtrados`) queda como cinturón+tirantes. El adaptador soporta $nin (línea 78).
+  // El estado se filtra en el servidor, pero se recorren TODAS las páginas.
+  // El viejo límite de 500 estaba a punto de ocultar los pedidos más recientes
+  // del historial. id es único: mantiene el orden estable entre páginas.
   const estadoCriteria =
     filtroEstado === 'activos' ? { estado: { $nin: ['entregado', 'cancelado'] } }
     : (filtroEstado !== 'todos' ? { estado: filtroEstado } : {});
 
   const { data: pedidosRaw, isLoading, isError, refetch } = useQuery({
     queryKey: ['pedidos_pastel', sucIdQuery, filtroEstado],
-    queryFn: () => base44.entities.PedidoPastel.filter(
-      { ...(sucIdQuery ? { sucursal_id: sucIdQuery } : {}), ...estadoCriteria },
-      'fecha_entrega',
-      500,
-    ),
+    queryFn: async () => {
+      const criteria = { ...(sucIdQuery ? { sucursal_id: sucIdQuery } : {}), ...estadoCriteria };
+      const rows = [];
+      const pageSize = 500;
+      for (let offset = 0; ; offset += pageSize) {
+        const page = await base44.entities.PedidoPastel.filter(criteria, 'id', pageSize, offset);
+        rows.push(...page);
+        if (page.length < pageSize) break;
+      }
+      return rows.sort((a, b) =>
+        (a.fecha_entrega || '\uffff').localeCompare(b.fecha_entrega || '\uffff') || a.id.localeCompare(b.id));
+    },
     placeholderData: (prev) => prev,
     staleTime: 5000,
     // MINI-FIX notificaciones — refresca cada 15s para que un pedido web nuevo
@@ -198,7 +200,15 @@ export default function PedidosPastel() {
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={busqueda}
-            onChange={e => setBusqueda(e.target.value)}
+            onChange={e => {
+              setBusqueda(e.target.value);
+              // El cliente puede volver meses después: al buscar, abrir el
+              // historial completo y quitar un filtro de fecha olvidado.
+              if (e.target.value.trim()) {
+                if (filtroEstado === 'activos') setFiltroEstado('todos');
+                if (filtroFecha !== 'todos') setFiltroFecha('todos');
+              }
+            }}
             placeholder="Buscar por folio, cliente, teléfono o nota interna..."
             className="pl-9 h-11"
           />
@@ -251,7 +261,11 @@ export default function PedidosPastel() {
         <div className="text-center py-16 text-muted-foreground">
           <Cake className="w-12 h-12 mx-auto mb-3 opacity-30" />
           <p className="font-medium">{isError ? 'No se pudo cargar la lista' : 'No hay pedidos que coincidan'}</p>
-          {!isError && <p className="text-xs mt-1">Crea uno con "+ Nuevo pedido de pastel"</p>}
+          {!isError && <p className="text-xs mt-1">
+            {busqueda.trim()
+              ? 'Comprueba el folio y la sucursal antes de capturar otro pedido.'
+              : 'Crea uno con "+ Nuevo pedido de pastel"'}
+          </p>}
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
