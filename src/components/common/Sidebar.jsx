@@ -66,18 +66,27 @@ export default function Sidebar({ collapsed, onToggle }) {
   const esPastelero = adminRole === 'pastelero';
 
   // Badge "Pedidos de Pastel": cuenta SOLO pedidos personalizados activos
-  // (pendiente / confirmado / con_anticipo) y respeta la sucursal efectiva.
+  // y respeta la sucursal efectiva.
   // NUNCA cuenta productos_catalogo (esos tienen su badge en Caja → Pedidos).
   const badgeSucId = sucursalEfectiva?.sucursal_id || null;
   const { data: pedidosPastelPend } = useQuery({
     queryKey: ['pedidos_pastel_pendientes_badge', badgeSucId],
-    queryFn: () => base44.entities.PedidoPastel.filter(
-      badgeSucId ? { sucursal_id: badgeSucId } : {},
-      '-created_date', 200
-    ),
+    queryFn: async () => {
+      const criteria = {
+        ...(badgeSucId ? { sucursal_id: badgeSucId } : {}),
+        estado: { $nin: ['entregado', 'cancelado'] },
+      };
+      const rows = [];
+      const pageSize = 500;
+      for (let offset = 0; ; offset += pageSize) {
+        const page = await base44.entities.PedidoPastel.filter(criteria, 'id', pageSize, offset);
+        rows.push(...page);
+        if (page.length < pageSize) break;
+      }
+      return rows;
+    },
     refetchInterval: 60000,
     staleTime: 30000,
-    placeholderData: (prev) => prev,
   });
   // Lógica por EXCLUSIÓN: cuenta todo pastel personalizado que aún no terminó
   // su flujo (incluye 'pagado' no entregado). Si en el futuro se agrega un
