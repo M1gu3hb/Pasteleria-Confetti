@@ -16,6 +16,15 @@ import { useConfig } from '@/lib/ConfigContext';
 import { ESTADOS_PEDIDO } from '@/utils/pedidoPastelUtils';
 import { paletaSucursal } from '@/utils/coloresSucursal';
 
+// Las fechas de entrega son días de CDMX, no días UTC del dispositivo.
+function fechaCDMX(diasDesdeHoy = 0) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Mexico_City', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(new Date()).map(({ type, value }) => [type, value]));
+  const dia = new Date(Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day) + diasDesdeHoy));
+  return dia.toISOString().slice(0, 10);
+}
+
 // Página de gestión de Pedidos de Pastel Personalizado (Fase 3).
 // Filtrada por sucursal efectiva (dueño global = todas).
 export default function PedidosPastel() {
@@ -67,7 +76,7 @@ export default function PedidosPastel() {
     filtroEstado === 'activos' ? { estado: { $nin: ['entregado', 'cancelado'] } }
     : (filtroEstado !== 'todos' ? { estado: filtroEstado } : {});
 
-  const { data: pedidosRaw, isLoading } = useQuery({
+  const { data: pedidosRaw, isLoading, isError, refetch } = useQuery({
     queryKey: ['pedidos_pastel', sucIdQuery, filtroEstado],
     queryFn: () => base44.entities.PedidoPastel.filter(
       { ...(sucIdQuery ? { sucursal_id: sucIdQuery } : {}), ...estadoCriteria },
@@ -84,10 +93,11 @@ export default function PedidosPastel() {
 
   const filtrados = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
-    const hoy = new Date();
-    const hoyStr = hoy.toISOString().slice(0, 10);
-    const en7 = new Date(hoy.getTime() + 7 * 86400000).toISOString().slice(0, 10);
-    const en30 = new Date(hoy.getTime() + 30 * 86400000).toISOString().slice(0, 10);
+    const hoyStr = fechaCDMX();
+    const manana = fechaCDMX(1);
+    const pasadoManana = fechaCDMX(2);
+    const en7 = fechaCDMX(7);
+    const en30 = fechaCDMX(30);
     return pedidos.filter(p => {
       if (!p) return false;
       // CAMBIO 4c — Los pedidos de catálogo web NO aparecen aquí (van a Caja).
@@ -108,6 +118,8 @@ export default function PedidosPastel() {
       // Fecha de entrega
       const fe = p.fecha_entrega || '';
       if (filtroFecha === 'hoy' && fe !== hoyStr) return false;
+      if (filtroFecha === 'manana' && fe !== manana) return false;
+      if (filtroFecha === 'pasado_manana' && fe !== pasadoManana) return false;
       if (filtroFecha === 'semana' && (fe < hoyStr || fe > en7)) return false;
       if (filtroFecha === 'mes' && (fe < hoyStr || fe > en30)) return false;
       // Búsqueda de texto
@@ -206,6 +218,8 @@ export default function PedidosPastel() {
           <SelectContent>
             <SelectItem value="todos">Cualquier fecha</SelectItem>
             <SelectItem value="hoy">Entrega hoy</SelectItem>
+            <SelectItem value="manana">Entrega mañana</SelectItem>
+            <SelectItem value="pasado_manana">Entrega pasado mañana</SelectItem>
             <SelectItem value="semana">Esta semana</SelectItem>
             <SelectItem value="mes">Este mes</SelectItem>
           </SelectContent>
@@ -220,6 +234,13 @@ export default function PedidosPastel() {
         </Select>
       </div>
 
+      {isError && (
+        <div role="alert" className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800">
+          No se pudo actualizar la lista de pedidos. Puede estar incompleta.
+          <Button variant="outline" size="sm" className="ml-3" onClick={() => refetch()}>Reintentar</Button>
+        </div>
+      )}
+
       {/* Lista */}
       {isLoading && pedidos.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
@@ -229,8 +250,8 @@ export default function PedidosPastel() {
       ) : filtrados.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <Cake className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p className="font-medium">No hay pedidos que coincidan</p>
-          <p className="text-xs mt-1">Crea uno con "+ Nuevo pedido de pastel"</p>
+          <p className="font-medium">{isError ? 'No se pudo cargar la lista' : 'No hay pedidos que coincidan'}</p>
+          {!isError && <p className="text-xs mt-1">Crea uno con "+ Nuevo pedido de pastel"</p>}
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
