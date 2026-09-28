@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { construirPago } from '@/utils/metodoPago';
 import MetodoPagoSelector from '@/components/pos/MetodoPagoSelector';
 import { registrarPagoPedido } from '@/utils/registrarPagoPedido';
+import { fechaCDMX } from '@/utils/pedidoPastelUtils';
 
 // Fase 4 — registra un abono con circuito financiero (Abono + PedidoPastel).
 // PARTE A — además crea una Venta paralela contable por cada pago (parcial o
@@ -111,6 +112,11 @@ export default function RegistrarPagoDialog({ pedido, cajaAbierta, posUser, sucu
             <div className="text-center p-3 rounded-xl bg-emerald-50 border border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800/50">
               <p className="text-sm font-bold text-emerald-800 dark:text-emerald-200">Este pago liquida el pedido.</p>
               <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-1">¿El pastel ya se va a entregar?</p>
+              {pedido?.fecha_entrega && pedido.fecha_entrega > fechaCDMX() && (
+                <p className="text-xs font-semibold text-amber-800 dark:text-amber-200 mt-2">
+                  Está programado para el {pedido.fecha_entrega}. Si solo recibió el pago, elige “No, aún no”.
+                </p>
+              )}
             </div>
             <div className="flex flex-col gap-2">
               <Button onClick={marcarEntregadoYCerrar} disabled={loading}
