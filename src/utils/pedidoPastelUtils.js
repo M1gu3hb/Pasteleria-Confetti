@@ -11,6 +11,15 @@ export const ESTADOS_PEDIDO = {
   cancelado:    { label: 'Cancelado',    badge: 'bg-red-100 text-red-700 border-red-300 line-through' },
 };
 
+// Fecha de entrega expresada como día de CDMX, independiente de la zona del dispositivo.
+export function fechaCDMX(diasDesdeHoy = 0, ahora = new Date()) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Mexico_City', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(ahora).map(({ type, value }) => [type, value]));
+  const dia = new Date(Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day) + diasDesdeHoy));
+  return dia.toISOString().slice(0, 10);
+}
+
 function parseJsonObj(str) {
   try {
     const o = JSON.parse(str || '{}');
