@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
@@ -13,16 +13,51 @@ import SucursalBadge from '@/components/common/SucursalBadge';
 import PedidoPastelCard from '@/components/pedidos/PedidoPastelCard';
 import PedidoPastelDetalleDialog from '@/components/pedidos/PedidoPastelDetalleDialog';
 import { useConfig } from '@/lib/ConfigContext';
-import { ESTADOS_PEDIDO } from '@/utils/pedidoPastelUtils';
+import { ESTADOS_PEDIDO, fechaCDMX } from '@/utils/pedidoPastelUtils';
 import { paletaSucursal } from '@/utils/coloresSucursal';
 
-// Las fechas de entrega son días de CDMX, no días UTC del dispositivo.
-function fechaCDMX(diasDesdeHoy = 0) {
-  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/Mexico_City', year: 'numeric', month: '2-digit', day: '2-digit',
-  }).formatToParts(new Date()).map(({ type, value }) => [type, value]));
-  const dia = new Date(Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day) + diasDesdeHoy));
-  return dia.toISOString().slice(0, 10);
+const ACCESOS_ESTADO = [
+  { value: 'activos', label: 'Por entregar', color: 'amber' },
+  { value: 'entregado', label: 'Entregados', color: 'emerald' },
+  { value: 'todos', label: 'Todos los estados', color: 'slate' },
+];
+const ACCESOS_PAGO = [
+  { value: 'todos', label: 'Todos los pagos', color: 'slate' },
+  { value: 'con_abono', label: 'Con abono', color: 'blue' },
+  { value: 'sin_abono', label: 'Sin abono', color: 'rose' },
+];
+const ACCESOS_FECHA = [
+  { value: 'todos', label: 'Cualquier fecha', color: 'slate' },
+  { value: 'hoy', label: 'Hoy', color: 'rose' },
+  { value: 'manana', label: 'Mañana', color: 'amber' },
+  { value: 'pasado_manana', label: 'Pasado mañana', color: 'blue' },
+  { value: 'semana', label: 'Próximos 7 días', color: 'violet' },
+];
+const COLORES_ACCESO = {
+  slate: 'border-slate-400 bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100',
+  amber: 'border-amber-500 bg-amber-100 text-amber-950 dark:bg-amber-900/50 dark:text-amber-100',
+  emerald: 'border-emerald-500 bg-emerald-100 text-emerald-950 dark:bg-emerald-900/50 dark:text-emerald-100',
+  blue: 'border-blue-500 bg-blue-100 text-blue-950 dark:bg-blue-900/50 dark:text-blue-100',
+  rose: 'border-rose-500 bg-rose-100 text-rose-950 dark:bg-rose-900/50 dark:text-rose-100',
+  violet: 'border-violet-500 bg-violet-100 text-violet-950 dark:bg-violet-900/50 dark:text-violet-100',
+};
+
+function AccesosRapidos({ titulo, opciones, valor, onChange }) {
+  return (
+    <div role="group" aria-label={titulo} className="space-y-2">
+      <p className="text-sm font-semibold">{titulo}</p>
+      <div className="flex flex-wrap gap-2">
+        {opciones.map(({ value, label, color }) => (
+          <Button key={value} type="button" variant="outline" aria-pressed={valor === value}
+            onClick={() => onChange(value)}
+            className={`min-h-14 h-auto min-w-[132px] flex-1 whitespace-normal px-4 py-2 text-sm font-bold border-2 shadow-sm transition-colors ${
+              valor === value ? COLORES_ACCESO[color] : 'border-border bg-card text-foreground hover:bg-muted'
+            }`}
+          >{label}</Button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 // Página de gestión de Pedidos de Pastel Personalizado (Fase 3).
@@ -35,6 +70,7 @@ export default function PedidosPastel() {
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('activos');
   const [filtroFecha, setFiltroFecha] = useState('todos');
+  const [filtroPago, setFiltroPago] = useState('todos');
   const [filtroOrigen, setFiltroOrigen] = useState('todos');
   const [pedidoVer, setPedidoVer] = useState(null);
 
@@ -59,10 +95,11 @@ export default function PedidosPastel() {
   });
   const sucursales = Array.isArray(sucursalesRaw) ? sucursalesRaw : [];
 
-  // HALLAZGO 2 (límite 100): cuando el pastelero elige UNA sucursal, la query trae ESA sucursal
-  // (por ID) en vez de filtrar en memoria sobre 100 GLOBALES. Para el resto de roles
-  // `sucIdQuery === sucId` → mismo alcance de sucursal que hoy.
+  // La sucursal seleccionada forma parte de la query y del filtro local de seguridad.
   const sucIdQuery = (esPastelero && sucursalTab !== 'todas') ? sucursalTab : sucId;
+
+  // El detalle no debe volver a abrirse al cambiar entre sucursales.
+  useEffect(() => { setPedidoVer(null); }, [sucIdQuery]);
 
   // El estado se filtra en el servidor, pero se recorren TODAS las páginas.
   // El viejo límite de 500 estaba a punto de ocultar los pedidos más recientes
@@ -85,7 +122,7 @@ export default function PedidosPastel() {
       return rows.sort((a, b) =>
         (a.fecha_entrega || '\uffff').localeCompare(b.fecha_entrega || '\uffff') || a.id.localeCompare(b.id));
     },
-    placeholderData: (prev) => prev,
+    // Al cambiar de sucursal o estado no mostrar pedidos de la consulta anterior.
     staleTime: 5000,
     // MINI-FIX notificaciones — refresca cada 15s para que un pedido web nuevo
     // aparezca en <20s sin recargar la app ni cambiar de sección.
@@ -106,15 +143,17 @@ export default function PedidosPastel() {
       // Solo pastel_personalizado. Pedidos legacy sin tipo_pedido se tratan
       // como personalizados (default histórico).
       if (p.tipo_pedido === 'productos_catalogo') return false;
-      // FASE 1 — filtro por sucursal (modo pastelero), por sucursal_id (robusto, NO por nombre).
-      // 'todas' no filtra. La query ya trae solo esa sucursal; esto es cinturón+tirantes.
-      if (esPastelero && sucursalTab !== 'todas' && p.sucursal_id !== sucursalTab) return false;
+      // También valida la sucursal sobre filas del caché, sin importar el rol.
+      if (sucIdQuery && p.sucursal_id !== sucIdQuery) return false;
       // Estado: por defecto solo activos (sin entregado/cancelado)
       if (filtroEstado === 'activos') {
         if (p.estado === 'entregado' || p.estado === 'cancelado') return false;
       } else if (filtroEstado !== 'todos' && p.estado !== filtroEstado) {
         return false;
       }
+      const abonado = Number(p.total_abonado ?? p.a_cuenta ?? 0);
+      if (filtroPago === 'con_abono' && !(abonado > 0)) return false;
+      if (filtroPago === 'sin_abono' && abonado > 0) return false;
       // Origen (POS interno vs Web)
       if (filtroOrigen !== 'todos' && p.origen !== filtroOrigen) return false;
       // Fecha de entrega
@@ -131,7 +170,12 @@ export default function PedidosPastel() {
       }
       return true;
     });
-  }, [pedidos, busqueda, filtroEstado, filtroFecha, filtroOrigen, esPastelero, sucursalTab]);
+  }, [pedidos, busqueda, filtroEstado, filtroFecha, filtroPago, filtroOrigen, sucIdQuery]);
+
+  // Si se cambia de sucursal mientras un detalle está abierto, no conservar
+  // una acción sobre un pedido de otra sucursal.
+  const pedidoVisible = pedidoVer && (!sucIdQuery || pedidoVer.sucursal_id === sucIdQuery)
+    ? pedidoVer : null;
 
   return (
     <div className="space-y-4">
@@ -194,7 +238,16 @@ export default function PedidosPastel() {
         </div>
       )}
 
-      {/* Filtros */}
+      <div className="space-y-4 rounded-2xl border bg-card p-3 sm:p-4">
+        <AccesosRapidos titulo="Pedidos" opciones={ACCESOS_ESTADO}
+          valor={filtroEstado} onChange={setFiltroEstado} />
+        <AccesosRapidos titulo="Pagos" opciones={ACCESOS_PAGO}
+          valor={filtroPago} onChange={setFiltroPago} />
+        <AccesosRapidos titulo="Fecha de entrega" opciones={ACCESOS_FECHA}
+          valor={filtroFecha} onChange={setFiltroFecha} />
+      </div>
+
+      {/* Filtros detallados, independientes de los accesos rápidos. */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-2">
         <div className="relative sm:col-span-1">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -205,8 +258,10 @@ export default function PedidosPastel() {
               // El cliente puede volver meses después: al buscar, abrir el
               // historial completo y quitar un filtro de fecha olvidado.
               if (e.target.value.trim()) {
-                if (filtroEstado === 'activos') setFiltroEstado('todos');
+                if (filtroEstado !== 'todos') setFiltroEstado('todos');
                 if (filtroFecha !== 'todos') setFiltroFecha('todos');
+                if (filtroPago !== 'todos') setFiltroPago('todos');
+                if (filtroOrigen !== 'todos') setFiltroOrigen('todos');
               }
             }}
             placeholder="Buscar por folio, cliente, teléfono o nota interna..."
@@ -244,6 +299,13 @@ export default function PedidosPastel() {
         </Select>
       </div>
 
+      {!isLoading && !isError && (
+        <p className="text-sm text-muted-foreground" aria-live="polite">
+          {filtrados.length} {filtrados.length === 1 ? 'pedido encontrado' : 'pedidos encontrados'}
+          {sucIdQuery ? ` · ${sucursalEfectiva?.sucursal_nombre || sucursales.find(s => s.id === sucIdQuery)?.nombre || 'Sucursal seleccionada'}` : ' · Todas las sucursales'}
+        </p>
+      )}
+
       {isError && (
         <div role="alert" className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800">
           No se pudo actualizar la lista de pedidos. Puede estar incompleta.
@@ -270,7 +332,7 @@ export default function PedidosPastel() {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filtrados.map(p => (
-            <PedidoPastelCard key={p.id} pedido={p} onVer={setPedidoVer} mostrarSucursal={!sucId} />
+            <PedidoPastelCard key={p.id} pedido={p} onVer={setPedidoVer} mostrarSucursal={!sucIdQuery} />
           ))}
         </div>
       )}
@@ -278,8 +340,8 @@ export default function PedidosPastel() {
       {/* Unificado: todo pastel personalizado (web o POS interno) abre el mismo
           modal — ticket Confetti arriba + botones de acción abajo. */}
       <PedidoPastelDetalleDialog
-        pedido={pedidoVer}
-        open={!!pedidoVer}
+        pedido={pedidoVisible}
+        open={!!pedidoVisible}
         onClose={() => setPedidoVer(null)}
       />
     </div>
