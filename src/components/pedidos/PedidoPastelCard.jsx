@@ -1,6 +1,6 @@
 import React from 'react';
 import { Calendar, Phone, Cake } from 'lucide-react';
-import { ESTADOS_PEDIDO } from '@/utils/pedidoPastelUtils';
+import { ESTADOS_PEDIDO, fechaCDMX } from '@/utils/pedidoPastelUtils';
 import { badgeSucursal } from '@/utils/coloresSucursal';
 
 const fmt = (n) => `$${(Number(n) || 0).toFixed(2)}`;
@@ -8,7 +8,7 @@ const fmt = (n) => `$${(Number(n) || 0).toFixed(2)}`;
 export default function PedidoPastelCard({ pedido, onVer, mostrarSucursal }) {
   if (!pedido) return null;
   const est = ESTADOS_PEDIDO[pedido.estado] || ESTADOS_PEDIDO.pendiente;
-  const hoyStr = new Date().toISOString().slice(0, 10);
+  const hoyStr = fechaCDMX();
   const urgente = pedido.fecha_entrega && pedido.fecha_entrega <= hoyStr &&
     pedido.estado !== 'entregado' && pedido.estado !== 'cancelado';
   // FASE 3 — saldo VIVO: usa saldo_pendiente (se actualiza con cada pago); si es
