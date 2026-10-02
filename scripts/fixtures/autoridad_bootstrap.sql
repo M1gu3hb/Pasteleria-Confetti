@@ -518,3 +518,25 @@ end;
 $function$
 ;
 create trigger trg_set_web_pedido_folio before insert on pedidos for each row when (new.origen='web' and new.folio is null) execute function set_web_pedido_folio();
+
+-- Effective policies captured from the deployed catalog; exercise invoker RLS.
+grant select on detalle_venta to authenticated; alter table detalle_venta enable row level security;
+grant select on abonos to authenticated; alter table abonos enable row level security;
+grant select on cortes_caja to authenticated; alter table cortes_caja enable row level security;
+grant select on pedidos to authenticated; alter table pedidos enable row level security;
+grant select on ventas to authenticated; alter table ventas enable row level security;
+grant select on gastos_operativos to authenticated; alter table gastos_operativos enable row level security;
+create policy pos_scope_cortes on cortes_caja for ALL to authenticated using ((( SELECT pos_is_admin() AS pos_is_admin) OR (sucursal_id = ( SELECT pos_sucursal() AS pos_sucursal)))) with check ((( SELECT pos_is_admin() AS pos_is_admin) OR (sucursal_id = ( SELECT pos_sucursal() AS pos_sucursal))));
+create policy pos_pastelero_select_pedidos on pedidos for SELECT to authenticated using (( SELECT pos_is_pastelero() AS pos_is_pastelero));
+create policy pos_pastelero_update_pedidos on pedidos for UPDATE to authenticated using (( SELECT pos_is_pastelero() AS pos_is_pastelero)) with check (( SELECT pos_is_pastelero() AS pos_is_pastelero));
+create policy pos_scope_pedidos on pedidos for ALL to authenticated using ((( SELECT pos_is_admin() AS pos_is_admin) OR (sucursal_id = ( SELECT pos_sucursal() AS pos_sucursal)))) with check ((( SELECT pos_is_admin() AS pos_is_admin) OR (sucursal_id = ( SELECT pos_sucursal() AS pos_sucursal))));
+create policy pos_scope_ventas on ventas for ALL to authenticated using ((( SELECT pos_is_admin() AS pos_is_admin) OR (sucursal_id = ( SELECT pos_sucursal() AS pos_sucursal)))) with check ((( SELECT pos_is_admin() AS pos_is_admin) OR (sucursal_id = ( SELECT pos_sucursal() AS pos_sucursal))));
+create policy pos_scope_detalle on detalle_venta for ALL to authenticated using ((EXISTS ( SELECT 1
+   FROM ventas v
+  WHERE ((v.id = detalle_venta.venta_id) AND (( SELECT pos_is_admin() AS pos_is_admin) OR (v.sucursal_id = ( SELECT pos_sucursal() AS pos_sucursal))))))) with check ((EXISTS ( SELECT 1
+   FROM ventas v
+  WHERE ((v.id = detalle_venta.venta_id) AND (( SELECT pos_is_admin() AS pos_is_admin) OR (v.sucursal_id = ( SELECT pos_sucursal() AS pos_sucursal)))))));
+create policy pos_scope_gastos on gastos_operativos for ALL to authenticated using ((( SELECT pos_is_admin() AS pos_is_admin) OR (sucursal_id = ( SELECT pos_sucursal() AS pos_sucursal)))) with check ((( SELECT pos_is_admin() AS pos_is_admin) OR (sucursal_id = ( SELECT pos_sucursal() AS pos_sucursal))));
+create policy pos_scope_abonos on abonos for ALL to authenticated using ((( SELECT pos_is_admin() AS pos_is_admin) OR (sucursal_id = ( SELECT pos_sucursal() AS pos_sucursal)))) with check ((( SELECT pos_is_admin() AS pos_is_admin) OR (sucursal_id = ( SELECT pos_sucursal() AS pos_sucursal))));
+
+grant usage on schema auth to authenticated,anon,service_role;

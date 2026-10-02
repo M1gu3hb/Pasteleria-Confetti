@@ -80,6 +80,13 @@ try {
  INSERT INTO cortes_caja(id,folio,sucursal_id,fecha_inicio,fecha_apertura) VALUES('00000000-0000-4000-8000-000000000500','CONF-B-C001','00000000-0000-4000-8000-000000000002',now(),now());
  INSERT INTO ventas(folio,sucursal_id,corte_caja_id,estado,total,monto_efectivo,metodo_pago,fecha_cierre) SELECT 'CONF-B-V'||n,'00000000-0000-4000-8000-000000000002','00000000-0000-4000-8000-000000000500','pagada',1,1,'efectivo',now() FROM generate_series(1,60001) n;
  select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000030',false);`);
+ await db.exec("create role service_role; create function pos_tiene_sesion() returns boolean language sql as $$select auth.uid() is not null$$");
+ await db.exec(fs.readFileSync(new URL('../supabase/migrations/20261002182241_historial_operativo_consistente.sql',import.meta.url),'utf8'));
+ const history=(await db.query('select historial_operativo_pos($1,$2::jsonb) as x',['ventas',JSON.stringify({sucursal_id:'00000000-0000-4000-8000-000000000002',total:{$gte:1}})])).rows[0].x;
+ assert.equal(history.length,60001);
+ await assert.rejects(()=>db.query('select historial_operativo_pos($1,$2::jsonb)', ['usuarios_pos','{}']),/TABLA_NO_PERMITIDA/);
+ await assert.rejects(()=>db.query('select historial_operativo_pos($1,$2::jsonb)', ['ventas',JSON.stringify({'id;drop table ventas':1})]),/CAMPO_NO_PERMITIDO/);
+ console.log('FINANCIAL SNAPSHOT INCLUDES ALL 60001 ROWS AND REJECTS UNKNOWN TABLE/FILTER OK');
  const stress=(await db.query("select resumen_periodo_pos(now()-interval '1 hour',now()+interval '1 hour','00000000-0000-4000-8000-000000000002') as r")).rows[0].r;
  assert.equal(stress.nVentas,60001);assert.equal(stress.ingresos,60001);
  const canonical=(await db.query("select datos_corte_pos('00000000-0000-4000-8000-000000000500') as r")).rows[0].r;

@@ -9,6 +9,7 @@ Las migraciones originales y ambos canales se comprobaron antes de editar. La le
 La revisión encontró huecos adicionales, por lo que la entrega anterior no se aceptó sin cambios:
 
 - Un pago confirmado con respuesta perdida podía quedar inaccesible desde la pantalla al aparecer saldo cero o cerrarse caja. Recuperación explícita del intento original, también para creación/devolución; no requiere otro cobro ni el corte actual abierto. El detalle espera lectura actual antes de cobrar/imprimir y refresca cada 15 segundos.
+- Conteos antes/después no detectaban reemplazos simultáneos con el mismo número de filas: pedidos, abonos, ventas, detalles, gastos y cortes completos usan ahora historial_operativo_pos, SECURITY INVOKER, una sola consulta con RLS del solicitante. La paginación incremental de pantalla conserva offset; los informes/exportaciones financieras solicitan el conjunto de una sola instantánea. Si falla, se comunica error.
 - Historial del pedido mostraba solo 20 abonos: ahora carga todos o comunica error.
 - Un precio nulo/NaN o un cambio directo a pagado podía ocultar deuda. Se rechazan totales inválidos, se derivan saldos incluso al cambiar estado y no se entrega un pedido con deuda.
 - Los detalles de ventas pagadas/cortes cerrados aún admitían alteraciones independientes: se protegen cantidades/precios/importes y detalles históricos. No se elimina un corte desde el navegador.
@@ -41,3 +42,13 @@ Migraciones nuevas se versionan antes de aplicar; ninguna migración anterior se
 ## Evidencia antes de publicar
 
 Pruebas operativas y de autoridad PASS; criptografía pgcrypto real en fixture. Dos sesiones PostgreSQL 17 intentaron desactivar simultáneamente dos dueños de prueba: una confirmó y otra recibió ULTIMO_DUENO; quedó uno activo. El esquema privado de prueba se eliminó. Builds POS/web exit 0. Typecheck POS 843 frente a 1134 en la entrega anterior, sin diagnósticos nuevos normalizados; se tiparon props reales de Button/Dialog, sin ignorar errores. WEB conserva 23 diagnósticos y un error lint previo; POS conserva 38 errores lint previos. No se declara saneamiento completo.
+
+## Primera comprobación remota — 2026-10-02, 18:19 UTC
+
+POS/apk publicados en 9500fd710d74659d0f8598f64f24eaf6328d991d y WEB en 66191ebf563820a5078a9193fbb7f968b3e19c5b; los tres despliegues READY. Ambas URLs POS respondieron 200 con index-Bsh6IcJ7.js. Los 41 archivos publicados coinciden con sus Git blobs. Bundle servido contiene recuperación/Edge/enrolamiento y no contiene la contraseña retirada. Passwords de siete cuentas rotados después de esa verificación; sesiones abiertas se conservaron.
+
+Supabase: un dueño activo, tres terminales registradas, cero saldos activos discrepantes y cero enlaces abono/venta inconsistentes. INSERT anon, escritura directa de usuarios, lectura de hashes y ejecución de login_pos antiguo están denegados; autenticar_pin_pos solo para service_role. Migraciones aplicadas/MD5: validación aislada 20261002181233 6b711ea7aa8ae8c24b2aecab96edb106; limpieza 20261002181317 6b525ecdeb6412a333cf14411b123d79; integridad 20261002181619 f647a451c197da23afbcae6820950c0a; autoridad 20261002181633 a5c0ae236e89b0964741388b406ba139; rotación 20261002181917 400c366b27f30828b9f48f130c5afa96. SQL coincide byte a byte con archivos nuevos, sin editar migraciones anteriores.
+
+Advisors conserva advertencias generales: tres vistas SECURITY DEFINER públicas se deben revisar como proyecciones intencionales; funciones RPC autorizadas también generan alertas generales. Tablas privadas con RLS y sin políticas permanecen inaccesibles a clientes por diseño. No se usa la ausencia de alertas como prueba de seguridad. No se realizó login con el PIN real de Abel ni re-enrolamiento/impresión físicos; estas verificaciones no se sustituyen por afirmar que cada dispositivo ya recargó.
+
+La comprobación posterior del PIN añade cuota global no restablecida por éxitos y evita que un PIN conocido de otro perfil reinicie el contador del selector sin usuario. Cuentas inexistentes comparten bucket; registros antiguos se limpian. La recuperación legítima tras enfriamiento se prueba sin prolongar el bloqueo en cada reintento.

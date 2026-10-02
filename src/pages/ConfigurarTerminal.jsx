@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { loginConPin, loginTerminal } from '@/api/supabaseClient';
 import { useConfig } from '@/lib/ConfigContext';
@@ -23,12 +23,15 @@ export default function ConfigurarTerminal({ onConfigurado }) {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(false);
   const [guardando, setGuardando] = useState(false);
+  const autorizandoRef = useRef(false);
   const [showPinDueno, setShowPinDueno] = useState(false);
   const [sucursalPorAutorizar, setSucursalPorAutorizar] = useState(null);
 
   // Flujo "Soy dueño": valida PIN de dueño, abre su sesión Supabase global,
   // marca el dispositivo como de dueño (no terminal fija) y entra.
   const handleDuenoSuccess = async (duenoUser) => {
+    if (autorizandoRef.current) return;
+    autorizandoRef.current = true; setGuardando(true);
     try {
       // _pin solo para abrir la sesión; no debe persistir en posUser.
       const { _pin, ...duenoLimpio } = duenoUser || {};
@@ -60,7 +63,7 @@ export default function ConfigurarTerminal({ onConfigurado }) {
     } catch (err) {
       console.error('[ConfigurarTerminal] handleDuenoSuccess:', err);
       toast.error('No se pudo iniciar el modo dueño');
-    }
+    } finally { autorizandoRef.current = false; setGuardando(false); }
   };
 
   const cargar = async () => {

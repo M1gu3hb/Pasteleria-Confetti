@@ -1,3 +1,5 @@
+> Historial completo financiero: historial_operativo_pos devuelve una instantánea por consulta con RLS del solicitante; conteos de páginas no sustituyen esa consistencia. Ver reauditoría de segunda ronda.
+
 > Segunda ronda 2026-10-02: reauditoría operativa con recuperación de intentos, historial completo y protección de detalles/saldos; autoridad, último dueño, PIN protegido y entrada pública revisados. Administrador ahora abre sesión propia con alcance de sucursal. Terminal conserva sesión revocable; nueva/restablecida requiere autorización del dueño. Ver `docs/REAUDITORIA_SEGUNDA_RONDA_2026-10-02.md` para pruebas, límites y verificación viva. Las menciones anteriores de auth pendiente o contraseña compartida describen la ronda anterior y quedan reemplazadas por este contrato.
 
 > Actualización 2026-10-02: Pago, saldo, devolución y cierre ahora tienen contratos transaccionales de servidor. El plan/reporte de esta ronda reemplaza instrucciones históricas sobre pagos separados. No reconstruir los cuatro abonos de $1700: sus ventas están canceladas. Ver `docs/REGISTRO_REPARACION_OPERATIVA_2026-10-02.md`. El contenido fechado anterior conserva contexto histórico.

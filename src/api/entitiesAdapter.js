@@ -102,6 +102,17 @@ function applySort(builder, sort) {
   return col === 'id' ? ordered : ordered.order('id', { ascending: !desc });
 }
 
+function ordenarCompleto(rows, sort) {
+  if (sort) {
+    const desc = sort.startsWith('-');
+    const field = mapField(desc ? sort.slice(1) : sort);
+    rows.sort((a, b) => a[field] == null ? (b[field] == null ? 0 : 1) : b[field] == null ? -1 :
+      ((a[field] < b[field] ? -1 : a[field] > b[field] ? 1 : String(a.id).localeCompare(String(b.id))) * (desc ? -1 : 1)));
+  }
+  return decorate(rows);
+}
+const TABLAS_FINANCIERAS = new Set(['ventas','detalle_venta','abonos','gastos_operativos','pedidos','cortes_caja']);
+
 function makeEntity(entityName) {
   const table = TABLE_MAP[entityName];
 
@@ -164,6 +175,14 @@ function makeEntity(entityName) {
       }).then(decorate);
     },
     async filterAll(query = {}, sort) {
+      if (TABLAS_FINANCIERAS.has(table)) {
+        await ensureSession();
+        const filtro = Object.fromEntries(Object.entries(query || {}).map(([key, value]) => [mapField(key), value]));
+        const { data, error } = await supabase.rpc('historial_operativo_pos', { p_tabla: table, p_filtro: filtro });
+        if (error) throw new Error(`[${table}] ${error.message}`);
+        if (!Array.isArray(data)) throw new Error(`[${table}] respuesta financiera incompleta`);
+        return ordenarCompleto(data, sort);
+      }
       const contar = async () => {
         await ensureSession();
         let b = supabase.from(table).select('id', { count: 'exact', head: true });
@@ -196,13 +215,7 @@ function makeEntity(entityName) {
       if (obtenido !== rows.length || obtenido !== esperado || await contar() !== esperado) {
         throw new Error(`[${table}] los datos cambiaron durante la consulta. Reintenta para obtener una lista completa.`);
       }
-      if (sort) {
-        const desc = sort.startsWith('-');
-        const field = mapField(desc ? sort.slice(1) : sort);
-        rows.sort((a, b) => a[field] == null ? (b[field] == null ? 0 : 1) : b[field] == null ? -1 :
-          ((a[field] < b[field] ? -1 : a[field] > b[field] ? 1 : String(a.id).localeCompare(String(b.id))) * (desc ? -1 : 1)));
-      }
-      return decorate(rows);
+      return ordenarCompleto(rows, sort);
     },
     async listAll(sort) { return this.filterAll({}, sort); },
     async get(id) {

@@ -25,13 +25,13 @@ class Query {
     return Promise.resolve({data,count:this.options.count?count:null,error:null}).then(resolve,reject);
   }
 }
-const context=vm.createContext({supabase:{from:()=>new Query()},ensureSession:async()=>{}});
+const context=vm.createContext({supabase:{from:()=>new Query(),rpc:async(name,args)=>{assert.equal(name,'historial_operativo_pos');assert.equal(args.p_tabla,'ventas');return {data:rows.map(r=>({...r})),error:null};}},ensureSession:async()=>{}});
 vm.runInContext(read('src/api/entitiesAdapter.js').replace(/^import .*;$/gm,'').replace('export const entities','const entities')+'\nglobalThis.entities=entities;',context);
 for (const n of [199,200,201,499,500,501,999,1000,1001,4999,5000,5001,9999,10000,10001]){
  rows=Array.from({length:n},(_,i)=>({id:String(i).padStart(8,'0'),created_at:'2026-10-01T18:00:00Z',sucursal_id:'A'}));
  for(const apiCap of [73,1000]){
   cap=apiCap;
-  const all=await context.entities.Venta.listAll('-created_date');
+  const all=await context.entities.ProductoTerminado.listAll('-created_date');
   assert.equal(all.length,n);assert.equal(new Set(all.map(r=>r.id)).size,n);
  }
 }
@@ -41,7 +41,8 @@ const first=await context.entities.Venta.list('id',200,0),second=await context.e
 assert.equal(first[0].id,'00000000');assert.equal(second[0].id,'00000200');
 assert.equal((await context.entities.Venta.filter({sucursal_id:'A'},'id',200,200))[0].id,second[0].id);
 cap=73;mutate=()=>rows.pop();
-await assert.rejects(()=>context.entities.Venta.listAll('id'),/datos cambiaron/);
+await assert.rejects(()=>context.entities.ProductoTerminado.listAll('id'),/datos cambiaron/);
+const snapshot=await context.entities.Venta.listAll('-created_date'); assert.equal(snapshot.length,rows.length);
 console.log('PAGINATION THRESHOLDS, GLOBAL/BRANCH OFFSET, API CAPS AND MUTATION OK');
 const fechaCode=read('src/utils/pedidoPastelUtils.js').split('export function fechaCDMX')[1].split('\nfunction parseJsonObj')[0];
 const rangeCode=read('src/lib/useResumenPeriodo.js').split('export function rangoDesdePeriodo')[1].split('\n/**')[0];

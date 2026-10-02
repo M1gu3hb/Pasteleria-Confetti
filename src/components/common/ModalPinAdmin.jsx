@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { validarPin } from '@/api/supabaseClient';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Delete, ShieldCheck } from 'lucide-react';
@@ -27,6 +27,7 @@ export default function ModalPinAdmin({
 }) {
   const [pin, setPin] = useState('');
   const [validando, setValidando] = useState(false);
+  const validandoRef = useRef(false);
 
   // Limpiar PIN cada vez que se abre
   useEffect(() => {
@@ -34,7 +35,8 @@ export default function ModalPinAdmin({
   }, [open]);
 
   const validar = async (pinToCheck) => {
-    if (validando) return;
+    if (validandoRef.current) return;
+    validandoRef.current = true;
     setValidando(true);
     try {
       // Fase 4: valida el PIN server-side vía RPC login_pos (contra pin_hash
@@ -74,6 +76,7 @@ export default function ModalPinAdmin({
       toast.error(err?.message || 'No se pudo validar el PIN. Intenta de nuevo.');
       setPin('');
     } finally {
+      validandoRef.current = false;
       setValidando(false);
     }
   };
