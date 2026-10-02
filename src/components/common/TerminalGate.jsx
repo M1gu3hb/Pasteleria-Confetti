@@ -1,7 +1,8 @@
+import ModalPinAdmin from './ModalPinAdmin';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTerminal } from '@/lib/TerminalContext';
 import { usePOSAuth } from '@/lib/POSAuthContext';
-import { loginTerminal } from '@/api/supabaseClient';
+import { loginTerminal, loginConPin } from '@/api/supabaseClient';
 import ConfigurarTerminal from '@/pages/ConfigurarTerminal';
 import AccesoDuenoGate from './AccesoDuenoGate';
 
@@ -25,6 +26,8 @@ export default function TerminalGate({ children }) {
   const { terminal, modoDuenoDispositivo, isLoading: terminalLoading } = useTerminal();
   const { posUser, login, isLoading: authLoading } = usePOSAuth();
   const [sesionError, setSesionError] = useState(null);
+  const [requiereAutorizar, setRequiereAutorizar] = useState(false);
+  const [showAutorizar, setShowAutorizar] = useState(false);
   // Evita doble apertura de sesión terminal mientras posUser aún no se refleja.
   const autoLoginRef = useRef(false);
 
@@ -68,6 +71,7 @@ export default function TerminalGate({ children }) {
       const res = await loginTerminal(terminal.sucursal_id);
       if (!res.ok) {
         autoLoginRef.current = false;
+        setRequiereAutorizar(!!res.requiereEnrolamiento);
         setSesionError(res.error || 'No se pudo abrir la sesión de la terminal.');
         return;
       }
@@ -105,6 +109,16 @@ export default function TerminalGate({ children }) {
   if (sesionError) {
     return (
       <div className="fixed inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
+        {requiereAutorizar && <button onClick={() => setShowAutorizar(true)} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground">Autorizar terminal</button>}
+        <ModalPinAdmin open={showAutorizar} onOpenChange={setShowAutorizar} soloDueno title="Autorizar terminal" onSuccess={async (u) => {
+          try {
+            const op = await loginConPin(u._pin, u.id);
+            if (!op) return;
+            const res = await loginTerminal(terminal.sucursal_id);
+            if (!res.ok) { setSesionError(res.error); return; }
+            autoLoginRef.current = false; setRequiereAutorizar(false); setSesionError(null);
+          } catch (e) { setSesionError(e.message); }
+        }} />
         <p className="text-sm text-muted-foreground max-w-sm">
           No se pudo conectar la terminal con el servidor. Revisa la conexión e intenta de nuevo.
         </p>

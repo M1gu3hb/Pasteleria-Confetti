@@ -1,3 +1,5 @@
+> Segunda ronda 2026-10-02: reauditoría operativa con recuperación de intentos, historial completo y protección de detalles/saldos; autoridad, último dueño, PIN protegido y entrada pública revisados. Administrador ahora abre sesión propia con alcance de sucursal. Terminal conserva sesión revocable; nueva/restablecida requiere autorización del dueño. Ver `docs/REAUDITORIA_SEGUNDA_RONDA_2026-10-02.md` para pruebas, límites y verificación viva. Las menciones anteriores de auth pendiente o contraseña compartida describen la ronda anterior y quedan reemplazadas por este contrato.
+
 > Actualización 2026-10-02: Nuevos contratos: pedidos.credito_historico, abonos.venta_id único, app_private.operaciones_pedido y backup de reparación de saldo; funciones/guardas para saldo, corte, folios, reportes e intención de venta. No se alteran helpers de identidad en esta ronda. Ver `docs/REGISTRO_REPARACION_OPERATIVA_2026-10-02.md`. El contenido fechado anterior conserva contexto histórico.
 
 # DATABASE — Supabase `ivqcxdpqxwjxfohiswqb`
@@ -196,7 +198,7 @@ snake_case en todo. IDs `uuid` (`gen_random_uuid()`). `created_at timestamptz de
 
 ## Cuentas TERMINAL (Fase 4 / 0015 — Opción A)
 3 cuentas (1 por sucursal): `usuarios_pos` rol `caja`, `pin_hash` NULL, `auth_user_id` enlazado; `auth.users`
-email `terminal-<sucursalid>@pos.confetti.local`, password fijo `POS-TERMINAL-CONFETTI` (= `VITE_TERMINAL_PASSWORD`).
+email `terminal-<sucursalid>@pos.confetti.local`, password fijo `[credencial retirada]` (= `VITE_TERMINAL_PASSWORD`).
 El empleado opera sobre esta sesión (`pos_is_admin=false` → RLS la confina a su sucursal); el administrador
 se queda sobre ella; el dueño abre su propia sesión global. **Gotcha:** al insertar `auth.users` a mano,
 `confirmation_token/recovery_token/email_change/email_change_token_new` deben ir `''` (no NULL) o

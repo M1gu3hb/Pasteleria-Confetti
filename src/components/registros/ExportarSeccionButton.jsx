@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 /**
  * Botón reutilizable que exporta una sección a CSV o XLSX.
  * Recibe los datos ya filtrados y la definición de columnas.
+ * @param {{rows: any[], columns: any[], filename: string, label?: string, size?: 'default'|'sm'|'lg'|'icon'}} props
  */
 export default function ExportarSeccionButton({ rows, columns, filename, label = 'Exportar', size = 'sm' }) {
   const [busy, setBusy] = useState(false);

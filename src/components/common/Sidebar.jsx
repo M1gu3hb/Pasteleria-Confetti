@@ -119,7 +119,8 @@ export default function Sidebar({ collapsed, onToggle }) {
       // lo identifique y pueda leer los pedidos de todas las sucursales.
       const esPasteleroLogin = adminLimpio?.adminRole === 'pastelero';
 
-      if (esDuenoLogin || esPasteleroLogin) {
+      if (adminLimpio?.adminRole === 'administrador' && terminal?.sucursal_id && adminLimpio?.sucursal_id !== terminal.sucursal_id) { toast.error('Este administrador es de otra sucursal.'); return; }
+      if (esDuenoLogin || esPasteleroLogin || adminLimpio?.adminRole === 'administrador') {
         // Sesión global (ModalPinAdmin ya validó el PIN; loginConPin lo revalida
         // y hace signInWithPassword).
         const op = await loginConPin(_pin, adminLimpio.id);
@@ -181,7 +182,7 @@ export default function Sidebar({ collapsed, onToggle }) {
       // tras salir el pastelero, la tablet seguía autenticada como pastelero
       // mientras la UI decía "Empleado" — con la sucursal equivocada para RLS y,
       // desde 0060, con permiso de escritura sobre pedidos.
-      const wasSesionGlobal = esDueno || esPastelero;
+      const wasSesionGlobal = esDueno || esPastelero || adminRole === 'administrador';
       salirAdmin();
       if (modoDuenoDispositivo) {
         // Dispositivo de dueño → cerrar la sesión Supabase del dueño;

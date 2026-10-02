@@ -4,7 +4,7 @@ import fs from 'node:fs';
 const db=new PGlite();
 try {
  await db.exec(fs.readFileSync(new URL('./fixtures/operacion_bootstrap.sql',import.meta.url),'utf8'));
- for (const name of ['20261001234206_operaciones_pedidos_atomicas.sql','20261001234848_cortes_folios_reportes_atomicos.sql','20261001235227_venta_intencion_resumen_periodo.sql']) {
+ for (const name of ['20261001234206_operaciones_pedidos_atomicas.sql','20261001234848_cortes_folios_reportes_atomicos.sql','20261001235227_venta_intencion_resumen_periodo.sql','20261002175251_auditoria_integridad_operativa.sql']) {
   await db.exec('BEGIN;'+fs.readFileSync(new URL('../supabase/migrations/'+name,import.meta.url),'utf8')+'COMMIT;');
   console.log('MIGRATION OK',name);
  }
@@ -18,6 +18,13 @@ try {
  const b=await call(intent);if(!b.idempotentHit||b.pedido.id!==a.pedido.id)throw Error('Retry failed');
  console.log('RETRY OK');
  const pid=a.pedido.id;
+ await assert.rejects(()=>db.query('update pedidos set total_final=null where id=$1',[pid]),/TOTAL_INVALIDO/);
+ await assert.rejects(()=>db.query("update pedidos set total_final='NaN'::numeric where id=$1",[pid]),/TOTAL_INVALIDO/);
+ await db.query("update pedidos set estado='pagado',saldo_pendiente=0 where id=$1",[pid]);
+ assert.equal(Number((await db.query('select saldo_pendiente from pedidos where id=$1',[pid])).rows[0].saldo_pendiente),200);
+ await assert.rejects(()=>db.query("update pedidos set estado='entregado' where id=$1",[pid]),/SALDO_PENDIENTE/);
+ await assert.rejects(()=>db.query('update detalle_venta set cantidad=20 where venta_id=$1',[a.ventaId]),/DETALLE_VENTA_PROTEGIDO/);
+ console.log('NULL/NAN/FAKE PAID STATE/DELIVERY/PAID DETAIL REJECTED OK');
  await db.query('update pedidos set total_final=200 where id=$1',[pid]);
  const c=(await db.query('select total_abonado,saldo_pendiente from pedidos where id=$1',[pid])).rows[0];
  if(Number(c.saldo_pendiente)!==100||Number(c.total_abonado)!==100)throw Error('Price edit lost payment');console.log('PRICE EDIT OK');
@@ -27,6 +34,8 @@ try {
  if(cut.ventas.length!==1||cut.detalles.length!==1||cut.abonos.length!==2)throw Error('Cut source mismatch');console.log('CUT SOURCE OK');
  await db.query(`update cortes_caja set estado='cerrado',fecha_cierre=now(),numero_ventas=1,total_general=100,total_efectivo=100,efectivo_esperado=0 where id=$1`,[intent.corte_id]);
  console.log('CLOSE OK');
+ await assert.rejects(()=>db.query('update detalle_venta set subtotal=999 where venta_id=$1',[a.ventaId]),/CORTE_CERRADO/);
+ console.log('CLOSED CUT DETAIL IMMUTABLE OK');
  try {await call({...intent,clave:'test-new-order-0002'});throw Error('Closed cut accepted');}catch(err){if(!err.message.includes('CORTE_NO_ABIERTO'))throw err;}
  console.log('CLOSED CUT REJECTS NEW PAYMENT OK');
 

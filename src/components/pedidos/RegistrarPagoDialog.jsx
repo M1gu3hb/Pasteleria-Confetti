@@ -7,7 +7,8 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { construirPago } from '@/utils/metodoPago';
 import MetodoPagoSelector from '@/components/pos/MetodoPagoSelector';
-import { registrarPagoPedido } from '@/utils/registrarPagoPedido';
+import { registrarPagoPedido, recuperarOperacionPedido } from '@/utils/registrarPagoPedido';
+import { tieneIntencionPendiente } from '@/utils/intencionPersistente';
 import { fechaCDMX } from '@/utils/pedidoPastelUtils';
 
 // Fase 4 — registra un abono con circuito financiero (Abono + PedidoPastel).
@@ -30,6 +31,8 @@ export default function RegistrarPagoDialog({ pedido, cajaAbierta, posUser, sucu
   // entrega?" antes de cerrar (en vez de cerrar directo).
   const [liquidado, setLiquidado] = useState(false);
 
+  const slotPago = `pago:${pedido?.sucursal_id}:${pedido?.id}`;
+  const pendiente = tieneIntencionPendiente(slotPago);
   const { pago, valido: pagoValido } = construirPago(parseFloat(monto) || 0, metodo, montosMixto);
 
   useEffect(() => {
@@ -45,28 +48,29 @@ export default function RegistrarPagoDialog({ pedido, cajaAbierta, posUser, sucu
       return;
     }
     // PARTE A — bloqueos de caja y corte atrasado antes de registrar pagos.
-    if (!cajaAbierta?.id) {
+    if (!pendiente && !cajaAbierta?.id) {
       toast.error('Abre caja antes de registrar pagos.');
       return;
     }
-    if (hayCorteAtrasado) {
+    if (!pendiente && hayCorteAtrasado) {
       toast.error('Cierra el corte del día anterior antes de registrar pagos de hoy.');
       return;
     }
     const m = parseFloat(monto) || 0;
-    if (m <= 0) { toast.error('El monto debe ser mayor a 0'); return; }
-    if (m > saldoActual + 0.01) { toast.error(`El monto excede el saldo pendiente ($${saldoActual.toFixed(2)})`); return; }
-    if (!pagoValido) { toast.error('Revisa el método de pago (si es mixto, la suma debe cuadrar el monto).'); return; }
+    if (!pendiente && m <= 0) { toast.error('El monto debe ser mayor a 0'); return; }
+    if (!pendiente && m > saldoActual + 0.01) { toast.error(`El monto excede el saldo pendiente ($${saldoActual.toFixed(2)})`); return; }
+    if (!pendiente && !pagoValido) { toast.error('Revisa el método de pago (si es mixto, la suma debe cuadrar el monto).'); return; }
     cobrandoRef.current = true;
     setLoading(true);
     try {
       // Lógica de cobro compartida (Abono + Venta paralela + recompute del pedido).
       // La MISMA que usa el anticipo al crear el pedido → no divergen.
-      const res = await registrarPagoPedido({ pedido, monto: m, pago, cajaAbierta, posUser, sucursalEfectiva, notas });
+      const res = pendiente ? await recuperarOperacionPedido(slotPago) : await registrarPagoPedido({ pedido, monto: m, pago, cajaAbierta, posUser, sucursalEfectiva, notas });
       toast.success(`Pago de $${Number(res.montoRegistrado).toFixed(2)} registrado${res.intencionRecuperada ? ' (intento recuperado)' : ''}`);
       // FASE 4 — si este pago LIQUIDA el pedido (saldo 0), preguntar si ya se
       // entrega antes de cerrar. Si no liquida, cierra como siempre.
-      if (res.saldoPendiente <= 0) {
+      onPagoRegistrado?.();
+      if (res.saldoPendiente <= 0 && pedido.estado !== 'entregado' && pedido.estado !== 'cancelado') {
         setLiquidado(true);
       } else {
         onPagoRegistrado?.();
@@ -130,6 +134,7 @@ export default function RegistrarPagoDialog({ pedido, cajaAbierta, posUser, sucu
           </div>
         ) : (
         <div className="space-y-4">
+          {pendiente && <p className="text-sm">Hay un intento sin confirmar. Consultaremos el cobro original antes de permitir otro pago.</p>}
           <div className="text-center p-3 rounded-xl bg-muted/40 border">
             <p className="text-xs text-muted-foreground">Saldo pendiente</p>
             <p className="text-3xl font-heading font-black">${saldoActual.toFixed(2)}</p>
@@ -151,8 +156,8 @@ export default function RegistrarPagoDialog({ pedido, cajaAbierta, posUser, sucu
             <Label className="text-xs">Notas (opcional)</Label>
             <Input value={notas} onChange={e => setNotas(e.target.value)} className="skeu-input h-10 mt-1" />
           </div>
-          <Button onClick={confirmar} disabled={loading || !pagoValido} className="w-full h-12 font-bold">
-            {loading ? 'Registrando…' : 'Confirmar pago'}
+          <Button onClick={confirmar} disabled={loading || (!pendiente && !pagoValido)} className="w-full h-12 font-bold">
+            {loading ? 'Confirmando…' : pendiente ? 'Recuperar pago pendiente' : 'Confirmar pago'}
           </Button>
         </div>
         )}

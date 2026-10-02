@@ -126,7 +126,7 @@ check('(b) sigue sin reabrir sesión si ya hay usuario',
 check('(b) sigue habiendo guarda durante el await',
   /if\s*\(autoLoginRef\.current\)\s*return;\s*autoLoginRef\.current\s*=\s*true;/.test(gate));
 check('(b) el fallo de sesión sigue soltando el ref y mostrando el error',
-  /if\s*\(!res\.ok\)\s*\{\s*autoLoginRef\.current\s*=\s*false;\s*setSesionError/.test(gate));
+  /if\s*\(!res\.ok\)\s*\{\s*autoLoginRef\.current\s*=\s*false;\s*setRequiereAutorizar\(!!res\.requiereEnrolamiento\);\s*setSesionError/.test(gate));
 
 // El disparador sigue existiendo: si esto cambia, el arreglo sigue siendo
 // correcto pero la explicación de arriba deja de serlo.
@@ -176,3 +176,4 @@ check('(c) intacto: la comprobación de propinas del mixto sigue ahí',
 
 console.log(`\n${ok} PASS, ${fail} FAIL`);
 process.exit(fail === 0 ? 0 : 1);
+

@@ -185,13 +185,12 @@ export default function Configuracion() {
         // EDITAR: campos por update normal (sin pin); el PIN (si cambió) por RPC.
         // sucursal_id vacío → null (pastelero/dueño no llevan sucursal; '' rompe el cast uuid).
         const { pin, ...rest } = payload;
-        await base44.entities.UsuarioPOS.update(prevUser.id, { ...rest, rol: rolDB, sucursal_id: payload.sucursal_id || null });
-        if (pinNuevo) {
-          const { error } = await supabase.rpc('actualizar_pin_usuario', {
-            p_user_id: prevUser.id, p_pin: pinNuevo,
-          });
-          if (error) throw new Error(error.message);
-        }
+        const { error } = await supabase.rpc('actualizar_usuario_pos', {
+          p_user_id: prevUser.id,
+          p_cambios: { nombre: rest.nombre, rol: rolDB, activo: rest.activo ?? true, color: rest.color, telefono: rest.telefono, correo: rest.correo, sucursal_id: payload.sucursal_id || null, sucursal_nombre: rest.sucursal_nombre || null, permisos_extra: rest.permisos_extra || {} },
+          p_pin: pinNuevo, p_motivo: 'Edición de usuario desde Configuración',
+        });
+        if (error) throw new Error(error.message);
       } else {
         // CREAR: alta completa (usuarios_pos + pin_hash + cuenta auth) por RPC.
         const { error } = await supabase.rpc('crear_usuario_pos', {
@@ -218,9 +217,11 @@ export default function Configuracion() {
   };
 
   const deleteUser = async (id) => {
-    await base44.entities.UsuarioPOS.update(id, { activo: false });
-    queryClient.invalidateQueries({ queryKey: ['usuarios_pos'] });
-    toast.success('Usuario desactivado');
+    try {
+      await base44.entities.UsuarioPOS.update(id, { activo: false });
+      queryClient.invalidateQueries({ queryKey: ['usuarios_pos'] });
+      toast.success('Usuario desactivado');
+    } catch (e) { toast.error(e.message); }
   };
 
   // HOTFIX: skeleton durante la primera carga de cfg para evitar que el usuario

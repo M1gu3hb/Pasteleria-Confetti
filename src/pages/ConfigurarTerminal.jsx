@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { loginConPin } from '@/api/supabaseClient';
+import { loginConPin, loginTerminal } from '@/api/supabaseClient';
 import { useConfig } from '@/lib/ConfigContext';
 import { useTerminal } from '@/lib/TerminalContext';
 import { usePOSAuth } from '@/lib/POSAuthContext';
@@ -24,6 +24,7 @@ export default function ConfigurarTerminal({ onConfigurado }) {
   const [error, setError] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [showPinDueno, setShowPinDueno] = useState(false);
+  const [sucursalPorAutorizar, setSucursalPorAutorizar] = useState(null);
 
   // Flujo "Soy dueño": valida PIN de dueño, abre su sesión Supabase global,
   // marca el dispositivo como de dueño (no terminal fija) y entra.
@@ -35,6 +36,15 @@ export default function ConfigurarTerminal({ onConfigurado }) {
       const op = await loginConPin(_pin, duenoLimpio.id);
       if (!op) {
         toast.error('No se pudo iniciar la sesión de dueño.');
+        return;
+      }
+      if (sucursalPorAutorizar) {
+        const terminalSesion = await loginTerminal(sucursalPorAutorizar.id);
+        if (!terminalSesion.ok) { toast.error(terminalSesion.error); setGuardando(false); return; }
+        configurarTerminal(sucursalPorAutorizar);
+        setSucursalPorAutorizar(null);
+        setGuardando(false);
+        onConfigurado?.(sucursalPorAutorizar);
         return;
       }
       activarDispositivoDueno();
@@ -74,21 +84,8 @@ export default function ConfigurarTerminal({ onConfigurado }) {
 
   const seleccionar = (suc) => {
     if (guardando || !suc?.id) return;
-    setGuardando(true);
-    try {
-      const ok = configurarTerminal(suc);
-      if (ok) {
-        toast.success(`Terminal configurada: ${suc.nombre}`);
-        if (typeof onConfigurado === 'function') onConfigurado(suc);
-      } else {
-        toast.error('No se pudo configurar la terminal');
-        setGuardando(false);
-      }
-    } catch (err) {
-      console.error('[ConfigurarTerminal] seleccionar:', err);
-      toast.error('No se pudo guardar la sucursal');
-      setGuardando(false);
-    }
+    setSucursalPorAutorizar(suc);
+    setShowPinDueno(true);
   };
 
   const negocio = config?.nombre_negocio || 'Pastelería Confetti';
@@ -166,7 +163,7 @@ export default function ConfigurarTerminal({ onConfigurado }) {
         <div className="mt-6 pt-5 border-t border-border">
           <button
             type="button"
-            onClick={() => setShowPinDueno(true)}
+            onClick={() => { setSucursalPorAutorizar(null); setShowPinDueno(true); }}
             disabled={guardando}
             className="w-full flex items-center gap-4 p-4 rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 text-left transition-all hover:border-primary hover:bg-primary/10 active:scale-[0.99] disabled:opacity-60"
             style={{ touchAction: 'manipulation' }}
@@ -187,8 +184,8 @@ export default function ConfigurarTerminal({ onConfigurado }) {
         onOpenChange={setShowPinDueno}
         onSuccess={handleDuenoSuccess}
         soloDueno
-        title="Acceso de dueño"
-        subtitle="Ingresa tu PIN de dueño"
+        title={sucursalPorAutorizar ? "Autorizar terminal" : "Acceso de dueño"}
+        subtitle={sucursalPorAutorizar ? `PIN del dueño para autorizar ${sucursalPorAutorizar.nombre}` : "Ingresa tu PIN de dueño"}
       />
     </div>
   );

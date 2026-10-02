@@ -1,6 +1,12 @@
 import { mensajeOperacion } from '@/utils/errorOperacion';
 import { supabase, ensureSession } from '@/api/supabaseClient';
-import { ejecutarIntencion } from '@/utils/intencionPersistente';
+import { ejecutarIntencion, leerIntencion } from '@/utils/intencionPersistente';
+
+export async function recuperarOperacionPedido(slot) {
+  const pendiente = leerIntencion(slot);
+  if (!pendiente) throw new Error('No hay un intento pendiente en este dispositivo.');
+  return operacionPedido(slot, pendiente);
+}
 
 export async function operacionPedido(slot, solicitud) {
   await ensureSession();

@@ -1,3 +1,4 @@
+import { tieneIntencionPendiente } from '@/utils/intencionPersistente';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQueryClient } from '@tanstack/react-query';
@@ -35,7 +36,7 @@ import PedidoPastelDetalleDialog from '@/components/pedidos/PedidoPastelDetalleD
 import CanvasDibujo from '@/components/pedidos/CanvasDibujo';
 import MetodoPagoSelector from '@/components/pos/MetodoPagoSelector';
 import { construirPago } from '@/utils/metodoPago';
-import { crearPedidoConAnticipo } from '@/utils/registrarPagoPedido';
+import { crearPedidoConAnticipo, recuperarOperacionPedido } from '@/utils/registrarPagoPedido';
 
 const fmt = (n) => `$${(Number(n) || 0).toFixed(2)}`;
 
@@ -447,7 +448,7 @@ export default function NuevoPedidoPastel() {
           creado_por_id: posUser?.id || '', creado_por_nombre: posUser?.nombre || '' },
           monto: calc.aCuenta, pago, cajaAbierta, posUser });
         saved = res.pedido;
-        toast.success(`Pedido guardado · ${saved.folio}`);
+        toast.success(`Pedido guardado · ${saved.folio}${res.intencionRecuperada ? ' · intento original recuperado' : ''}`);
         queryClient.invalidateQueries({ queryKey: ['ventas_pagadas_caja'] });
         queryClient.invalidateQueries({ queryKey: ['abonos_corte'] });
         queryClient.invalidateQueries({ queryKey: ['dashboard_ventas'] });
@@ -493,6 +494,18 @@ export default function NuevoPedidoPastel() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-4 pb-10 bg-transparent">
+      {!editId && !pedidoGuardado && tieneIntencionPendiente(`crear-pedido:${sucId}`) && <Button disabled={guardando} onClick={async () => {
+        if (guardandoRef.current) return;
+        guardandoRef.current = true; setGuardando(true);
+        try {
+          const res = await recuperarOperacionPedido(`crear-pedido:${sucId}`);
+          setPedidoGuardado(res.pedido);
+          queryClient.invalidateQueries({ queryKey: ['pedidos_pastel'] });
+          queryClient.invalidateQueries({ queryKey: ['ventas_pagadas_caja'] });
+          queryClient.invalidateQueries({ queryKey: ['abonos_corte'] });
+          toast.success(`Pedido original recuperado · ${res.pedido.folio}`);
+        } catch (e) { toast.error(e.message); } finally { guardandoRef.current = false; setGuardando(false); }
+      }}>Recuperar pedido pendiente</Button>}
       {/* SECCIÓN 1 — Encabezado */}
       <Card className="border-2" style={{ borderColor: 'hsl(330,70%,75%)' }}>
         <CardContent className="pt-5 text-center space-y-1">

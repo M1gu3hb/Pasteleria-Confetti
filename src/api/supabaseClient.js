@@ -12,30 +12,30 @@ export const supabase = createClient(url, anonKey, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
 });
 
-// =====================================================================
-// Fase 4 — Auth real por sesión (reemplaza la sesión staging de Fase 2/3).
-// ---------------------------------------------------------------------
-// Tres tipos de sesión Supabase, que mapean al aislamiento RLS:
-//   * TERMINAL  -> cuenta `caja` por sucursal (pos_is_admin=false). Empleado y
-//                  administrador de esa sucursal operan SOBRE esta sesión.
-//   * DUEÑO     -> cuenta real del dueño (pos_is_admin=true, global).
-//   * (anon)    -> sin sesión: solo lo que permite la RLS anon (sucursales/
-//                  categorías/vistas públicas). Pantallas pre-login.
-//
-// El modo ADMINISTRADOR NO abre sesión propia: valida su PIN (login_pos) y se
-// queda sobre la sesión TERMINAL -> hereda el alcance de la sucursal. Por eso
-// un administrador nunca ve otra sucursal aunque su rol sea "administrador".
-// =====================================================================
+// Auth efectivo: terminal técnica con sesión revocable por dispositivo;
+// dueño global; administrador con identidad propia y sucursal asignada;
+// pastelero global limitado a pedidos. El servidor revalida actividad y rol.
+// La autorización PIN ocurre exclusivamente en pin-login con contador durable.
 
 // localStorage keys (mismas que TerminalContext — contrato compartido del POS).
 const TERMINAL_KEY = 'confetti_terminal';
 const MODO_DUENO_KEY = 'confetti_modo_dueno';
 
-// Password fijo embebido de las cuentas terminal (decisión de Miguel, Opción A).
-// Debe coincidir con el crypt() de la migración 0015. La RLS scoped (caja ->
-// solo su sucursal) acota el blast radius; mismo modelo de confianza que la
-// cuenta staging anterior. En .env como VITE_TERMINAL_PASSWORD.
-const TERMINAL_PASSWORD = import.meta.env.VITE_TERMINAL_PASSWORD || 'POS-TERMINAL-CONFETTI';
+// A terminal retains its own revocable Auth session on this device. No shared
+// password is shipped. A new/reset device is authorized once with the owner's
+// existing PIN modal; established terminals keep their current sessions.
+const TERMINAL_SESSION_KEY = 'confetti:terminal-session:v1';
+function guardarSesionTerminal(session) {
+  if (/^terminal-[0-9a-f-]+@pos\.confetti\.local$/i.test(session?.user?.email || '')) {
+    localStorage.setItem(TERMINAL_SESSION_KEY, JSON.stringify({ access_token: session.access_token, refresh_token: session.refresh_token, email: session.user.email }));
+  }
+}
+async function pinProtegido(pin, userId, modo) {
+  const { data, error } = await supabase.functions.invoke('pin-login', { body: { pin, usuario_id: userId, modo } });
+  if (error) throw new Error('No se pudo conectar para validar el PIN. Reintenta.');
+  if (data?.espera_segundos > 0) throw new Error(`Demasiados intentos. Espera ${data.espera_segundos} segundos y reintenta.`);
+  return data?.ok ? data : null;
+}
 
 const terminalEmail = (sucursalId) =>
   `terminal-${String(sucursalId || '').toLowerCase()}@pos.confetti.local`;
@@ -105,53 +105,41 @@ export async function loginTerminal(sucursalId) {
   const email = terminalEmail(sucursalId);
   try {
     const { data: cur } = await supabase.auth.getSession();
-    if (cur?.session?.user?.email === email) return { ok: true };
-    const { error } = await supabase.auth.signInWithPassword({ email, password: TERMINAL_PASSWORD });
-    resetBootstrap();
-    if (error) return { ok: false, error: error.message };
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, error: e?.message || String(e) };
-  }
+    if (cur?.session?.user?.email === email) { guardarSesionTerminal(cur.session); return { ok: true }; }
+    const saved = JSON.parse(localStorage.getItem(TERMINAL_SESSION_KEY) || 'null');
+    if (saved?.email === email) {
+      const { data, error } = await supabase.auth.setSession({ access_token: saved.access_token, refresh_token: saved.refresh_token });
+      if (!error && data?.session?.user?.email === email) { guardarSesionTerminal(data.session); resetBootstrap(); return { ok: true }; }
+    }
+    // Only a verified active owner may enroll a terminal on a new device.
+    if (cur?.session) {
+      await supabase.auth.setSession({ access_token: cur.session.access_token, refresh_token: cur.session.refresh_token });
+      const { data, error } = await supabase.functions.invoke('terminal-login', { body: { sucursal_id: sucursalId } });
+      if (!error && data?.token_hash) {
+        const { data: sesion, error: otpError } = await supabase.auth.verifyOtp({ token_hash: data.token_hash, type: 'email' });
+        if (!otpError && sesion?.session?.user?.email === email) { guardarSesionTerminal(sesion.session); resetBootstrap(); return { ok: true }; }
+      }
+    }
+    return { ok: false, requiereEnrolamiento: true, error: 'El dueño debe autorizar esta terminal con su PIN.' };
+  } catch { return { ok: false, error: 'No se pudo recuperar la sesión de terminal. Reintenta sin borrar los datos del dispositivo.' }; }
 }
 
-/**
- * Valida un PIN server-side vía RPC login_pos (compara contra pin_hash bcrypt)
- * SIN cambiar la sesión Supabase. Devuelve el operador
- * { id, email, nombre, rol, sucursal_id, sucursal_nombre } o null.
- * Lo usa el modo administrador (desbloqueo de UI sobre la sesión terminal).
- */
+/** Valida PIN en el servidor sin cambiar la sesión. */
 export async function validarPin(pin, userId = null) {
-  if (!pin) return null;
-  const { data, error } = await supabase.rpc('login_pos', { p_pin: pin, p_user_id: userId });
-  if (error) {
-    console.warn('[supabase] login_pos error:', error.message);
-    return null;
-  }
-  const row = Array.isArray(data) ? data[0] : data;
-  return row || null;
+  const data = await pinProtegido(pin, userId, 'validar');
+  return data?.operador || null;
 }
 
-/**
- * Login completo por PIN: valida (login_pos) y ABRE la sesión Supabase del
- * operador (signInWithPassword con password derivado 'POS-'+pin). Lo usa el
- * DUEÑO (sesión global). El administrador NO lo usa: valida con validarPin y
- * se queda sobre la sesión terminal (no escala a sesión propia).
- * Devuelve el operador o null.
- */
+/** Abre sesión del operador con un hash de un solo uso, sin contraseña derivada. */
 export async function loginConPin(pin, userId = null) {
-  const op = await validarPin(pin, userId);
-  if (!op) return null;
-  const { error } = await supabase.auth.signInWithPassword({
-    email: op.email,
-    password: `POS-${pin}`,
-  });
+  const { data: actual } = await supabase.auth.getSession();
+  guardarSesionTerminal(actual?.session);
+  const data = await pinProtegido(pin, userId, 'sesion');
+  if (!data?.token_hash) return null;
+  const { error } = await supabase.auth.verifyOtp({ token_hash: data.token_hash, type: 'email' });
   resetBootstrap();
-  if (error) {
-    console.warn('[supabase] signIn operador falló:', error.message);
-    return null;
-  }
-  return op;
+  if (error) throw new Error('No se pudo abrir la sesión. Reintenta con el PIN.');
+  return data.operador;
 }
 
 /**
@@ -159,6 +147,7 @@ export async function loginConPin(pin, userId = null) {
  * decide (p. ej. Sidebar restaura la sesión terminal al salir de dueño).
  */
 export async function logoutOperador() {
-  try { await supabase.auth.signOut(); } catch { /* noop */ }
+  try { await supabase.auth.signOut({ scope: 'local' }); } catch { /* noop */ }
   resetBootstrap();
 }
+

@@ -1,3 +1,5 @@
+> Segunda ronda 2026-10-02: reauditoría operativa con recuperación de intentos, historial completo y protección de detalles/saldos; autoridad, último dueño, PIN protegido y entrada pública revisados. Administrador ahora abre sesión propia con alcance de sucursal. Terminal conserva sesión revocable; nueva/restablecida requiere autorización del dueño. Ver `docs/REAUDITORIA_SEGUNDA_RONDA_2026-10-02.md` para pruebas, límites y verificación viva. Las menciones anteriores de auth pendiente o contraseña compartida describen la ronda anterior y quedan reemplazadas por este contrato.
+
 > Actualización 2026-10-02: Pedidos/pagos usan operacion_pedido_tx y registro privado de intención. Cierre y escritores financieros comparten bloqueo de corte. Comprobantes usan datos_corte_pos. Agregados financieros se calculan en servidor. Ver `docs/REGISTRO_REPARACION_OPERATIVA_2026-10-02.md`. El contenido fechado anterior conserva contexto histórico.
 
 # ARCHITECTURE — Opción A (DB compartida + RLS)

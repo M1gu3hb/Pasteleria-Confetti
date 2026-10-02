@@ -1,12 +1,17 @@
 // Recover the exact original request after a response lost following COMMIT.
 const enCurso = new Map();
+export function leerIntencion(slot) {
+  try { return JSON.parse(localStorage.getItem(`confetti:intencion:v1:${slot}`) || 'null'); }
+  catch { throw new Error('No se puede recuperar la operación pendiente. No se realizó otro cobro.'); }
+}
+export function tieneIntencionPendiente(slot) {
+  try { return !!localStorage.getItem(`confetti:intencion:v1:${slot}`); } catch { return false; }
+}
 export async function ejecutarIntencion(slot, solicitud, ejecutar) {
   if (enCurso.has(slot)) return enCurso.get(slot);
   const trabajo = (async () => {
     const storageKey = `confetti:intencion:v1:${slot}`;
-    let anterior;
-    try { anterior = JSON.parse(localStorage.getItem(storageKey) || 'null'); }
-    catch { throw new Error('No se puede recuperar la operación pendiente. No se realizó otro cobro.'); }
+    const anterior = leerIntencion(slot);
     const intencion = anterior || { ...solicitud, clave: crypto.randomUUID() };
     localStorage.setItem(storageKey, JSON.stringify(intencion));
     let resultado;

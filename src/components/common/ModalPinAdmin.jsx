@@ -71,7 +71,7 @@ export default function ModalPinAdmin({
       onOpenChange(false);
     } catch (err) {
       console.error('[ModalPinAdmin] validar:', err);
-      toast.error('No se pudo validar el PIN. Intenta de nuevo.');
+      toast.error(err?.message || 'No se pudo validar el PIN. Intenta de nuevo.');
       setPin('');
     } finally {
       setValidando(false);

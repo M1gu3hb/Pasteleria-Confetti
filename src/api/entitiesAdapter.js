@@ -31,7 +31,7 @@ const TABLE_MAP = {
 // Base44 que no existen en el esquema migrado y evita "column does not exist").
 const COLUMNS = {
   sucursales: ['nombre','direccion','telefono','activa','folio_prefijo','orden_visual','notas','google_maps_url','whatsapp_numero'],
-  usuarios_pos: ['nombre','rol','pin_hash','auth_user_id','activo','color','telefono','correo','sucursal_id','sucursal_nombre','permisos_extra'],
+  usuarios_pos: ['nombre','rol','activo','color','telefono','correo','sucursal_id','sucursal_nombre','permisos_extra'],
   configuracion_negocio: ['nombre_negocio','nombre_sistema','platform_brand','logo_url','logo_ticket_url','logo_pdf_url','background_logo_url','background_image_url','background_fit','background_opacity','color_primario','color_secundario','color_acento','colorear_importes_monetarios','moneda','simbolo_moneda','iva_porcentaje','paquete_modo','usa_mesas','usa_cocina','usa_barra','permitir_venta_sin_stock','mostrar_costos_a_caja','mostrar_logo_ticket','mensaje_ticket','ticket_footer','pdf_footer','footer_text','descargar_pdf_corte_auto','formato_export_default','modo_presentacion_activo','presentacion_password','propinas_activas','propina_porcentajes_sugeridos','sonidos_activos','hora_inicio_dia_operativo','precio_kilo_global','precio_kilo_es_global','precio_kilo_por_sucursal','ratio_personas_por_kilo','ratio_personas_es_global','ratio_personas_por_sucursal','extras_pastel','rellenos_pastel','base_rangos','direccion','telefono','whatsapp','correo','ancho_impresora'],
   categorias_producto: ['nombre','descripcion','color','icono','orden','activo'],
   productos: ['nombre','categoria_id','categoria_nombre','descripcion','descripcion_web','sucursal_ids','precio_venta','imagen_url','orden','activo','visible_en_pos','visible_en_web','notas'],
@@ -142,10 +142,11 @@ function makeEntity(entityName) {
     return data;
   };
 
+  const selectColumns = table === 'usuarios_pos' ? 'id,created_at,nombre,rol,activo,color,telefono,correo,sucursal_id,sucursal_nombre,permisos_extra' : '*';
   return {
     async filter(query = {}, sort, limit, skip) {
       return run((q) => {
-        let b = q.select('*');
+        let b = q.select(selectColumns);
         for (const [field, value] of Object.entries(query || {})) b = applyCondition(b, field, value);
         b = applySort(b, sort);
         if (typeof skip === 'number' && typeof limit === 'number') b = b.range(skip, skip + limit - 1);
@@ -155,7 +156,7 @@ function makeEntity(entityName) {
     },
     async list(sort, limit, skip) {
       return run((q) => {
-        let b = q.select('*');
+        let b = q.select(selectColumns);
         b = applySort(b, sort);
         if (typeof skip === 'number' && typeof limit === 'number') b = b.range(skip, skip + limit - 1);
         else if (typeof limit === 'number') b = b.limit(limit);
@@ -179,7 +180,7 @@ function makeEntity(entityName) {
       // La página vacía es el final; una página corta NO significa completo.
       for (;;) {
         const page = await run((q) => {
-          let b = q.select('*');
+          let b = q.select(selectColumns);
           for (const [field, value] of Object.entries(query || {})) b = applyCondition(b, field, value);
           if (cursor) b = b.gt('id', cursor);
           return b.order('id', { ascending: true }).limit(500);
@@ -205,7 +206,7 @@ function makeEntity(entityName) {
     },
     async listAll(sort) { return this.filterAll({}, sort); },
     async get(id) {
-      const data = await run((q) => q.select('*').eq('id', id).maybeSingle());
+      const data = await run((q) => q.select(selectColumns).eq('id', id).maybeSingle());
       return decorate(data);
     },
     async create(obj) {
@@ -218,6 +219,12 @@ function makeEntity(entityName) {
       return decorate(data);
     },
     async update(id, obj) {
+      if (table === 'usuarios_pos') {
+        await ensureSession();
+        const { data, error } = await supabase.rpc('actualizar_usuario_pos', { p_user_id: id, p_cambios: pickColumns(table, obj), p_motivo: obj?.activo === false ? 'Desactivación desde Configuración' : 'Edición desde Configuración' });
+        if (error) throw new Error(error.message);
+        return decorate(data);
+      }
       const data = await run((q) => q.update(pickColumns(table, obj)).eq('id', id).select().single());
       return decorate(data);
     },

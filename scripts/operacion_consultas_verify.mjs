@@ -59,7 +59,7 @@ if(priorTZ===undefined) delete process.env.TZ;else process.env.TZ=priorTZ;
 console.log('CDMX CUSTOM/TODAY/YEAR BOUNDARIES IN FOUR DEVICE TIMEZONES OK');
 const store=new Map();
 const localStorage={getItem:k=>store.get(k)||null,setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)};
-const session=()=>{const ctx=vm.createContext({localStorage,crypto:{randomUUID}});vm.runInContext(read('src/utils/intencionPersistente.js').replace('export async function','async function')+'\nglobalThis.run=ejecutarIntencion;',ctx);return ctx;};
+const session=()=>{const ctx=vm.createContext({localStorage,crypto:{randomUUID}});vm.runInContext(read('src/utils/intencionPersistente.js').replace(/export /g,'')+'\nglobalThis.run=ejecutarIntencion;',ctx);return ctx;};
 let committed=0;const keys=new Map();
 const execute=async x=>{if(!keys.has(x.clave)){committed++;keys.set(x.clave,{folio:'CANONICAL',total:x.monto});}return keys.get(x.clave);};
 await assert.rejects(()=>session().run('pago:A:1',{monto:100},async x=>{await execute(x);throw new Error('Response lost AFTER COMMIT');}),/Response lost/);

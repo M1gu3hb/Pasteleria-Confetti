@@ -1,3 +1,5 @@
+> Segunda ronda 2026-10-02: reauditoría operativa con recuperación de intentos, historial completo y protección de detalles/saldos; autoridad, último dueño, PIN protegido y entrada pública revisados. Administrador ahora abre sesión propia con alcance de sucursal. Terminal conserva sesión revocable; nueva/restablecida requiere autorización del dueño. Ver `docs/REAUDITORIA_SEGUNDA_RONDA_2026-10-02.md` para pruebas, límites y verificación viva. Las menciones anteriores de auth pendiente o contraseña compartida describen la ronda anterior y quedan reemplazadas por este contrato.
+
 > Actualización 2026-10-02: Reparación F05–F14: pagos y devoluciones atómicos, saldo derivado, folios de servidor, cierre coordinado, comprobantes por corte/sucursal, paginación completa y calendario CDMX. Tests de fallo y concurrencia, sin movimientos ficticios en tablas operativas. Ver `docs/REGISTRO_REPARACION_OPERATIVA_2026-10-02.md`. El contenido fechado anterior conserva contexto histórico.
 
 # CHANGELOG
@@ -1095,7 +1097,7 @@ era temporal). GitHub = fuente de verdad.
 
 ### Backend (migración 0015)
 - 3 cuentas TERMINAL: `auth.users` (email `terminal-<sucursalid>@pos.confetti.local`, password fijo
-  `POS-TERMINAL-CONFETTI`) + identity + `usuarios_pos` rol caja, `pin_hash` null. Vista `usuarios_login`
+  `[credencial retirada]`) + identity + `usuarios_pos` rol caja, `pin_hash` null. Vista `usuarios_login`
   ahora excluye `pin_hash is null` (las terminales no son seleccionables).
 - ⚠️ Gotcha resuelto: al insertar `auth.users` a mano, `confirmation_token/recovery_token/email_change/
   email_change_token_new` deben ir `''` (no NULL) o `signInWithPassword` da **500**. La 0015 ya los

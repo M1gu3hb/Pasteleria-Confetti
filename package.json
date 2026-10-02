@@ -10,7 +10,8 @@
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
     "preview": "vite preview",
-    "test:operacion": "node scripts/operacion_pedidos_verify.mjs && node scripts/operacion_consultas_verify.mjs"
+    "test:operacion": "node scripts/operacion_pedidos_verify.mjs && node scripts/operacion_consultas_verify.mjs",
+    "test:autoridad": "node scripts/autoridad_verify.mjs && node scripts/recuperacion_auth_verify.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.1",

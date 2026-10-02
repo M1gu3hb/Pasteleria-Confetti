@@ -1,3 +1,5 @@
+import { tieneIntencionPendiente } from '@/utils/intencionPersistente';
+import { recuperarOperacionPedido } from '@/utils/registrarPagoPedido';
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -21,15 +23,16 @@ import { printDocument } from '@/lib/print';
 
 // Fase 4 — historial de pagos registrados del pedido.
 function AbonosHistorial({ pedidoId }) {
-  const { data } = useQuery({
+  const { data, isError, refetch } = useQuery({
     queryKey: ['abonos_pedido', pedidoId],
     queryFn: () => pedidoId
-      ? base44.entities.Abono.filter({ pedido_id: pedidoId }, '-fecha_abono', 20)
+      ? base44.entities.Abono.filterAll({ pedido_id: pedidoId }, '-fecha_abono')
       : [],
     enabled: !!pedidoId,
     staleTime: 5000,
   });
   const abonos = Array.isArray(data) ? data : [];
+  if (isError) return <div className="no-print"><p>No se pudo cargar el historial completo de pagos.</p><Button onClick={() => refetch()}>Reintentar</Button></div>;
   if (abonos.length === 0) return null;
   return (
     <div className="border-t pt-3 no-print">
@@ -156,12 +159,14 @@ export default function PedidoPastelDetalleDialog({ pedido: pedidoProp, open, on
     isFetched: frescoFetched,
     isPlaceholderData: frescoPlaceholder,
     isError: frescoError,
+    refetch: recargarPedido,
   } = useQuery({
     queryKey: ['pedidos_pastel', 'detalle', pedidoProp?.id ?? null],
     queryFn: () => base44.entities.PedidoPastel.get(pedidoProp.id),
     enabled: !!pedidoProp?.id && !!open,
     placeholderData: pedidoProp,
     staleTime: 0,
+    refetchInterval: open ? 15000 : false,
   });
   // `pedidoFresco || pedidoProp` era una trampa: `.get()` usa maybeSingle(), que
   // devuelve NULL sin error cuando la fila ya no existe o la RLS no la deja ver.
@@ -173,6 +178,20 @@ export default function PedidoPastelDetalleDialog({ pedido: pedidoProp, open, on
   const pedido = frescoValido ? pedidoFresco : pedidoProp;
 
   if (!pedido) return null;
+  if (!frescoValido) return <Dialog open={open} onOpenChange={onClose}><DialogContent><DialogHeader><DialogTitle>Confirmando saldo del pedido</DialogTitle></DialogHeader><p>{frescoError ? 'No se pudo consultar el saldo actual. Reintenta antes de cobrar o imprimir.' : 'Consultando pagos y saldo con el servidor…'}</p>{frescoError && <Button onClick={() => recargarPedido()}>Reintentar</Button>}</DialogContent></Dialog>;
+  const pagoPendiente = tieneIntencionPendiente(`pago:${pedido.sucursal_id}:${pedido.id}`);
+  const devolucionPendiente = tieneIntencionPendiente(`devolucion:${pedido.sucursal_id}:${pedido.id}`);
+  const recuperarDevolucion = async () => {
+    if (accion) return;
+    setAccion(true);
+    try {
+      await recuperarOperacionPedido(`devolucion:${pedido.sucursal_id}:${pedido.id}`);
+      await queryClient.invalidateQueries({ queryKey: ['pedidos_pastel'] });
+      queryClient.invalidateQueries({ queryKey: ['abonos_pedido', pedido.id] });
+      queryClient.invalidateQueries({ queryKey: ['abonos_corte'] });
+      toast.success('Devolución confirmada. No se registró otra devolución.');
+    } catch (e) { toast.error(e.message); } finally { setAccion(false); }
+  };
   const est = ESTADOS_PEDIDO[pedido.estado] || ESTADOS_PEDIDO.pendiente;
   const finalizado = pedido.estado === 'entregado' || pedido.estado === 'cancelado';
   // Prompt 6 — pedidos de catálogo web: mismo flujo (anticipo/entregar) SIN editar.
@@ -342,16 +361,16 @@ export default function PedidoPastelDetalleDialog({ pedido: pedidoProp, open, on
               <CheckCircle2 className="w-4 h-4 mr-1.5" />Confirmar
             </Button>
           )}
-          {!esPastelero && !finalizado && pedido.estado !== 'pagado' && (
+          {!esPastelero && (pagoPendiente || (!finalizado && pedido.estado !== 'pagado')) && (
             <Button
               variant="outline"
-              disabled={!cajaAbierta}
+              disabled={!pagoPendiente && !cajaAbierta}
               onClick={() => setShowPago(true)}
               className="h-11"
               title={!cajaAbierta ? "Abre la caja para registrar pagos" : "Registrar pago o anticipo"}
             >
               <Banknote className="w-4 h-4 mr-1.5" />
-              {!cajaAbierta ? "Pago (caja cerrada)" : "Registrar pago"}
+              {pagoPendiente ? "Recuperar pago pendiente" : !cajaAbierta ? "Pago (caja cerrada)" : "Registrar pago"}
             </Button>
           )}
           {!finalizado && (
@@ -406,6 +425,7 @@ export default function PedidoPastelDetalleDialog({ pedido: pedidoProp, open, on
               : (<><Printer className="w-4 h-4 mr-1.5" />Imprimir</>)}
           </Button>
         </div>
+        {!esPastelero && devolucionPendiente && <Button disabled={accion} onClick={recuperarDevolucion}>Recuperar devolución pendiente</Button>}
         {/* Historial de abonos — Fase 4 */}
         <AbonosHistorial pedidoId={pedido?.id} />
 

@@ -1,3 +1,5 @@
+> Contrato vigente tras segunda ronda: identidad/usuarios por RPC; PIN solo Edge con límite persistente; administrador en sesión propia; terminal técnica por registro privado, sin exigir activo humano. No agregar credenciales VITE ni restaurar contraseñas compartidas. Ver docs/REAUDITORIA_SEGUNDA_RONDA_2026-10-02.md. Las reglas de Caja/efectivo/CDMX/APK siguen vigentes.
+
 # CLAUDE.md — Reglas permanentes del proyecto (POS Confetti)
 
 ## Propósito
@@ -319,3 +321,4 @@ Y termina tu respuesta con este bloque:
 ## Reportar honestamente
 
 Si algo falla, dilo con la salida. Si te saltaste un paso, dilo. Si rompiste algo, **dilo primero y sin adornos**. Si no puedes comprobar algo, no afirmes que funciona: di qué falta para comprobarlo. En este proyecto una afirmación optimista sin evidencia cuesta dinero de verdad.
+
