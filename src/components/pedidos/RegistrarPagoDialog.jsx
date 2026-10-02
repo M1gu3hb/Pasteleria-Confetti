@@ -37,7 +37,7 @@ export default function RegistrarPagoDialog({ pedido, cajaAbierta, posUser, sucu
 
   useEffect(() => {
     if (open) { setMonto(saldoActual > 0 ? String(saldoActual) : ''); setMetodo('efectivo'); setMontosMixto({ efectivo: '', tarjeta: '', transferencia: '' }); setNotas(''); setLiquidado(false); }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [open]);
 
   const confirmar = async () => {

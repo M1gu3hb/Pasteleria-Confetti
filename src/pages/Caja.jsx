@@ -6,12 +6,11 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePOSAuth } from '@/lib/POSAuthContext';
 import { useConfig } from '@/lib/ConfigContext';
 import { useTerminal } from '@/lib/TerminalContext';
-import { formatCurrency, formatPercent, generateFolio } from '@/utils/financialUtils';
+import { formatCurrency } from '@/utils/financialUtils';
 import { hasPermission } from '@/lib/permissions';
 import { toast } from 'sonner';
 import {
-  Landmark, Search, DollarSign, CreditCard, Banknote, Smartphone,
-  Receipt, TrendingUp, CheckCircle2, Layers, Scissors, Printer, FileText, ShoppingCart, Trash2,
+  Landmark, Search, CreditCard, Banknote, Smartphone, CheckCircle2, Layers, Printer, FileText, ShoppingCart, Trash2,
   DoorOpen, Lock, AlertTriangle, ShoppingBag, Pencil, Cake, RefreshCw, Loader2, Coins
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -30,7 +29,7 @@ import { efectivoEsperadoDeResumen } from '@/utils/efectivoEsperado';
 import MesasPendientesCierreDialog from '@/components/caja/MesasPendientesCierreDialog';
 import AjustarCuentaDialog from '@/components/caja/AjustarCuentaDialog';
 import { obtenerMesasPendientesCierre } from '@/utils/mesasPendientesCierre';
-import { generarFolioCorte, generarFolioVenta } from '@/utils/pedidoPastelUtils';
+import { generarFolioCorte } from '@/utils/pedidoPastelUtils';
 import { useCajaAbierta } from '@/lib/useCajaAbierta';
 import { useCorteAtrasado } from '@/lib/useCorteAtrasado';
 import PedidoWebCajaCard from '@/components/caja/PedidoWebCajaCard';
@@ -43,7 +42,7 @@ import VentaLibreDialog from '@/components/pos/VentaLibreDialog';
 import { registrarDevolucionAnticipo } from '@/utils/devolucionAnticipo';
 import { obtenerEntregasDelCorte } from '@/utils/entregasCorte';
 import PedidoPastelDetalleDialog from '@/components/pedidos/PedidoPastelDetalleDialog';
-import { tipsEnabled, getPorcentajesSugeridos } from '@/utils/tipsUtils';
+import { tipsEnabled } from '@/utils/tipsUtils';
 import { sumarSubtotalDetalles } from '@/utils/ventaTotales';
 import {
   TIPO_VENTA,
@@ -60,7 +59,6 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { safeFormatDate } from '@/lib/safeFormat';
-import StatCard from '@/components/common/StatCard';
 
 const METODOS = [
   { key: 'efectivo', label: 'Efectivo', Icon: Banknote, color: 'border-green-400 bg-green-50 text-green-700' },

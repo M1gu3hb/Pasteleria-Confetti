@@ -161,15 +161,17 @@ const hashContenido = (ruta) =>
     .digest('hex');
 
 // 2026-10-02: baseline actual verificada; cortes incorporan devoluciones F07/F10.
-// PreCuenta/Viewer no cambian: sus hashes anteriores ya estaban desactualizados.
+// PreCuenta conserva su diseño. El visor cambia para exigir datos completos;
+// su comportamiento se verifica ejecutando el componente en pendientes_cliente_verify.
 const HASHES = {
   'components/tickets/CorteTicket.jsx':        '9941769140f5fd567982dc12f7ffa32a5e173bc0985a41db8cc44f8b13778dc6',
   'components/tickets/CorteTicketTermico.jsx': '899d37befbbfcc64140cc5b886ae689bdf264bcc67dcf99243f50cd45a78e38a',
   'components/tickets/PreCuentaTicket.jsx':    '25644140040d78acc95c4162fb7d0b81c4aa7f71f304004967c7e2b53b285b3e',
-  'components/tickets/TicketViewerDialog.jsx': '469b56c75a9f8b2e812d81345a8ff0a678a34a19002e6bbeba32ce74aab6397d',
   // TicketPedidoPastel.jsx ya no está en la lista: se ELIMINÓ (era el fósil).
   // Su ausencia la vigilan las comprobaciones 1b y 1c.
 };
+await import('./pendientes_cliente_verify.mjs');
+
 for (const [ruta, esperado] of Object.entries(HASHES)) {
   let real = '(no se pudo leer)';
   try { real = hashContenido(ruta); } catch { /* falta */ }

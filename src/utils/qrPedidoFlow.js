@@ -192,7 +192,7 @@ export async function validarCarritoQR(items) {
   for (const it of arr) {
     if (!it?.id) continue;
     if (productosFrescos.has(it.id)) continue;
-    // eslint-disable-next-line no-await-in-loop
+     
     const r = await validarProductoActivo(it.id);
     if (!r.ok) {
       invalidos.push({

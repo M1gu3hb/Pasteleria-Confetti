@@ -15,9 +15,10 @@ export default function DatosSection() {
         <div className="flex items-start gap-3">
           <Database className="w-5 h-5 text-primary shrink-0 mt-0.5" />
           <div>
-            <p className="font-heading font-semibold text-sm">Base de datos y respaldo</p>
+            <p className="font-heading font-semibold text-sm">Exportar datos e importar catálogo</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Desde aquí puedes descargar respaldos o cargar datos masivos al sistema.
+              Descarga archivos CSV de las secciones disponibles o importa productos al catálogo.
+              Estos archivos no son un respaldo completo para restaurar el sistema.
               Antes de importar, el sistema validará el archivo y te mostrará una vista previa.
               <strong> Nada se guarda hasta que confirmes.</strong>
             </p>

@@ -89,7 +89,7 @@ export default function CorteAutoDownloader({ corte, onDone }) {
       const t = setTimeout(triggerDownload, 300);
       return () => clearTimeout(t);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [data]);
 
   return (

@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Upload, Boxes, Tag, BookOpen, Truck, Receipt } from 'lucide-react';
 import ImportarDatosDialog from '@/components/datos/ImportarDatosDialog';
+import { importacionDisponible } from '@/utils/importacionesDisponibles';
 
 /**
  * Tarjetas que abren el dialog de importación según tipo.
@@ -32,7 +33,7 @@ export default function ImportarDatos() {
         </p>
       </CardHeader>
       <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {TIPOS.map(t => (
+        {TIPOS.filter(t => importacionDisponible(t.key)).map(t => (
           <div key={t.key} className="p-3 rounded-lg border bg-muted/30 flex items-start gap-3">
             <t.icon className="w-5 h-5 text-primary shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">

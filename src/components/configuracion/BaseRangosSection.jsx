@@ -20,7 +20,7 @@ export default function BaseRangosSection({ cfg }) {
   useEffect(() => {
     if (!cfg?.id) return;
     setRangos(parseBaseRangos(cfg.base_rangos));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [cfg?.id, cfg?.updated_date]);
 
   const actualizar = (idx, campo, valor) => {
@@ -129,3 +129,4 @@ export default function BaseRangosSection({ cfg }) {
     </Card>
   );
 }
+

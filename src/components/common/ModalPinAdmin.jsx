@@ -84,7 +84,7 @@ export default function ModalPinAdmin({
   // Auto-validar al completar 4 dígitos
   useEffect(() => {
     if (open && pin.length === 4) validar(pin);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [pin, open]);
 
   const handleKey = (key) => {

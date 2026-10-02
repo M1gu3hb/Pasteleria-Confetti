@@ -74,7 +74,7 @@ export default function MobileAdminRadialMenu() {
   }, []);
 
   // Cerrar al cambiar ruta
-  useEffect(() => { closeMenu(); /* eslint-disable-next-line */ }, [location.pathname]);
+  useEffect(() => { closeMenu();   }, [location.pathname]);
 
   // Items disponibles según paquete y orden definido
   const items = useMemo(() => {

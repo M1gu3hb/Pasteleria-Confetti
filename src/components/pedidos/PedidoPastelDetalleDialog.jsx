@@ -68,7 +68,7 @@ function NotaVozEnDetalle({ pedido, puedeEditar = true }) {
   const pedidoId = pedido?.id;
   useEffect(() => {
     setTexto(pedido?.nota_voz_transcripcion || '');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [pedidoId]);
 
   if (!pedido?.nota_voz_url && !original) return null;

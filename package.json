@@ -11,7 +11,10 @@
     "typecheck": "tsc -p ./jsconfig.json",
     "preview": "vite preview",
     "test:operacion": "node scripts/operacion_pedidos_verify.mjs && node scripts/operacion_consultas_verify.mjs",
-    "test:autoridad": "node scripts/autoridad_verify.mjs && node scripts/recuperacion_auth_verify.mjs"
+    "test:autoridad": "node scripts/autoridad_verify.mjs && node scripts/recuperacion_auth_verify.mjs",
+    "test:pendientes": "node scripts/pendientes_sql_verify.mjs && node scripts/pendientes_cliente_verify.mjs && node scripts/voz_edge_verify.mjs",
+    "quality": "npm run lint && node scripts/calidad_types_verify.mjs && npm run test:operacion && npm run test:autoridad && npm run test:pendientes",
+    "prebuild": "npm run quality"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.1",
@@ -70,7 +73,6 @@
     "react-hook-form": "^7.54.2",
     "react-hot-toast": "^2.6.0",
     "react-markdown": "^9.0.1",
-    "react-quill": "^2.0.0",
     "react-resizable-panels": "^2.1.7",
     "react-router-dom": "^6.26.0",
     "recharts": "^2.15.4",

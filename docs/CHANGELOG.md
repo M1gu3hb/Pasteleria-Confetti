@@ -1,3 +1,7 @@
+## 2026-10-02 — Reauditoría y pendientes operativos
+
+Protección de importes/historial de ventas confirmadas; visor con lectura actual completa y bloqueo ante error; cola nativa completa; pedidos web recuperables con cuotas; autorización/cache/lease de voz; importaciones reales; puerta automatizada de build; actualización compatible de dependencias; accesibilidad de formularios y conciliación visible al dueño. Tipos antiguos, router, privacidad de medios, dispositivos/restauración y cuatro cancelaciones siguen explícitamente pendientes. Ver REAUDITORIA_CIERRE_PENDIENTES_2026-10-02.md.
+
 > Historial completo financiero: historial_operativo_pos devuelve una instantánea por consulta con RLS del solicitante; conteos de páginas no sustituyen esa consistencia. Ver reauditoría de segunda ronda.
 
 > Segunda ronda 2026-10-02: reauditoría operativa con recuperación de intentos, historial completo y protección de detalles/saldos; autoridad, último dueño, PIN protegido y entrada pública revisados. Administrador ahora abre sesión propia con alcance de sucursal. Terminal conserva sesión revocable; nueva/restablecida requiere autorización del dueño. Ver `docs/REAUDITORIA_SEGUNDA_RONDA_2026-10-02.md` para pruebas, límites y verificación viva. Las menciones anteriores de auth pendiente o contraseña compartida describen la ronda anterior y quedan reemplazadas por este contrato.

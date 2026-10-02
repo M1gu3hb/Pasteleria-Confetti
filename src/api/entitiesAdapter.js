@@ -127,10 +127,10 @@ function makeEntity(entityName) {
       async listAll() { return []; },
       async filterAll() { return []; },
       async get() { return null; },
-      async create(obj) { return obj; },
-      async update(id, obj) { return { id, ...obj }; },
-      async delete() { return { success: true }; },
-      async bulkCreate() { return []; },
+      async create() { throw new Error(`ENTIDAD_NO_DISPONIBLE: ${entityName} no permite guardar datos en este sistema.`); },
+      async update() { throw new Error(`ENTIDAD_NO_DISPONIBLE: ${entityName} no permite guardar datos en este sistema.`); },
+      async delete() { throw new Error(`ENTIDAD_NO_DISPONIBLE: ${entityName} no permite borrar datos en este sistema.`); },
+      async bulkCreate() { throw new Error(`ENTIDAD_NO_DISPONIBLE: ${entityName} no permite guardar datos en este sistema.`); },
     };
   }
 
@@ -250,6 +250,7 @@ function makeEntity(entityName) {
 
 // Proxy: entities.<CualquierEntidad> devuelve un adaptador (memoizado).
 const _cache = {};
+/** @type {Record<string, ReturnType<typeof makeEntity>>} */
 export const entities = new Proxy({}, {
   get(_t, name) {
     if (typeof name !== 'string') return undefined;

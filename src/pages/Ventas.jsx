@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { formatCurrency, formatPercent } from '@/utils/financialUtils';
+import { formatCurrency } from '@/utils/financialUtils';
 import { usePOSAuth } from '@/lib/POSAuthContext';
 import { useTerminal } from '@/lib/TerminalContext';
 import { sucursalIdDe } from '@/lib/sucursalQuery';

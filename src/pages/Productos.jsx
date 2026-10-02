@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Tag, Search, Coffee, FileText, Printer, BookOpen, Plus, Pencil, ListChecks, Trash2 } from 'lucide-react';
+import { Tag, Search, Coffee, FileText, Printer, BookOpen, Plus, Pencil, Trash2 } from 'lucide-react';
 import EliminarProductoDialog from '@/components/productos/EliminarProductoDialog';
 import { useConfig } from '@/lib/ConfigContext';
 import { useTerminal } from '@/lib/TerminalContext';

@@ -10,6 +10,7 @@ import {
 } from '@/native/confettiPrinter';
 import { getPrinterConfig } from '@/native/printerConfig';
 import { bytesAvancePapel } from '@/native/avancePapel';
+import { encolarImpresion } from '@/native/colaImpresion';
 
 /**
  * Dispatcher NATIVO de impresión (Fase 4).
@@ -67,19 +68,21 @@ function esperarImagenes(node, timeoutMs = 3000) {
   }));
 }
 
-export async function imprimirTicketNativo({ title, node: nodoDado, anchoImpresora } = {}) {
+/** @param {{title?: string, node?: HTMLElement, anchoImpresora?: string | number, signal?: AbortSignal}} opciones */
+export async function imprimirTicketNativo({ title, node: nodoDado, anchoImpresora, signal } = {}) {
   if (!Capacitor.isNativePlatform()) return; // doble candado: nunca en navegador
   const cfg = getPrinterConfig();
   try {
     // `node` explícito (botón de prueba en Config) o el ticket del DOM.
     const node = nodoDado || localizarTicket();
     if (!node) throw new Error('No se encontró el ticket en pantalla para imprimir.');
-    if (cfg.modo === 'texto') {
-      await imprimirComoTexto(node, cfg);
-    } else {
-      // Honra el ancho 58/80 (config.ancho_impresora) igual que el corte térmico.
-      await imprimirComoImagen(node, anchoImpresora, cfg);
-    }
+    // Snapshot the selected ticket before another dialog changes the DOM.
+    const copia = node.cloneNode(true);
+    if (cfg.modo === 'texto') copia.textContent = /** @type {HTMLElement} */ (node).innerText || node.textContent || '';
+    await encolarImpresion(async () => {
+      if (cfg.modo === 'texto') await imprimirComoTexto(copia, cfg);
+      else await imprimirComoImagen(copia, anchoImpresora, cfg);
+    }, signal);
   } catch (err) {
     // Error VISIBLE (no falla callado). El plugin ya devuelve mensajes claros.
     const msg = (err && err.message) ? err.message : 'No se pudo imprimir.';
@@ -123,13 +126,17 @@ async function desconectarSeguro() {
  * conexiones, y si la impresora se reinicia, la siguiente operación reconecta sola.
  * Se exporta para que el cajón (kick por impresora) use el MISMO ciclo de vida.
  */
-export async function conImpresora(cfg, accion) {
-  await asegurarConexionImpresora(cfg);
+async function usarConexion(cfg, accion) {
   try {
+    await asegurarConexionImpresora(cfg);
     return await accion();
   } finally {
     await desconectarSeguro();
   }
+}
+
+export function conImpresora(cfg, accion, signal) {
+  return encolarImpresion(() => usarConexion(cfg, accion), signal);
 }
 
 /**
@@ -141,7 +148,7 @@ export async function conImpresora(cfg, accion) {
  * visible. Con el troceo del nativo el raster ya no desborda, así que el caso normal
  * es: bandas OK → corte OK.
  */
-async function ejecutarYcortarSiempre(accionRaster) {
+async function ejecutarYcortarSiempre(accionRaster, cfg) {
   let errRaster = null;
   try {
     await accionRaster();
@@ -157,7 +164,7 @@ async function ejecutarYcortarSiempre(accionRaster) {
   // Va ANTES del corte y DESPUÉS del raster, y en su propio try: si el avance
   // fallara, el corte tiene que intentarse igual (garantía de corte de FASE 4).
   try {
-    await avanzarPapelAntesDelCorte();
+    await avanzarPapelAntesDelCorte(cfg);
   } catch (e) {
     // No se pisa un error del raster, que es más informativo.
     if (!errRaster) errRaster = e;
@@ -179,8 +186,7 @@ async function ejecutarYcortarSiempre(accionRaster) {
  * su avance desde Config → Operación sin recompilar el APK. Con 0 no manda
  * nada: el comportamiento vuelve a ser EXACTAMENTE el de antes.
  */
-async function avanzarPapelAntesDelCorte() {
-  const cfg = getPrinterConfig();
+async function avanzarPapelAntesDelCorte(cfg = getPrinterConfig()) {
   const bytes = bytesAvancePapel(cfg?.avanceAntesCorteDots);
   if (bytes.length === 0) return;   // 0 / NaN / negativo -> no se manda nada
   await enviarBytes(new Uint8Array(bytes));
@@ -198,7 +204,7 @@ async function imprimirComoImagen(node, anchoImpresora, cfg) {
   const pngBase64 = await renderTicketA576(node, anchoRaster(anchoImpresora));
   // FASE 4: el corte va SIEMPRE tras las bandas (ejecutarYcortarSiempre), no
   // condicionado a que el raster gigante termine.
-  await conImpresora(cfg, () => ejecutarYcortarSiempre(() => imprimirImagenRaster(pngBase64)));
+  await usarConexion(cfg, () => ejecutarYcortarSiempre(() => imprimirImagenRaster(pngBase64), cfg));
 }
 
 /**
@@ -263,9 +269,11 @@ export async function imprimirCorteTermico(node, anchoImpresora) {
   const cfg = getPrinterConfig();
   try {
     if (!node) throw new Error('No se encontró el corte para imprimir.');
-    const png = await renderTicketA576(node, anchoRaster(anchoImpresora));
-    // FASE 4: corte garantizado tras las bandas.
-    await conImpresora(cfg, () => ejecutarYcortarSiempre(() => imprimirImagenRaster(png)));
+    const copia = node.cloneNode(true);
+    await encolarImpresion(async () => {
+      const png = await renderTicketA576(copia, anchoRaster(anchoImpresora));
+      await usarConexion(cfg, () => ejecutarYcortarSiempre(() => imprimirImagenRaster(png), cfg));
+    });
   } catch (err) {
     const msg = (err && err.message) ? err.message : 'No se pudo imprimir el corte.';
     toast.error('Corte térmico: ' + msg);
@@ -287,5 +295,5 @@ async function imprimirComoTexto(node, cfg) {
   const cuerpo = Array.from(enc.encode(texto + '\n\n\n'));
   // FIX A: conectar → enviar → cortar → desconectar (no deja la conexión colgada).
   // FASE 4: corte garantizado (ejecutarYcortarSiempre) también en el modo texto.
-  await conImpresora(cfg, () => ejecutarYcortarSiempre(() => enviarBytes(new Uint8Array([...init, ...cuerpo]))));
+  await usarConexion(cfg, () => ejecutarYcortarSiempre(() => enviarBytes(new Uint8Array([...init, ...cuerpo])), cfg));
 }

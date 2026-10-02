@@ -1,119 +1,17 @@
-> Historial completo financiero: historial_operativo_pos devuelve una instantánea por consulta con RLS del solicitante; conteos de páginas no sustituyen esa consistencia. Ver reauditoría de segunda ronda.
+# ARCHITECTURE — contratos vigentes
 
-> Segunda ronda 2026-10-02: reauditoría operativa con recuperación de intentos, historial completo y protección de detalles/saldos; autoridad, último dueño, PIN protegido y entrada pública revisados. Administrador ahora abre sesión propia con alcance de sucursal. Terminal conserva sesión revocable; nueva/restablecida requiere autorización del dueño. Ver `docs/REAUDITORIA_SEGUNDA_RONDA_2026-10-02.md` para pruebas, límites y verificación viva. Las menciones anteriores de auth pendiente o contraseña compartida describen la ronda anterior y quedan reemplazadas por este contrato.
+Revisado el 2026-10-02.
 
-> Actualización 2026-10-02: Pedidos/pagos usan operacion_pedido_tx y registro privado de intención. Cierre y escritores financieros comparten bloqueo de corte. Comprobantes usan datos_corte_pos. Agregados financieros se calculan en servidor. Ver `docs/REGISTRO_REPARACION_OPERATIVA_2026-10-02.md`. El contenido fechado anterior conserva contexto histórico.
+El cliente usa adapters sobre tablas/RPC. Escrituras financieras son servidor/transacción; lecturas financieras completas son snapshots con RLS. Pedido web usa intención/hash/cuota en app_private; voces usan autorización de objeto y lease antes de IA. Impresión nativa comparte una cola completa con cajón y cortes. Storage público aún exige fase de lectores firmados antes de privatizar.
 
-# ARCHITECTURE — Opción A (DB compartida + RLS)
+## Contratos que se deben conservar
 
----
+- Dinero: intención persistente, RPC transaccional, abono↔venta explícitos, saldo derivado en servidor; reintentar recupera el comprobante original. No simular pagos en producción.
+- Sucursal/corte: alcance de sesión y consulta canónica; operación y cierre comparten bloqueo. Un corte cerrado no recibe modificaciones silenciosas de cliente.
+- Histórico: snapshot financiero con RLS del solicitante y fallo visible. No sustituirlo por un `.limit()` ni presentar exportación parcial como completa.
+- Autoridad: dueño activo protegido, administrador con Auth propia/sucursal, sólo terminales técnicas enroladas en registro privado; perfil técnico inactivo no significa dispositivo desautorizado. PIN público pasa por Edge y cuota durable.
+- Canales: consultar Git, migraciones y Vercel en vivo; avanzar `migracion/supabase` y `apk/capacitor` al mismo commit sin force. Una tablet abierta debe recargar para recibir el cliente nuevo.
 
-# Actualización 2026-08-09 — sesiones, refresco de caja y canales de despliegue
+## Evidencia y riesgos abiertos
 
-## Modelo de sesiones (de aquí salen casi todos los bugs de rol)
-
-| Quién | Sesión Supabase | Sucursal efectiva |
-|---|---|---|
-| Empleado (terminal) | `terminal-<sucursal_id>@pos.confetti.local`, **acotada por RLS** | la de la terminal |
-| **Administrador** | **NO cambia de sesión**: sigue sobre la de la terminal | la suya (= la de su terminal) |
-| **Dueño** | **Sesión GLOBAL** (`loginConPin` → `signInWithPassword`) | la que elija, o **`null`** (vista general) |
-| **Pastelero** | **Sesión GLOBAL** | **`null`** (ve las 3) |
-
-**Consecuencias que hay que tener presentes:**
-- Sólo dueño y pastelero cambian de sesión → **son los únicos que disparan la limpieza de efectos que dependen de la sucursal**. Ahí estuvo el `Illegal invocation` que apagaba la app.
-- Al **salir** de dueño/pastelero hay que **restaurar la sesión de la terminal**, o la tablet queda autenticada con una identidad que no es la que muestra la pantalla.
-- `ensureSession()` puede degradar en silencio una sesión global a la de una terminal. **Bug abierto**, ver `BUGS_PENDING.md`.
-
-## Refresco del estado de caja
-
-Antes: `refetchInterval` en los hooks. React Query crea un temporizador **por observador**, y con ~6 puntos de montaje el intervalo efectivo caía a ~2 s → cientos de miles de consultas.
-
-Ahora:
-- **`cajaEstado.js`** — consultas filtradas en PostgreSQL, `LIMIT 1`, columnas mínimas. **Las listas de columnas incluyen `sucursal_id`** porque las guardas anti-fuga comparan ese campo.
-- **`cajaRefresco.js`** — **un solo temporizador por sucursal**, a nivel de módulo y con refcount, más `visibilitychange` y `online`. Sin dependencia de Supabase, para poder verificarlo en Node.
-- **`useCajaAbierta.js`** — fuente única de verdad. `placeholderData` y la memoria de sesión **descartan** cualquier fila que no sea de la sucursal activa: al cambiar de sucursal el estado queda en `unknown` ("Verificando…"), nunca se sirve la caja de otra.
-- **Realtime escrito y DESACTIVADO**: la publicación `supabase_realtime` está vacía; encenderla es DDL en producción y hay que validarlo en tablet.
-
-> ⚠️ En `cajaRefresco.js` los nativos `setInterval`/`clearInterval` van **envueltos en flechas**. Guardarlos como propiedad de un objeto y llamarlos como método (`r.clearIntervalFn(...)`) los invoca con `this` distinto de `window` y Chrome lanza `TypeError: Illegal invocation`. Al ocurrir en la limpieza de un `useEffect`, React desmonta la app entera.
-
-## Consultas que alimentan dinero
-
-**PostgREST corta las respuestas en 1.000 filas.** Una consulta sin `ORDER BY` ni límite explícito devuelve las 1.000 **más antiguas** y no avisa. Eso guardó 11 cortes en cero.
-
-Regla: toda consulta que alimente la matemática del dinero va **acotada** (filtrada en PostgreSQL, no en el cliente), **ordenada** y **paginada hasta agotar**, y el `count` del servidor se lee con `typeof count === 'number'` (nunca `Number(count)`: **`Number(null)` es 0**).
-
-El cierre además **falla cerrado**: si no se puede verificar contra el servidor, no se cierra. Y la base lo rechaza por su cuenta (`0058`) — **pero sólo cuando el total es exactamente 0**: la truncación **parcial** no la ve nadie. Ver `docs/DATABASE.md` §`cortes_caja` y el P0 abierto en `docs/BUGS_PENDING.md`.
-
-## Canales de despliegue (hay DOS, y esto sorprende)
-
-1. **Navegador / PWA** → Vercel, rama **`migracion/supabase`** = producción. Service worker `autoUpdate`, pero **la pantalla ya cargada sigue con el JS viejo**: hace falta recargar.
-2. **APK Android (Capacitor)** → el WebView carga la URL fija de `capacitor.config.ts` (`server.url`), que hoy apunta al **alias de rama de Vercel del preview de `apk/capacitor`**, no a producción.
-
-> **Esto significa que un arreglo desplegado a producción puede no llegar a las tablets** si la rama del APK se queda
-> atrás. Ocurrió: la rama se congeló en julio y por ese canal no llegó ninguna corrección hasta el 2026-08-09.
->
-> **Por eso hoy `apk/capacitor` se sincroniza en CADA push a producción, y eso es una CONDICIÓN, no una costumbre**:
-> es lo que sostiene el aplazamiento del APK 1.2 (ver `CLAUDE.md` y `DECISIONS.md` D-34). Comprobación:
-> `git log origin/apk/capacitor..origin/migracion/supabase` → **vacío**. Ver `HANDOFF.md` §4.
-
-**Cómo se relacionan las dos ramas (comprobado 2026-08-09):** `apk/capacitor` **no tiene commits propios** — es
-**ancestro estricto** de `migracion/supabase`, y `capacitor.config.ts` existe idéntico en las dos. Consecuencias:
-
-- El alias `…-git-apk-capacitor-…` **sigue automáticamente al último commit de la rama**, así que adelantar la rama
-  actualiza el APK **ya instalado**, sin reinstalar ni re-firmar.
-- Y al revés: mientras `server.url` apunte ahí, **cualquiera que empuje a esa rama cambia lo que ven las tablets de
-  producción**. Es el motivo por el que la Fase 7 repunta `server.url` a producción y cierra este canal paralelo.
-- **Un commit de sólo documentación produce un `dist` byte-idéntico** (comprobado el 2026-08-09 sobre `3a90e3c` y
-  `04bd33c`: mismo bundle y mismo `sw.js`), así que publicar docs **no** dispara actualización en las tablets.
-- **Cómo se comprueba que un despliegue LLEGÓ de verdad** (los dos canales sirven el mismo `dist`): descarga
-  `index.html` de cada uno, saca el `/assets/index-*.js` que referencia, bájalo y busca dentro un **marcador del
-  código nuevo**. Si los `sha256` de los dos coinciden, el canal del APK está sirviendo exactamente producción.
-  *Escribe el marcador y el resultado en el CHANGELOG; **no** cites el hash del bundle en documentos de traspaso:
-  caduca al siguiente build y ya provocó una afirmación falsa.*
-
-## Sin ErrorBoundary
-
-`ErrorBoundary.jsx` y `SafeBoundary.jsx` existen, pero **el árbol de rutas no está envuelto en ninguno**. Cualquier throw en render (incluido el del `Sidebar`, que se monta en todas las pantallas) deja `#root` vacío: pantalla en blanco sin mensaje. **Bug abierto de prioridad alta.**
-
----
-
-## Visión
-Una sola base **Supabase** sirve al **POS** (autenticado, RLS por rol/sucursal) y, después, a la **Web/catálogo público** (anon key + RLS restrictiva). Dos frontends React (Vite) en **Vercel**, una DB. **El puente Base44 desapareció.**
-
-## APK Android (Capacitor) — split navegador/nativo
-El MISMO código web corre en dos entornos y se ramifica por `Capacitor.isNativePlatform()`:
-- **NAVEGADOR (PWA / lo que usa Abel hoy):** todo igual que siempre. La impresión usa `window.print` (iframe térmico de `print.js`); el corte usa el PDF carta (`printNodeAsPDF`). El APK NO cambia esta rama.
-- **APK (WebView de la tablet):** el WebView **carga la web viva desde una URL de Vercel** (`server.url`), así las actualizaciones normales del POS siguen llegando por la nube sin reinstalar el APK. Lo ÚNICO que se instala por USB es lo nativo (impresión ESC/POS + cajón). La impresión se hace por un **plugin nativo DELGADO** (connect/sendBytes/imagen/cut/drawer, envuelve DantSu ESCPOS); TODA la lógica de ticket vive en JS (se actualiza por Vercel). Modo **IMAGEN** (default): renderiza el MISMO componente de ticket del DOM a un raster 576/384px y lo manda como imagen ESC/POS → el diseño se preserva y no hay riesgo de code-page (ñ/acentos).
-- **Principio:** plugin nativo tonto + lógica en JS + config LOCAL por dispositivo + cada opción incierta seleccionable/probable en sitio (Camino A).
-
-```
-                 ┌──────────────────────────┐
-  POS (React/Vite, Vercel)  ─auth (Supabase Auth)→  Supabase Postgres
-   - operador: signInWithPassword                    ├─ tablas (RLS por rol/sucursal)
-   - RLS: pos_is_admin() / pos_sucursal()            ├─ vistas públicas (anon): catalogo_publico,
-                                                      │   config_publica, usuarios_login
-  Web futura (React, Vercel) ─anon key→              ├─ funciones: siguiente_folio, login_pos,
-   - SELECT catalogo_publico/config_publica          │   pos_sucursal, pos_is_admin
-   - INSERT pedidos (origen='web', estado='pendiente')└─ Storage: bucket `uploads`
-```
-
-## Qué colapsó del puente (vs Base44 dos-apps)
-- `src/utils/posApiClient.js` ELIMINADO (sync POS→Web de productos por `producto_pos_id`, api_key `847df…`, cascade cross-app).
-- `crearPedidoPOS` (función Deno de la web) ya no se replica: la web insertará directo en `pedidos`.
-- Se unifican: un solo `id` de producto (no `producto_pos_id`), un solo `folio` (no `folio_pedido`), disponibilidad por `sucursal_ids` (IDs, no nombres), un solo set de IDs de sucursal.
-
-## POS ya "conectado"
-El POS conserva la lectura de `pedidos WHERE origen='web' AND estado='pendiente'` (cola en Caja + buscador por folio con filtro de sucursal = CANDADO 3). Cuando exista la web, esos pedidos aparecen como filas nuevas en la tabla compartida — sin API intermedia.
-
-## Auth (Fase 4)
-- Cada operador (`usuarios_pos`) ↔ `auth.users` (email `<id>@pos.confetti.local`, password `POS-<pin>`). PIN validado por GoTrue (hash) + `login_pos` RPC (valida vs `pin_hash`, preserva UX de PIN).
-- RLS lee `auth.uid()` → `usuarios_pos` (helpers `pos_sucursal()`/`pos_is_admin()`): dueño/admin todas las sucursales; caja/encargado solo la suya.
-- Modo empleado (terminal sin PIN): pendiente decisión (cuentas terminal por sucursal vs requerir PIN). Ver NEXT_STEPS.
-
-## Staging
-- Supabase `ivqcxdpqxwjxfohiswqb` (us-east-1, PG17). Solo datos maestros; transaccional vacío.
-- Vercel: pendiente import (GitHub→Vercel) de Miguel. Smoke se hizo en preview local (vite dev :5173 vía `.claude/launch.json`).
-
-## Reglas globales (de los MDs de origen)
-snake_case; lógica de negocio en frontend; `sucursal_id` columna vertebral; cancelar nunca borra (cambio de estado); snapshots en líneas de venta; cargas por lotes `$in`; paginación + filtros por fecha/sucursal en historiales.
-
+Consultar [reauditoría](REAUDITORIA_CIERRE_PENDIENTES_2026-10-02.md) para pruebas y límites, y [contexto histórico](ARCHITECTURE_HISTORICO_2026-10-02.md) para decisiones anteriores. Las afirmaciones antiguas de auth pendiente, rama congelada o importaciones disponibles no definen el contrato actual.

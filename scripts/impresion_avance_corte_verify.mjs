@@ -59,14 +59,14 @@ const fn = iFn >= 0 ? pt.slice(iFn, iFn + 1400) : '';
 
 check('existe ejecutarYcortarSiempre', iFn >= 0);
 const iRaster = fn.indexOf('accionRaster()');
-const iAvance = fn.indexOf('avanzarPapelAntesDelCorte()');
+const iAvance = fn.indexOf('avanzarPapelAntesDelCorte(cfg)');
 const iCorte  = fn.indexOf('cortar()');
 check('se llama al avance de papel antes de cortar', iAvance >= 0);
 check('el ORDEN es raster -> avance -> corte',
   iRaster >= 0 && iAvance > iRaster && iCorte > iAvance,
   `(raster@${iRaster} avance@${iAvance} corte@${iCorte})`);
 check('el corte se sigue intentando aunque falle el avance (garantía FASE 4)',
-  /avanzarPapelAntesDelCorte\(\)[\s\S]{0,220}catch[\s\S]{0,220}cortar\(\)/.test(fn));
+  /avanzarPapelAntesDelCorte\(cfg\)[\s\S]{0,220}catch[\s\S]{0,220}cortar\(\)/.test(fn));
 check('el avance usa la config LOCAL del dispositivo, no un valor fijo',
   /getPrinterConfig\(\)[\s\S]{0,200}avanceAntesCorteDots/.test(pt));
 check('printTicket.js importa la función de bytes',
@@ -83,3 +83,4 @@ check('el default cubre un hueco cabezal→cuchilla típico de 80 mm (>= 12 mm)'
 
 console.log(`\n${ok} PASS, ${fail} FAIL`);
 process.exit(fail === 0 ? 0 : 1);
+

@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import EstadoConciliacion from '@/components/common/EstadoConciliacion';
 import { supabase, ensureSession } from '@/api/supabaseClient';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -146,6 +147,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-5">
+      <EstadoConciliacion sucursalId={sucId} />
       {ventasError && <p role="alert" className="text-destructive">No se pudo verificar el resumen de cajas. Toca Actualizar para reintentar.</p>}
       {/* Sección 1 — Encabezado */}
       <PageHeader

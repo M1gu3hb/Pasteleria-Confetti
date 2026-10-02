@@ -22,6 +22,7 @@ import {
   ejecutarImportProveedores, ejecutarImportGastos,
 } from '@/utils/importExecutors';
 import { usePOSAuth } from '@/lib/POSAuthContext';
+import { exigirImportacionDisponible, importacionDisponible } from '@/utils/importacionesDisponibles';
 
 /**
  * Dialog de importación masiva en 3 pasos:
@@ -35,6 +36,7 @@ export default function ImportarDatosDialog({ open, onClose, tipo }) {
   const { posUser } = usePOSAuth();
   const queryClient = useQueryClient();
   const fileRef = useRef(null);
+  const ejecutandoRef = useRef(false);
   const [paso, setPaso] = useState(1); // 1=cargar, 2=preview, 3=reporte
   const [archivo, setArchivo] = useState(null);
   const [parsing, setParsing] = useState(false);
@@ -77,6 +79,7 @@ export default function ImportarDatosDialog({ open, onClose, tipo }) {
     setArchivo(file);
     setParsing(true);
     try {
+      exigirImportacionDisponible(tipo);
       const text = await file.text();
       const { rows } = parseCSV(text);
       if (!rows || rows.length === 0) {
@@ -124,9 +127,11 @@ export default function ImportarDatosDialog({ open, onClose, tipo }) {
   };
 
   const ejecutar = async () => {
-    if (!preview) return;
+    if (!preview || ejecutandoRef.current) return;
+    ejecutandoRef.current = true;
     setEjecutando(true);
     try {
+      exigirImportacionDisponible(tipo);
       let r = null;
       if (tipo === 'inventario') {
         r = await ejecutarImportInventario(preview.rows, { ajustarStock, posUser });
@@ -150,11 +155,12 @@ export default function ImportarDatosDialog({ open, onClose, tipo }) {
       }
       setReporte(r);
       setPaso(3);
-      toast.success('Importación completada. Revisa el reporte.');
+      if (r.fallidos) toast.error(`Importación con errores: ${r.fallidos} fila(s) no se guardaron. Revisa el reporte.`);
+      else toast.success('Importación completada. Revisa el reporte.');
     } catch (e) {
       toast.error('Error en importación: ' + (e?.message || ''));
     }
-    setEjecutando(false);
+    finally { ejecutandoRef.current = false; setEjecutando(false); }
   };
 
   const resumen = preview?.resumen || {};
@@ -290,7 +296,7 @@ export default function ImportarDatosDialog({ open, onClose, tipo }) {
               </Button>
               <Button
                 onClick={ejecutar}
-                disabled={ejecutando || !hayFilasValidas || bloqueadoPorErroresCriticos}
+                disabled={ejecutando || !hayFilasValidas || bloqueadoPorErroresCriticos || !importacionDisponible(tipo)}
                 title={bloqueadoPorErroresCriticos ? 'Hay errores en el archivo. Corrige el CSV y vuelve a cargarlo.' : ''}
               >
                 {ejecutando

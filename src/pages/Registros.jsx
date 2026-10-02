@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, FileText, Receipt, ShoppingBag, Package, Scissors, Printer, Trash2, Heart } from 'lucide-react';
+import { Search, FileText, Receipt, ShoppingBag, Package, Scissors, Printer, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import CorteViewerDialog from '@/components/cortes/CorteViewerDialog';
 import TicketViewerDialog from '@/components/tickets/TicketViewerDialog';
@@ -31,7 +31,6 @@ import { usePOSAuth } from '@/lib/POSAuthContext';
 import { useTerminal } from '@/lib/TerminalContext';
 import { sucursalIdDe } from '@/lib/sucursalQuery';
 import SucursalBadge from '@/components/common/SucursalBadge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { tipsEnabled } from '@/utils/tipsUtils';
 import { useLocation } from 'react-router-dom';
 

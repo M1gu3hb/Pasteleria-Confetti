@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Printer, X, Loader2 } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { cargarTicketVenta } from '@/utils/cargarTicketVenta';
 import { useConfig } from '@/lib/ConfigContext';
 import { printDocument } from '@/lib/print';
 import PreCuentaTicket from './PreCuentaTicket';
@@ -13,42 +13,47 @@ import PreCuentaTicket from './PreCuentaTicket';
  */
 export default function TicketViewerDialog({ venta, open, onClose }) {
   const { config } = useConfig();
-  const [detalles, setDetalles] = useState([]);
-  const [mesa, setMesa] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [ticket, setTicket] = useState(/** @type {Awaited<ReturnType<typeof cargarTicketVenta>> | null} */ (null));
+  const [error, setError] = useState(null);
+  const [intento, setIntento] = useState(0);
+  const imprimiendoRef = useRef(false);
+  const ticketNodeRef = useRef(null);
+  const idActivoRef = useRef(venta?.id);
+  idActivoRef.current = open ? venta?.id : null;
+  const listo = open && ticket?.venta.id === venta?.id && !error;
   // FASE 2: feedback de impresión (spinner + botón deshabilitado mientras imprime).
   const [imprimiendo, setImprimiendo] = useState(false);
 
-  useEffect(() => {
-    if (!open || !venta?.id) return;
+  useLayoutEffect(() => {
+    if (!open || !venta?.id) { setTicket(null); setError(null); return; }
     let cancelled = false;
+    setTicket(null);
+    setError(null);
     (async () => {
-      setLoading(true);
-      const dets = await base44.entities.DetalleVenta.filter({ venta_id: venta.id }).catch(() => []);
-      let m = null;
-      if (venta.mesa_id) {
-        m = await base44.entities.Mesa.list().then(list => list.find(x => x.id === venta.mesa_id)).catch(() => null);
-      }
-      if (!cancelled) {
-        setDetalles(dets);
-        setMesa(m);
-        setLoading(false);
-      }
+      try {
+        const resultado = await cargarTicketVenta(venta.id);
+        if (!cancelled) setTicket(resultado);
+      } catch (e) { if (!cancelled) setError(e?.message || 'No se pudo consultar el ticket.'); }
     })();
     return () => { cancelled = true; };
-  }, [open, venta]);
+  }, [open, venta?.id, intento]);
 
   const handlePrint = async () => {
-    if (imprimiendo) return; // evita doble impresión por doble clic
+    if (imprimiendoRef.current || !listo || idActivoRef.current !== ticket?.venta.id) return;
+    imprimiendoRef.current = true;
     setImprimiendo(true);
     try {
       // FASE 2: `await` cubre todo el tiempo real de impresión (el helper devuelve
       // la promesa nativa). Si falla, el helper ya avisó con un toast.
-      await printDocument({ mode: 'thermal', title: `Ticket-${venta?.folio || ''}` });
+      const node = ticketNodeRef.current?.querySelector('[data-thermal-ticket]') ||
+        ticketNodeRef.current?.querySelector('.ticket-printable');
+      if (!node) throw new Error('El ticket todavía no está listo para imprimir.');
+      await printDocument({ mode: 'thermal', title: `Ticket-${ticket.venta.folio || ''}`, node });
     } catch (err) {
       console.error('[TicketViewer] imprimir:', err);
     } finally {
       setImprimiendo(false);
+      imprimiendoRef.current = false;
     }
   };
 
@@ -61,7 +66,7 @@ export default function TicketViewerDialog({ venta, open, onClose }) {
             <Button
               size="sm"
               onClick={handlePrint}
-              disabled={imprimiendo}
+              disabled={imprimiendo || !listo}
               aria-busy={imprimiendo}
               className="transition-transform active:scale-95"
             >
@@ -74,16 +79,21 @@ export default function TicketViewerDialog({ venta, open, onClose }) {
             </Button>
           </div>
         </DialogHeader>
-        <div className="p-4 bg-gray-100 flex justify-center">
-          {loading ? (
+        <div ref={ticketNodeRef} className="p-4 bg-gray-100 flex justify-center">
+          {error ? (
+            <div role="alert" className="text-sm py-6 space-y-3">
+              <p>{error}</p>
+              <Button variant="outline" onClick={() => setIntento(x => x + 1)}>Reintentar consulta</Button>
+            </div>
+          ) : !listo ? (
             <p className="text-sm text-muted-foreground py-8">Cargando ticket...</p>
           ) : (
             <PreCuentaTicket
-              venta={venta}
-              detalles={detalles}
-              mesa={mesa}
+              venta={ticket.venta}
+              detalles={ticket.detalles}
+              mesa={ticket.mesa}
               config={config}
-              esFinal={venta?.estado === 'pagada'}
+              esFinal={ticket.venta.estado === 'pagada'}
             />
           )}
         </div>

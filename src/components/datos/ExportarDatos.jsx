@@ -188,7 +188,7 @@ export default function ExportarDatos() {
     setExportandoTodo(true);
     let ok = 0;
     let fail = 0;
-    for (const b of BLOQUES) {
+    for (const b of BLOQUES.filter(b => ['productos', 'gastos', 'categorias'].includes(b.key))) {
       try {
         const rows = b.custom ? await b.custom() : await b.fetch();
         const safeRows = Array.isArray(rows) ? rows : [];
@@ -222,7 +222,7 @@ export default function ExportarDatos() {
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {BLOQUES.map(b => (
+        {BLOQUES.filter(b => ['productos', 'gastos', 'categorias'].includes(b.key)).map(b => (
             <div key={b.key} className="p-3 rounded-lg border bg-muted/30 flex items-start gap-3">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium">{b.titulo}</p>

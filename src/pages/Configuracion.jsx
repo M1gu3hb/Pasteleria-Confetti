@@ -11,8 +11,6 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ImpresoraTermicaSection from '@/components/configuracion/ImpresoraTermicaSection';
 import ImpresoraCajonAppSection from '@/components/configuracion/ImpresoraCajonAppSection';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Settings, Users, Plus, Trash2, Palette, Sparkles, ShieldAlert, Database, Cake } from 'lucide-react';
 import PastelesConfigSection from '@/components/configuracion/PastelesConfigSection';
@@ -105,7 +103,7 @@ export default function Configuracion() {
       estaciones_preparacion_activas: cfg.estaciones_preparacion_activas === true,
       ancho_impresora: cfg.ancho_impresora ?? '58',
     }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [cfg?.id, cfg?.updated_date]);
 
   // Estado de guardado para deshabilitar botones y mostrar loading visible.

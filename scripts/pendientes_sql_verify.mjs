@@ -1,0 +1,112 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
+import { PGlite } from '@electric-sql/pglite';
+import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
+const read=p=>fs.readFileSync(new URL('../'+p,import.meta.url),'utf8');
+const db=new PGlite({extensions:{pgcrypto}});
+try {
+ await db.exec(read('scripts/fixtures/autoridad_bootstrap.sql'));
+ await db.exec(`create schema storage;
+ create table storage.buckets(id text primary key,public boolean,file_size_limit bigint,allowed_mime_types text[]);
+ create table storage.objects(id uuid default gen_random_uuid() primary key,bucket_id text,name text,owner uuid,owner_id text,updated_at timestamptz default now(),metadata jsonb);
+ insert into storage.buckets values('notas-voz',true,null,null),('uploads',true,null,null);
+ alter table storage.objects enable row level security;
+ grant usage on schema storage to authenticated;
+ grant select,insert,update,delete on storage.objects to authenticated;
+ create policy notas_voz_public_read on storage.objects for select to public using(bucket_id='notas-voz');
+ create policy notas_voz_auth_insert on storage.objects for insert to authenticated with check(bucket_id='notas-voz');
+ create policy notas_voz_auth_update on storage.objects for update to authenticated using(bucket_id='notas-voz');
+ create policy notas_voz_auth_delete on storage.objects for delete to authenticated using(bucket_id='notas-voz');
+ create policy uploads_auth_insert on storage.objects for insert to authenticated with check(bucket_id='uploads');
+ create policy uploads_auth_update on storage.objects for update to authenticated using(bucket_id='uploads');`);
+ for(const file of ['20261001234206_operaciones_pedidos_atomicas.sql','20261001234848_cortes_folios_reportes_atomicos.sql','20261001235227_venta_intencion_resumen_periodo.sql','20261002175251_auditoria_integridad_operativa.sql','20261002175257_autoridad_login_entrada_publica.sql','20261002182241_historial_operativo_consistente.sql','20261002203034_proteger_ventas_confirmadas.sql','20261002203037_pedidos_web_idempotentes.sql','20261002203039_voz_autorizada_y_deduplicada.sql']) {
+ if(file==='20261002203034_proteger_ventas_confirmadas.sql'){
+  await db.exec("begin; insert into sucursales(id,nombre,folio_prefijo) values('00000000-0000-4000-8000-000000000901','Witness','W'); insert into cortes_caja(id,folio,sucursal_id,estado,fecha_inicio) values('00000000-0000-4000-8000-000000000904','W-C1','00000000-0000-4000-8000-000000000901','abierto',now()); insert into ventas(id,folio,sucursal_id,corte_caja_id,estado,total,subtotal) values('00000000-0000-4000-8000-000000000902','W-1','00000000-0000-4000-8000-000000000901','00000000-0000-4000-8000-000000000904','pagada',100,100); select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000903',true); update ventas set total=999 where id='00000000-0000-4000-8000-000000000902';");
+  assert.equal((await db.query("select total from ventas where id='00000000-0000-4000-8000-000000000902'")).rows[0].total,'999');await db.exec('rollback;');console.log('WITNESS: paid sale amount could be rewritten before the new guard');
+ }
+ await db.exec('BEGIN;'+read('supabase/migrations/'+file)+'COMMIT;');
+ }
+ const A=randomUUID(),B=randomUUID(),OWNER=randomUUID(),TERM=randomUUID(),OTHER=randomUUID();
+ await db.query("insert into sucursales(id,nombre,folio_prefijo) values($1,'A','A'),($2,'B','B')",[A,B]);
+ await db.query("insert into auth.users(id,email) values($1,'owner@fixture.local'),($2,'terminal@fixture.local'),($3,'other@fixture.local')",[OWNER,TERM,OTHER]);
+ await db.query("insert into usuarios_pos(id,auth_user_id,nombre,rol,activo,sucursal_id) values($1,$1,'Owner','dueño',true,$4),($2,$2,'Terminal','caja',false,$4),($3,$3,'Other','administrador',true,$5)",[OWNER,TERM,OTHER,A,B]);
+ await db.query('insert into app_private.terminales_pos(auth_user_id,sucursal_id) values($1,$2)',[TERM,A]);
+ const identity=async id=>db.query("select set_config('request.jwt.claim.sub',$1,false)",[id]);
+ const cut=randomUUID(),sale=randomUUID();
+ await identity(OWNER);
+ await db.query("insert into cortes_caja(id,folio,sucursal_id,estado,fecha_inicio,fecha_apertura) values($1,'CONF-A-C001',$2,'abierto',now(),now())",[cut,A]);
+ await db.query("insert into ventas(id,folio,sucursal_id,corte_caja_id,estado,subtotal,total,monto_efectivo,metodo_pago,fecha_cierre) values($1,'CONF-A-V0001',$2,$3,'pagada',100,100,100,'efectivo',now())",[sale,A,cut]);
+ await assert.rejects(()=>db.query('update ventas set total=999 where id=$1',[sale]),/VENTA_CONFIRMADA/);
+ await assert.rejects(()=>db.query("update ventas set total=999,estado='cancelada',tipo_cancelacion='devolucion',motivo_cancelacion='Fixture',monto_devuelto=999 where id=$1",[sale]),/VENTA_CONFIRMADA/);
+ await assert.rejects(()=>db.query('delete from ventas where id=$1',[sale]),/VENTA_CONFIRMADA/);
+ await assert.rejects(()=>db.query("update ventas set estado='cancelada',tipo_cancelacion='devolucion',motivo_cancelacion='Fixture',monto_devuelto=500 where id=$1",[sale]),/DEVOLUCION_INVALIDA/);
+ await db.query("update ventas set estado='cancelada',tipo_cancelacion='devolucion',motivo_cancelacion='Fixture',monto_devuelto=100 where id=$1",[sale]);
+ await assert.rejects(()=>db.query("update ventas set estado='pagada' where id=$1",[sale]),/VENTA_CANCELADA/);
+ await assert.rejects(()=>db.query('delete from ventas where id=$1',[sale]),/VENTA_CONFIRMADA/);
+ const zero=randomUUID();
+ await db.query("insert into ventas(id,folio,sucursal_id,corte_caja_id,estado,total) values($1,'CONF-A-V0002',$2,$3,'abierta',0)",[zero,A,cut]);
+ await db.query("update ventas set estado='cancelada',motivo_cancelacion='Ticket en cero',fecha_cierre=now() where id=$1",[zero]);
+ console.log('PASS: confirmed money/folio/cut immutable; delete/reopen/excess refund denied; valid cancellation and zero-ticket cleanup preserved');
+
+ await identity('');await db.exec('SET ROLE anon');
+ const payload={sucursal_id:A,sucursal_nombre:'A',tipo_pedido:'pastel_personalizado',cliente_nombre:'Fixture',cliente_telefono:'5500000000',kilos:1,total_final:100,fecha_entrega:'2099-10-01'};
+ const key=randomUUID();
+ const call=async(k,p)=>(await db.query('select crear_pedido_web_idempotente($1,$2::jsonb) as f',[k,JSON.stringify(p)])).rows[0].f;
+ const folio=await call(key,payload);assert.equal(await call(key,payload),folio);
+ await assert.rejects(()=>call(key,{...payload,total_final:200}),/INTENCION_DISTINTA/);
+ await assert.rejects(()=>db.query('select * from app_private.intenciones_pedido_web'),/permission denied/);
+ await db.exec('RESET ROLE');
+ assert.equal((await db.query('select count(*)::int n from pedidos')).rows[0].n,1);
+ assert.equal((await db.query("select solicitudes from app_private.cuotas_pedido_web where clave='global'")).rows[0].solicitudes,1);
+ await db.exec('SET ROLE anon');
+ for(let i=1;i<20;i++)await call(randomUUID(),payload);
+ await assert.rejects(()=>call(randomUUID(),payload),/LIMITE_PEDIDOS_WEB/);
+ await assert.rejects(()=>db.query('select crear_pedido_web($1::jsonb)',[JSON.stringify(payload)]),/LIMITE_PEDIDOS_WEB/);
+ await db.exec('RESET ROLE');assert.equal((await db.query('select count(*)::int n from pedidos')).rows[0].n,20);
+ const before=(await db.query("select solicitudes from app_private.cuotas_pedido_web where clave='global'")).rows[0].solicitudes;
+ await db.exec('SET ROLE anon');await call(randomUUID(),{...payload,cliente_telefono:'5511111111'});
+ await assert.rejects(()=>call(randomUUID(),{...payload,cliente_telefono:'5522222222',total_abonado:100}),/PAGO_WEB_PROHIBIDO/);
+ await db.exec('RESET ROLE');assert.equal((await db.query("select solicitudes from app_private.cuotas_pedido_web where clave='global'")).rows[0].solicitudes,before+1);
+ await db.exec("update app_private.cuotas_pedido_web set solicitudes=120,ventana=date_trunc('minute',now()) where clave='global'");
+ await db.exec('SET ROLE anon');await assert.rejects(()=>call(randomUUID(),{...payload,cliente_telefono:'5533333333'}),/LIMITE_PEDIDOS_WEB/);assert.equal(await call(key,payload),folio);
+ await db.exec('RESET ROLE');await db.exec("update app_private.cuotas_pedido_web set ventana=now()-interval '2 hours'");await db.exec('SET ROLE anon');await call(randomUUID(),payload);await db.exec('RESET ROLE');
+ console.log('PASS: real public RPC replays one order; rejects changed payload; budgets shared with legacy; duplicate/invalid/rejected requests do not consume accepted creation slots');
+
+ await db.query("insert into storage.objects(bucket_id,name,owner,owner_id) values('notas-voz','fixture.webm',$1::uuid,$1::uuid::text)",[TERM]);
+ await identity(OTHER);await db.exec('SET ROLE authenticated');
+ await assert.rejects(()=>db.query("select solicitar_transcripcion_pos('fixture.webm')"),/AUDIO_NO_AUTORIZADO/);
+ assert.equal((await db.query("update storage.objects set name='stolen.webm' where name='fixture.webm' returning id")).rows.length,0);
+ assert.equal((await db.query("delete from storage.objects where name='fixture.webm' returning id")).rows.length,0);
+ await db.exec('RESET ROLE');await identity(TERM);await db.exec('SET ROLE authenticated');
+ const lease=(await db.query("select solicitar_transcripcion_pos('fixture.webm') as r")).rows[0].r;assert.equal(lease.estado,'nueva');
+ assert.equal((await db.query("select solicitar_transcripcion_pos('fixture.webm') as r")).rows[0].r.estado,'pendiente');
+ await assert.rejects(()=>db.query('select completar_transcripcion_pos($1,$2,$3,true)',[lease.clave,lease.lease,'fake']),/permission denied/);
+ await db.exec('RESET ROLE');await db.exec('SET ROLE service_role');
+ assert.equal((await db.query('select completar_transcripcion_pos($1,$2,$3,true) as ok',[lease.clave,randomUUID(),'Wrong lease'])).rows[0].ok,false);
+ assert.equal((await db.query('select completar_transcripcion_pos($1,$2,$3,true) as ok',[lease.clave,lease.lease,'Fixture transcribed'])).rows[0].ok,true);
+ await db.exec('RESET ROLE');await identity(TERM);await db.exec('SET ROLE authenticated');
+ const cached=(await db.query("select solicitar_transcripcion_pos('fixture.webm') as r")).rows[0].r;
+ assert.equal(cached.estado,'completa');assert.equal(cached.transcript,'Fixture transcribed');
+ await db.exec('RESET ROLE');assert.equal((await db.query("select solicitudes from app_private.cuotas_voz where clave='global'")).rows[0].solicitudes,1);
+ await identity(OTHER);await db.exec('SET ROLE authenticated');await assert.rejects(()=>db.query("select solicitar_transcripcion_pos('fixture.webm')"),/AUDIO_NO_AUTORIZADO/);await db.exec('RESET ROLE');
+ await db.query("insert into storage.objects(bucket_id,name,owner,owner_id) values('notas-voz','retry.webm',$1::uuid,$1::uuid::text)",[TERM]);
+ await identity(TERM);await db.exec('SET ROLE authenticated');let retry=(await db.query("select solicitar_transcripcion_pos('retry.webm') r")).rows[0].r;assert.equal(retry.estado,'nueva');await db.exec('RESET ROLE');
+ for(let i=0;i<2;i++){await db.exec("update app_private.transcripciones_voz set lease_hasta=now()-interval '1 second' where archivo='retry.webm'");await db.exec('SET ROLE authenticated');retry=(await db.query("select solicitar_transcripcion_pos('retry.webm') r")).rows[0].r;assert.equal(retry.estado,'nueva');await db.exec('RESET ROLE');}
+ await db.exec("update app_private.transcripciones_voz set lease_hasta=now()-interval '1 second' where archivo='retry.webm'");await db.exec('SET ROLE authenticated');assert.equal((await db.query("select solicitar_transcripcion_pos('retry.webm') r")).rows[0].r.estado,'agotada');await db.exec('RESET ROLE');
+ await db.query("insert into storage.objects(bucket_id,name,owner,owner_id) values('notas-voz','quota.webm',$1::uuid,$1::uuid::text)",[TERM]);
+ await db.exec("update app_private.cuotas_voz set solicitudes=120,ventana=date_trunc('hour',now()) where clave like 'actor:%'");await db.exec('SET ROLE authenticated');assert.equal((await db.query("select solicitar_transcripcion_pos('quota.webm') r")).rows[0].r.estado,'limite');assert.equal((await db.query("select solicitar_transcripcion_pos('fixture.webm') r")).rows[0].r.estado,'completa');await db.exec('RESET ROLE');
+ await identity('');await db.exec('SET ROLE anon');
+ await assert.rejects(()=>db.query("select solicitar_transcripcion_pos('fixture.webm')"),/permission denied/);
+ await db.exec('RESET ROLE');await identity(OWNER);await db.exec('SET ROLE authenticated');
+ const check=(await db.query('select conciliacion_operativa_pos() as r')).rows[0].r;assert.equal(check.saldos_inconsistentes,0);
+ await db.exec('RESET ROLE');await db.query('update pedidos set total_abonado=999 where id=(select id from pedidos limit 1)');
+ // Existing derived-saldo trigger prevents introducing a mismatch through a
+ // legitimate write. Inject only in this isolated fixture to exercise alarm.
+ await db.exec('alter table pedidos disable trigger trg_derivar_saldo_pedido');
+ await db.exec('update pedidos set saldo_pendiente=999 where id=(select id from pedidos limit 1)');
+ await db.exec('alter table pedidos enable trigger trg_derivar_saldo_pedido');
+ await db.exec('SET ROLE authenticated');assert.equal((await db.query('select conciliacion_operativa_pos() as r')).rows[0].r.saldos_inconsistentes,1);
+ await db.exec('RESET ROLE');await identity(TERM);await db.exec('SET ROLE authenticated');await assert.rejects(()=>db.query('select conciliacion_operativa_pos()'),/SOLO_DUENO/);
+ console.log('PASS: voice object/role ownership; durable lease/cache; public JWT denied; foreign overwrite/delete denied; owner reconciliation detects injected isolated inconsistency');
+} catch(e){console.error(e.message,e.where,e.detail);process.exitCode=1;}finally{await db.close();}

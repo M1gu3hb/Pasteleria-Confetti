@@ -22,7 +22,7 @@ export default class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, info) {
     // Loggear para diagnóstico — NO ocultar.
-    // eslint-disable-next-line no-console
+     
     console.error('[ErrorBoundary]', error, info?.componentStack);
   }
 

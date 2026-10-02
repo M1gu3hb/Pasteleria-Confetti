@@ -5,7 +5,7 @@ import { usePOSAuth } from '@/lib/POSAuthContext';
 import { useTerminal } from '@/lib/TerminalContext';
 import { useConfig } from '@/lib/ConfigContext';
 import { hasPermission } from '@/lib/permissions';
-import { formatCurrency, generateFolio, calculateMargin } from '@/utils/financialUtils';
+import { formatCurrency, calculateMargin } from '@/utils/financialUtils';
 import ProductCard from '@/components/pos/ProductCard';
 import CartPanel from '@/components/pos/CartPanel';
 import PaymentModal from '@/components/pos/PaymentModal';
@@ -21,7 +21,7 @@ import { Search, ShoppingCart, AlertTriangle, DoorOpen, Printer, Loader2, Coins 
 import { useCajaAbierta } from '@/lib/useCajaAbierta';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { printDocument } from '@/lib/print';
-import { tipsEnabled, getPorcentajesSugeridos } from '@/utils/tipsUtils';
+import { tipsEnabled } from '@/utils/tipsUtils';
 import {
   TIPO_VENTA,
   esProductoVariable,

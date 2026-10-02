@@ -102,7 +102,7 @@ export default function PastelesConfigSection({ cfg }) {
     setPrecioGlobalOn(cfg.precio_kilo_es_global !== false);
     setPrecioGlobal(String(cfg.precio_kilo_global ?? 350));
     setPrecioMapa(parseMapa(cfg.precio_kilo_por_sucursal));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [cfg?.id, cfg?.updated_date]);
 
   const guardar = async (bloque) => {

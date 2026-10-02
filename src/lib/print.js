@@ -120,13 +120,13 @@ function waitImages(doc) {
 // preparar el iframe o `win.print()` falla. Así el spinner del botón refleja el
 // estado real. La lógica de render del navegador queda IDÉNTICA (solo se envuelve
 // en la promesa): mismo iframe offscreen, mismo CSS, mismo resultado impreso.
-function printTicketViaIframe(title) {
+function printTicketViaIframe(title, node) {
   return new Promise((resolve, reject) => {
     // 1) Localizar el ticket en el DOM. Si no hay nada, resolver limpio (nada que
     //    imprimir no es un error).
     let nodes = document.querySelectorAll(TICKET_SELECTOR);
     if (nodes.length === 0) nodes = document.querySelectorAll(FALLBACK_SELECTOR);
-    const source = nodes.length > 0 ? nodes[nodes.length - 1] : null;
+    const source = node || (nodes.length > 0 ? nodes[nodes.length - 1] : null);
     if (!source) {
       console.warn('[print] No se encontró contenido imprimible.');
       resolve();
@@ -238,7 +238,8 @@ function printLetterFallback(mode, title) {
 // quien imprime (el botón) pueda mostrar un spinner que dure TODO el tiempo real
 // de impresión y reciba el error si falla. Los llamadores que no la esperan
 // (fire-and-forget) siguen funcionando igual: ignoran la promesa devuelta.
-export function printDocument({ mode = 'ticket', title = 'Documento', widthMm } = {}) {
+/** @param {{mode?: string, title?: string, widthMm?: string | number, node?: HTMLElement}} opciones */
+export function printDocument({ mode = 'ticket', title = 'Documento', widthMm, node } = {}) {
   // 'letter' = PDF de corte de caja (legacy, página completa con CSS A4)
   if (mode === 'letter') {
     return printLetterFallback(mode, title);
@@ -257,16 +258,17 @@ export function printDocument({ mode = 'ticket', title = 'Documento', widthMm } 
     // config.ancho_impresora vía setPaperWidth. Respeta también el widthMm de
     // arriba (botones de prueba). El dispatcher lo usa para el raster (58→384).
     const anchoImpresora = getPaperWidth();
+    const copia = node ? /** @type {HTMLElement} */ (node.cloneNode(true)) : undefined;
     // RETORNA la promesa nativa: se resuelve cuando la impresión ESC/POS
     // realmente terminó (imagen + corte), o RECHAZA con el error del plugin.
     // `imprimirTicketNativo` ya muestra el toast del error y RE-LANZA, así que
     // NO tragamos el error aquí (nada de `.catch` que lo silencie): el spinner
     // del botón termina en el estado real y el fallo se propaga.
     return import('@/native/printTicket')
-      .then((m) => m.imprimirTicketNativo({ title, anchoImpresora }));
+      .then((m) => m.imprimirTicketNativo({ title, anchoImpresora, node: copia }));
   }
 
   // Cualquier otro modo (incluido 'thermal' y 'ticket') imprime térmico
   // (58/80mm según config) vía iframe offscreen visible.
-  return printTicketViaIframe(title);
+  return printTicketViaIframe(title, node);
 }

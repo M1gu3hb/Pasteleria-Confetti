@@ -1,4 +1,4 @@
-// Edge Function: transcribir-nota-voz  (v2 — endurecida)
+// Edge Function: transcribir-nota-voz — identidad, autorización y lease durable
 // -----------------------------------------------------------------------------
 // Recibe { audioUrl } de una nota de voz ya subida al bucket `notas-voz`, la
 // descarga y la transcribe con OpenAI Whisper (whisper-1, español). Devuelve
@@ -29,15 +29,15 @@
 //   6. Ya NO se devuelve `detail` con el cuerpo de error de OpenAI.
 //   7. Logs sin URL completa, sin JWT, sin API key y sin contenido del audio.
 //
-// NO INCLUIDO A PROPÓSITO: rate limit. Un contador en memoria sería falso
-// (varias instancias del runtime, estado que se pierde en frío). Requiere
-// persistencia; la propuesta está documentada en docs/AUDITORIA_2026-08-01.md
-// y se implementará por separado tras aprobación.
+// Cuotas y caché persistentes en Postgres: identidad POS activa, propiedad del
+// objeto/sucursal, un lease por archivo y máximo tres intentos. El audio ya
+// guardado se conserva incluso cuando falla la transcripción opcional.
 //
 // Secreto requerido: OPENAI_API_KEY.
 // Rollback: la v1 está en git (commit 9b36aa5, mismo path).
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.58.0";
 
 // ── Configuración ────────────────────────────────────────────────────────────
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
@@ -118,7 +118,8 @@ function nombreObjetoSeguro(audioUrl: string): string | null {
   // Path exacto del bucket público.
   if (!u.pathname.startsWith(PUBLIC_PREFIX)) return null;
 
-  const nombre = decodeURIComponent(u.pathname.slice(PUBLIC_PREFIX.length));
+  let nombre: string;
+  try { nombre = decodeURIComponent(u.pathname.slice(PUBLIC_PREFIX.length)); } catch { return null; }
   // Nombre plano: así es como sube el POS (`${Date.now()}_${rand}.${ext}`).
   // Sin subcarpetas, sin traversal, sin vacíos.
   if (!nombre || nombre.includes("/") || nombre.includes("\\") || nombre.includes("..")) return null;
@@ -142,11 +143,23 @@ serve(async (req) => {
 
   // verify_jwt=true ya rechaza en plataforma las peticiones sin JWT válido
   // (401 antes de llegar aquí). Este chequeo es defensa en profundidad.
-  if (!req.headers.get("authorization")) return fallo("unauthorized", origin);
+  const authorization = req.headers.get("authorization");
+  if (!authorization) return fallo("unauthorized", origin);
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!anonKey || !serviceKey) return fallo('misconfigured', origin);
+  const userClient = createClient(SUPABASE_URL, anonKey, { global: { headers: { Authorization: authorization } }, auth: { persistSession: false, autoRefreshToken: false } });
+  try {
+    const { data: identidad, error: errorIdentidad } = await userClient.auth.getUser(authorization.replace(/^Bearer\s+/i, ''));
+    if (errorIdentidad || !identidad?.user?.id) return fallo('unauthorized', origin);
+  } catch { return fallo('identity_unavailable', origin); }
 
   let audioUrl = "";
   try {
-    const body = await req.json();
+    if (Number(req.headers.get('content-length')) > 4096) return fallo('bad_request', origin);
+    const raw = await req.text();
+    if (raw.length > 4096) return fallo('bad_request', origin);
+    const body = JSON.parse(raw);
     audioUrl = String(body?.audioUrl || "");
   } catch {
     return fallo("bad_request", origin);
@@ -167,6 +180,16 @@ serve(async (req) => {
 
   const apiKey = Deno.env.get("OPENAI_API_KEY");
   if (!apiKey) return fallo("no_key", origin);
+  // Database authorizes this object and holds a durable lease. A public JWT,
+  // another branch's audio or a duplicate request never generates AI costs.
+  let permiso, errorPermiso;
+  try { ({ data: permiso, error: errorPermiso } = await userClient.rpc('solicitar_transcripcion_pos', { p_archivo: nombre })); }
+  catch { return fallo('authorization_unavailable', origin); }
+  if (errorPermiso || !permiso) return fallo('audio_not_authorized', origin);
+  if (permiso.estado === 'completa') return json({ transcript: String(permiso.transcript || ''), ok: true }, origin);
+  if (permiso.estado !== 'nueva') return fallo(`audio_${permiso.estado}`, origin);
+  const admin = createClient(SUPABASE_URL, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  let completado = false;
 
   // URL RECONSTRUIDA: nunca se hace fetch de la cadena del cliente.
   const urlSegura = `${SUPABASE_URL.replace(/\/+$/, "")}${PUBLIC_PREFIX}${encodeURIComponent(nombre)}`;
@@ -175,32 +198,35 @@ serve(async (req) => {
     // 1) Descargar el audio, con timeout y tope de tamaño.
     const ac = new AbortController();
     const t = setTimeout(() => ac.abort(), DOWNLOAD_TIMEOUT_MS);
-    let audioRes: Response;
+    let ctype = ''; let buf: Uint8Array;
     try {
-      audioRes = await fetch(urlSegura, { signal: ac.signal, redirect: "error" });
+      const audioRes = await fetch(urlSegura, { signal: ac.signal, redirect: "error" });
+      if (!audioRes.ok) return fallo(`download_${audioRes.status}`, origin);
+      ctype = (audioRes.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
+      const declarado = Number(audioRes.headers.get("content-length") || "0");
+      if (!MIME_PERMITIDOS.has(ctype) || (Number.isFinite(declarado) && declarado > MAX_BYTES)) {
+        try { await audioRes.body?.cancel(); } catch { /* noop */ }
+        return fallo(!MIME_PERMITIDOS.has(ctype) ? "invalid_mime" : "audio_too_large", origin);
+      }
+      const reader = audioRes.body?.getReader();
+      if (!reader) return fallo("empty_audio", origin);
+      const partes: Uint8Array[] = []; let total = 0;
+      try {
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          total += value.byteLength;
+          if (total > MAX_BYTES) { await reader.cancel(); return fallo("audio_too_large", origin); }
+          partes.push(value);
+        }
+      } finally { reader.releaseLock(); }
+      if (!total) return fallo("empty_audio", origin);
+      buf = new Uint8Array(total); let offset = 0;
+      for (const parte of partes) { buf.set(parte, offset); offset += parte.byteLength; }
     } finally {
+      // Covers response-body reads as well as the initial fetch.
       clearTimeout(t);
     }
-    if (!audioRes.ok) return fallo(`download_${audioRes.status}`, origin);
-
-    // MIME real declarado por Storage.
-    const ctype = (audioRes.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
-    if (!MIME_PERMITIDOS.has(ctype)) {
-      try { await audioRes.body?.cancel(); } catch { /* noop */ }
-      return fallo("invalid_mime", origin);
-    }
-
-    // Tamaño ANTES de leer, si Storage lo declara.
-    const declarado = Number(audioRes.headers.get("content-length") || "0");
-    if (Number.isFinite(declarado) && declarado > MAX_BYTES) {
-      try { await audioRes.body?.cancel(); } catch { /* noop */ }
-      return fallo("audio_too_large", origin);
-    }
-
-    // Tamaño DURANTE/tras la lectura (por si no viniera content-length).
-    const buf = new Uint8Array(await audioRes.arrayBuffer());
-    if (buf.byteLength > MAX_BYTES) return fallo("audio_too_large", origin);
-    if (buf.byteLength === 0) return fallo("empty_audio", origin);
 
     const audioBlob = new Blob([buf], { type: ctype });
 
@@ -213,30 +239,31 @@ serve(async (req) => {
 
     const ac2 = new AbortController();
     const t2 = setTimeout(() => ac2.abort(), OPENAI_TIMEOUT_MS);
-    let oa: Response;
+    let data;
     try {
-      oa = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}` },
-        body: form,
-        signal: ac2.signal,
+      const oa = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+        method: "POST", headers: { Authorization: `Bearer ${apiKey}` }, body: form, signal: ac2.signal,
       });
-    } finally {
-      clearTimeout(t2);
-    }
-
-    if (!oa.ok) {
-      // Sólo el código de estado: NO se propaga el cuerpo de error de OpenAI.
-      console.warn(`[transcribir-nota-voz] OpenAI respondió ${oa.status}`);
-      return fallo(`openai_${oa.status}`, origin);
-    }
-    const data = await oa.json();
-    return json({ transcript: String(data?.text || "").trim(), ok: true }, origin);
+      if (!oa.ok) {
+        console.warn(`[transcribir-nota-voz] OpenAI respondió ${oa.status}`);
+        return fallo(`openai_${oa.status}`, origin);
+      }
+      data = await oa.json();
+    } finally { clearTimeout(t2); }
+    const transcript = String(data?.text || '').trim();
+    const { data: cacheGuardado, error: cacheError } = await admin.rpc('completar_transcripcion_pos', { p_clave: permiso.clave, p_lease: permiso.lease, p_texto: transcript, p_ok: true });
+    if (cacheError || cacheGuardado !== true) return fallo('cache_unconfirmed', origin);
+    completado = true;
+    return json({ transcript, ok: true }, origin);
   } catch (e) {
     // Sin detalles al cliente y sin volcar la excepción completa (podría
     // contener la URL o cabeceras).
     const abortado = (e as Error)?.name === "AbortError";
     console.warn(`[transcribir-nota-voz] ${abortado ? "timeout" : "excepcion"} durante la transcripcion`);
     return fallo(abortado ? "timeout" : "exception", origin);
+  } finally {
+    if (!completado) {
+      await admin.rpc('completar_transcripcion_pos', { p_clave: permiso.clave, p_lease: permiso.lease, p_texto: '', p_ok: false }).catch(() => {});
+    }
   }
 });

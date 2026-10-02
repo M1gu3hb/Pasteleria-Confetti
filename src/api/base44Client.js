@@ -21,7 +21,7 @@ async function UploadFile({ file, bucket = STORAGE_BUCKET }) {
   const path = `${Date.now()}_${Math.random().toString(36).slice(2)}.${safeExt}`;
   const { error } = await supabase.storage
     .from(bucket)
-    .upload(path, file, { cacheControl: '3600', upsert: false, contentType: file.type || undefined });
+    .upload(path, file, { cacheControl: '3600', upsert: false, contentType: file.type?.split(';')[0].trim() || undefined });
   if (error) throw new Error(`Storage: ${error.message}`);
   const { data } = supabase.storage.from(bucket).getPublicUrl(path);
   // Contrato idéntico al de Base44 Core.UploadFile.
@@ -52,3 +52,4 @@ export const base44 = {
 };
 
 export default base44;
+

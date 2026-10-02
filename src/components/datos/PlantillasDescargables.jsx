@@ -149,7 +149,7 @@ export default function PlantillasDescargables() {
         </p>
       </CardHeader>
       <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {PLANTILLAS.map(p => (
+        {PLANTILLAS.filter(p => p.key === 'productos').map(p => (
           <div key={p.key} className="p-3 rounded-lg border bg-muted/30 flex items-start gap-3">
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium">{p.titulo}</p>

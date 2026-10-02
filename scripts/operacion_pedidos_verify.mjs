@@ -4,7 +4,7 @@ import fs from 'node:fs';
 const db=new PGlite();
 try {
  await db.exec(fs.readFileSync(new URL('./fixtures/operacion_bootstrap.sql',import.meta.url),'utf8'));
- for (const name of ['20261001234206_operaciones_pedidos_atomicas.sql','20261001234848_cortes_folios_reportes_atomicos.sql','20261001235227_venta_intencion_resumen_periodo.sql','20261002175251_auditoria_integridad_operativa.sql']) {
+ for (const name of ['20261001234206_operaciones_pedidos_atomicas.sql','20261001234848_cortes_folios_reportes_atomicos.sql','20261001235227_venta_intencion_resumen_periodo.sql','20261002175251_auditoria_integridad_operativa.sql','20261002203034_proteger_ventas_confirmadas.sql']) {
   await db.exec('BEGIN;'+fs.readFileSync(new URL('../supabase/migrations/'+name,import.meta.url),'utf8')+'COMMIT;');
   console.log('MIGRATION OK',name);
  }

@@ -76,7 +76,7 @@ let calcular = null;
 if (m) {
   // Se construye con el CUERPO LITERAL del archivo: si el código cambia, la
   // prueba cambia con él. No hay copia que se pueda desincronizar.
-  // eslint-disable-next-line no-new-func
+   
   calcular = new Function('pedido', `${m[1]}\n`);
 }
 

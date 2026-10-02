@@ -39,7 +39,7 @@ export default function ExtrasPastelSection({ cfg }) {
     } else {
       setExtrasEdit([]);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [cfg?.id, cfg?.updated_date]);
 
   const actualizarExtra = (id, campo, valor) => {
@@ -148,3 +148,4 @@ export default function ExtrasPastelSection({ cfg }) {
     </Card>
   );
 }
+

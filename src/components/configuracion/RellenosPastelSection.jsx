@@ -42,7 +42,7 @@ export default function RellenosPastelSection({ cfg }) {
     } else {
       setRellenosEdit([]);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [cfg?.id, cfg?.updated_date]);
 
   const actualizar = (id, campo, valor) => {
@@ -174,3 +174,4 @@ export default function RellenosPastelSection({ cfg }) {
     </Card>
   );
 }
+

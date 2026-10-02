@@ -14,7 +14,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { Cake, Save, MessageCircle, Printer, Upload, Eye, ListChecks, Camera, X, Mic } from 'lucide-react';
 import NotaVozRecorder from '@/components/pedidos/NotaVozRecorder';
@@ -182,7 +181,7 @@ export default function NuevoPedidoPastel() {
   useEffect(() => {
     setForm(f => (f.precio_kilo === '' || f.precio_kilo === '350')
       ? { ...f, precio_kilo: String(precioKiloConfig) } : f);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [precioKiloConfig]);
 
   // Cargar pedido existente para editar.
@@ -235,7 +234,7 @@ export default function NuevoPedidoPastel() {
         toast.error('No se pudo cargar el pedido para editar');
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [editId]);
 
   // === Calculadora en tiempo real ===
