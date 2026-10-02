@@ -225,7 +225,7 @@ export default function PedidoPastelDetalleDialog({ pedido: pedidoProp, open, on
         : 'Pedido cancelado (sin anticipo que devolver).');
     } catch (e) {
       console.error('[PedidoPastel] devolverAnticipo:', e);
-      toast.error('No se pudo registrar la devolución.');
+      toast.error(e?.message || 'No se pudo registrar la devolución.');
       throw e;
     }
   };
@@ -468,3 +468,4 @@ export default function PedidoPastelDetalleDialog({ pedido: pedidoProp, open, on
     </Dialog>
   );
 }
+

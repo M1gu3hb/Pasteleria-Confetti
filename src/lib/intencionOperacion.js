@@ -1,3 +1,4 @@
+import { mensajeOperacion } from '@/utils/errorOperacion';
 import { supabase, ensureSession } from '@/api/supabaseClient';
 import { ejecutarIntencion as persistir } from '@/utils/intencionPersistente';
 export function claveIntencion(tipo, sucursalId, usuarioId) {
@@ -10,7 +11,7 @@ export async function ejecutarIntencion(scope, rpc, parametros, campoClave = 'p_
     const { data, error } = await supabase.rpc(intencion.rpc, solicitud);
     if (error) {
       /** @type {Error & {definitivo?: boolean}} */
-      const fallo = new Error(error.message || 'Reintenta para confirmar la misma operación.');
+      const fallo = new Error(mensajeOperacion(error));
       fallo.definitivo = ['P0001','23514','23505','22P02','42501'].includes(error.code);
       throw fallo;
     }

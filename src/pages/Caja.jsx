@@ -665,7 +665,7 @@ export default function Caja() {
         : 'Pedido cancelado (sin anticipo que devolver).');
     } catch (e) {
       console.error('[Caja] devolverAnticipoWeb:', e);
-      toast.error('No se pudo registrar la devolución.');
+      toast.error(e?.message || 'No se pudo registrar la devolución.');
       throw e;
     }
   };

@@ -37,7 +37,7 @@ Créditos reconocidos anteriores al libro se conservan en credito_historico. No 
 
 `npm ci && npm run test:operacion` ejecuta PostgreSQL embebido aislado y pruebas del código real del cliente. Fixture mínima contiene tablas/constraints/guardas de la base revisada, sin clientes ni credenciales. Fallos se inyectan después de cada escritura, incluida la intención final. Adicionalmente se probaron sesiones concurrentes en PostgreSQL 17 del proyecto, exclusivamente en confetti_validacion_20261002, esquema revocado y no expuesto al API; su creación y eliminación tienen SQL versionado. No hubo ventas, pedidos, pagos, devoluciones ni aperturas ficticias en public.
 
-Build del POS: código 0. Lint conserva sus 38 errores previos. Typecheck se compara con 1253 diagnósticos iniciales; consultar evidencia de publicación para el conteo final. Pruebas antiguas de ticket se actualizaron por traslado de pago al servidor, inclusión de devolución y guardas de error; huellas históricas desactualizadas se alinean con la base de código verificada. Se mantienen pruebas de efectivo/cierre/avance de impresión.
+Build del POS: código 0. Lint conserva sus 38 errores previos. Typecheck: 1134 diagnósticos frente a 1253 iniciales, sin mensajes nuevos tras normalizar números de línea; ambos siguen pendientes de saneamiento general. Pruebas antiguas de ticket se actualizaron por traslado de pago al servidor, inclusión de devolución y guardas de error; huellas históricas desactualizadas se alinean con la base de código verificada. Se mantienen pruebas de efectivo/cierre/avance de impresión.
 
 ## Despliegue y recuperación
 
@@ -50,3 +50,21 @@ Reversión: no regresar al cliente antiguo que escribe pagos separados ni retira
 La prueba de impresora/cajón/tablet física no se realizó: se comprobó código, render, transacciones y canal remoto. Auth/usuarios (incluida protección de Abel/último dueño), acceso público F16 y los medios restantes F15/F17–F26 siguen en la auditoría general. F21 se reduce en listas/consultas y errores de comprobantes; no se certifica cada pantalla ajena a esta entrega. Exportaciones de Registros de una lista incremental dicen «Exportar cargados» mientras exista otra página; el conteo exportado siempre es explícito. La exportación de Datos es un conjunto de CSV de entidades implementadas, no respaldo completo restaurable de Supabase/Auth/Storage.
 
 Consultar estado vivo en GitHub, Vercel y schema_migrations. Este documento describe mecanismos y pruebas; la publicación efectiva se registra por separado al terminar la verificación remota.
+
+## Evidencia remota de publicación — 2026-10-02, 03:42 UTC
+
+Commit funcional principal: 6d372c44552cd44b15c0f0a60d6d6c960cd9940d. Producción y apk/capacitor apuntaron al mismo commit; Vercel READY en ambos, alias correctos y HTTP 200. Ambos HTML sirvieron index-BCkPxoIA.js. Una adenda posterior conserva estos controles y mejora los mensajes recuperables de cobro/devolución; consultar ramas para conocer el HEAD vigente, sin tratar este snapshot como estado perpetuo.
+
+Los cinco saldos y resta coinciden con la tabla anterior. Cero pedidos activos con discrepancia total menos crédito reconocido. Se preservaron 28 créditos históricos y 33 snapshots anteriores/posteriores (28 créditos y 5 saldos). Cero enlaces abono/venta con sucursal/corte/importe distintos. Las cuatro ventas canceladas quedaron vinculadas, sin cambiar su estado ni duplicar ingresos. El esquema aislado de pruebas ya no existe. La actividad real continuó durante el trabajo; los conteos globales no se utilizan como prueba de que el negocio estuvo congelado.
+
+| Archivo CLI | Versión aplicada | MD5 SQL exacto |
+|---|---|---|
+| 20261002025350_validacion_operativa_aislada.sql | 20261002025757 | 9cb04fb03cd833b6f86b241f4d27da76 |
+| 20261002032008_limpiar_validacion_operativa_aislada.sql | 20261002033702 | 4bb8441ed9cfa2e9d9b50d6d8be20c2c |
+| 20261001234206_operaciones_pedidos_atomicas.sql | 20261002033710 | be5a15013f21fe005a5463d310b7aef6 |
+| 20261001234848_cortes_folios_reportes_atomicos.sql | 20261002033717 | 9c8c93e61c0fb52b1eb303cb191509a9 |
+| 20261001235227_venta_intencion_resumen_periodo.sql | 20261002033725 | 92139e357c1dcd8f538e0ef91a13492e |
+
+Las cinco huellas coinciden exactamente con array_to_string(statements, newline) de schema_migrations: SQL de GitHub y SQL aplicado idénticos. No se modificó ninguna migración aplicada anteriormente. No se publican credenciales, PIN ni audios de clientes en la evidencia.
+
+Pruebas específicas: test:operacion PASS, incluyendo 60001 filas y fallos después de cada escritura. Suites de efectivo/cierre/estado/avance más ticket abonado, aviso de base y botones de corte PASS tras actualizar expectativas correspondientes al nuevo contrato. Build local y ambos builds remotos finalizaron correctamente. Lint mantiene 38 errores preexistentes; no es un PASS general. Typecheck mantiene deuda previa: no es un PASS general. src/utils/efectivoEsperado.js, configuración Capacitor y plugin de impresión permanecen idénticos. La lógica de asignación venta↔corte y búsqueda de folio web se conserva.

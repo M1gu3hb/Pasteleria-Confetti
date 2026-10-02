@@ -1,3 +1,5 @@
+> Adenda de entrega: src/utils/errorOperacion.js traduce rechazos de pago/devolución a instrucciones recuperables; docs/EVIDENCIA_OPERACION_2026-10-02.md registra la validación.
+
 > Actualización 2026-10-02: Archivos nuevos: src/utils/intencionPersistente.js, src/lib/intencionOperacion.js, src/lib/datosCorte.js; scripts/operacion_pedidos_verify.mjs, scripts/operacion_consultas_verify.mjs y scripts/fixtures/operacion_bootstrap.sql; tres migraciones operativas y dos de validación aislada/limpieza. Ver `docs/REGISTRO_REPARACION_OPERATIVA_2026-10-02.md`. El contenido fechado anterior conserva contexto histórico.
 
 # FILE_MAP — archivos del port y qué NO romper

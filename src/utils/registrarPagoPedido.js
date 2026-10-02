@@ -1,3 +1,4 @@
+import { mensajeOperacion } from '@/utils/errorOperacion';
 import { supabase, ensureSession } from '@/api/supabaseClient';
 import { ejecutarIntencion } from '@/utils/intencionPersistente';
 
@@ -7,7 +8,7 @@ export async function operacionPedido(slot, solicitud) {
     const { data, error } = await supabase.rpc('operacion_pedido_tx', { p_intencion });
     if (error) {
       /** @type {Error & {definitivo?: boolean}} */
-      const fallo = new Error(error.message || 'No se pudo confirmar la operación.');
+      const fallo = new Error(mensajeOperacion(error));
       fallo.definitivo = ['P0001','23514','23505','22P02','42501'].includes(error.code);
       throw fallo;
     }
