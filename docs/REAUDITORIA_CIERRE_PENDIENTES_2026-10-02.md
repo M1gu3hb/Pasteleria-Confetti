@@ -1,6 +1,6 @@
 # Reauditoría y cierre de pendientes — Confetti, 2026-10-02
 
-Esta revisión contrasta la reparación operativa y de autoridad de las dos rondas anteriores con código, pruebas de fallos y lecturas reales. La implementación adicional está preparada y probada; el registro final de despliegue se añade después de verificar GitHub, Supabase y Vercel. No se afirma que esta preparación ya esté desplegada.
+Esta revisión contrasta la reparación operativa y de autoridad de las dos rondas anteriores con código, pruebas de fallos y lecturas reales. Las correcciones operativas están aplicadas y verificadas en GitHub, Supabase y los tres canales servidos. La tabla final registra el snapshot de esa comprobación; las versiones vivas se vuelven a consultar en los servicios.
 
 ## Reparaciones verificadas y ampliadas
 
@@ -63,4 +63,37 @@ Total $1,700. Las ventas tienen metadatos de devolución, pero no hay abono nega
 
 Cuatro migraciones nuevas versionadas antes de aplicarlas: proteger_ventas_confirmadas, pedidos_web_idempotentes, voz_autorizada_y_deduplicada y distinguir_abonos_historicos_conciliacion. Edge transcribir-nota-voz conserva verify_jwt=true y fallback opcional. Se despliega base/Edge antes del cliente; el contrato web anterior sigue disponible. Se avanza producción/APK sin force al mismo commit. Si falla una publicación, se detiene el avance de ramas y se registra el estado; no se revierte el libro de dinero ni se hacen migraciones destructivas.
 
-Evidencia final de versiones, hashes SQL y comprobaciones posteriores: se añade al cerrar el despliegue; la preparación anterior no sustituye esa verificación.
+## Evidencia posterior al despliegue (2026-10-02, 21:22–21:34 UTC)
+
+- Código POS/APK: f70e6df6edbc887878f8089baf421a628a1996f0; ambos refs iguales y avance sin force. Deployments READY: producción dpl_HRGaGAdU45qc4y68TvyiKHpEnhwQ, APK dpl_HdZT4RMKjjzouF72sLxsC92NN39i.
+- Web: 3d9dabe46119b59ba71fd851a1420bc613744177; READY dpl_DNHpsHm4xZzqPuctGR9f7vSuAnkj. Los commits de cierre posteriores sólo añaden evidencia/configuración del build; consultar sus refs actuales para la versión viva.
+- HTTP 200 de producción, alias APK y www.pasteleria-confetti.com; POS/APK sirven `/assets/index-Kp38hSGR.js`, byte idéntico. Web sirve `/assets/index-Bdqk0nNU.js`, idioma es y RPC/recuperación presentes.
+- Lectura SQL con snapshot repetible y rol authenticated del dueño: saldos_inconsistentes=0, enlaces_inconsistentes=0, ventas_corte_cruzadas=0, abonos_sin_venta=0; abonos_historicos_sin_venta=4, pagos_con_venta_cancelada=4. Estos últimos requieren comprobantes y no se consideran resueltos.
+- 6,398 ventas pagadas en el snapshot de 21:22; cero tickets positivos con detalles ausentes/subtotal discordante. El volumen puede crecer con la operación real.
+- Un dueño activo y tres terminales enroladas. Anonymous INSERT pedidos=false; leer cuotas/intenciones privadas=false. Solicitar voz como anon=false; completar voz como anon/auth=false y servicio=true.
+- Edge transcribir-nota-voz ACTIVE v4, verify_jwt=true. Contenido descargado de la función exactamente igual al versionado; SHA256 ddbf9211db79fbac29596d515e8ca7498362b54d137f516a46e08d9751b67479.
+- 72 blobs POS + 14 web contrastados por SHA1 Git antes de publicar; adenda de cuatro archivos contrastada igualmente. SQL desplegado coincide por MD5 con los archivos versionados de la tabla siguiente.
+- Build local PASS con la puerta nueva, pruebas de operación/autoridad/pendientes y ocho suites existentes. Se configura explícitamente `buildCommand: npm run build` en vercel.json de ambos repositorios, según la [referencia oficial](https://vercel.com/docs/project-configuration/vercel-json#buildcommand), para exigir prebuild en publicaciones.
+- La conexión Vercel devolvió Tool get_deployment_build_logs not found y get_project INVALID_ARGUMENT. Por ello no se presentan logs remotos como evidencia leída; se verificaron estados READY, commit, HTTP y contenido servido. El comando de publicación se fija en configuración versionada.
+
+| Archivo CLI | Versión aplicada | MD5 SQL exacto |
+|---|---|---|
+| 20261002203034_proteger_ventas_confirmadas.sql | 20261002212031 | 42ebdaed6ec638b45adf1ebb2dde8666 |
+| 20261002203037_pedidos_web_idempotentes.sql | 20261002212045 | b98cf0c823fad313c5f5ae5a39a7220e |
+| 20261002203039_voz_autorizada_y_deduplicada.sql | 20261002212100 | 20f158788a50244d7151d15d2c8ebc81 |
+| 20261002212424_distinguir_abonos_historicos_conciliacion.sql | 20261002212739 | 828285785943f787f7f2f1582dc5c637 |
+
+## Avisos de plataforma que permanecen
+
+Los advisors no están a cero. Diez tablas privadas con RLS/sin policy son intencionalmente inaccesibles al cliente; tres vistas definer (`catalogo_publico`, `config_publica`, `usuarios_login`) exponen columnas públicas comprobadas, sin PIN/hash/identidad Auth/dinero. Los warnings de RPC definer requieren conservar grants y validaciones de rol; no prueban por sí mismos un bypass. Sigue pendiente la protección de contraseñas filtradas de Auth. Performance conserva dos FK privadas sin índice, tres respaldos históricos sin PK, índices redundantes/uso no observado y políticas permisivas múltiples. No se eliminaron respaldos ni índices sólo por un aviso.
+
+Referencias de remediación de Supabase:
+
+- [RLS sin policy](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy)
+- [Vistas definer](https://supabase.com/docs/guides/database/database-linter?lint=0010_security_definer_view)
+- [RPC anon](https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable) y [RPC authenticated](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable)
+- [Protección de contraseñas](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection)
+- [FK sin índice](https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys), [políticas múltiples](https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies) e [índices duplicados](https://supabase.com/docs/guides/database/database-linter?lint=0009_duplicate_index)
+
+El audit de dependencias refleja package-lock de cliente/build, no certifica binarios Android, hardware o dependencias remotas de la Edge.
+
