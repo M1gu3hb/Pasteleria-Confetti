@@ -20,7 +20,7 @@ try {
  create policy notas_voz_auth_delete on storage.objects for delete to authenticated using(bucket_id='notas-voz');
  create policy uploads_auth_insert on storage.objects for insert to authenticated with check(bucket_id='uploads');
  create policy uploads_auth_update on storage.objects for update to authenticated using(bucket_id='uploads');`);
- for(const file of ['20261001234206_operaciones_pedidos_atomicas.sql','20261001234848_cortes_folios_reportes_atomicos.sql','20261001235227_venta_intencion_resumen_periodo.sql','20261002175251_auditoria_integridad_operativa.sql','20261002175257_autoridad_login_entrada_publica.sql','20261002182241_historial_operativo_consistente.sql','20261002203034_proteger_ventas_confirmadas.sql','20261002203037_pedidos_web_idempotentes.sql','20261002203039_voz_autorizada_y_deduplicada.sql']) {
+ for(const file of ['20261001234206_operaciones_pedidos_atomicas.sql','20261001234848_cortes_folios_reportes_atomicos.sql','20261001235227_venta_intencion_resumen_periodo.sql','20261002175251_auditoria_integridad_operativa.sql','20261002175257_autoridad_login_entrada_publica.sql','20261002182241_historial_operativo_consistente.sql','20261002203034_proteger_ventas_confirmadas.sql','20261002203037_pedidos_web_idempotentes.sql','20261002203039_voz_autorizada_y_deduplicada.sql','20261002212424_distinguir_abonos_historicos_conciliacion.sql']) {
  if(file==='20261002203034_proteger_ventas_confirmadas.sql'){
   await db.exec("begin; insert into sucursales(id,nombre,folio_prefijo) values('00000000-0000-4000-8000-000000000901','Witness','W'); insert into cortes_caja(id,folio,sucursal_id,estado,fecha_inicio) values('00000000-0000-4000-8000-000000000904','W-C1','00000000-0000-4000-8000-000000000901','abierto',now()); insert into ventas(id,folio,sucursal_id,corte_caja_id,estado,total,subtotal) values('00000000-0000-4000-8000-000000000902','W-1','00000000-0000-4000-8000-000000000901','00000000-0000-4000-8000-000000000904','pagada',100,100); select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000903',true); update ventas set total=999 where id='00000000-0000-4000-8000-000000000902';");
   assert.equal((await db.query("select total from ventas where id='00000000-0000-4000-8000-000000000902'")).rows[0].total,'999');await db.exec('rollback;');console.log('WITNESS: paid sale amount could be rewritten before the new guard');
@@ -100,6 +100,15 @@ try {
  await assert.rejects(()=>db.query("select solicitar_transcripcion_pos('fixture.webm')"),/permission denied/);
  await db.exec('RESET ROLE');await identity(OWNER);await db.exec('SET ROLE authenticated');
  const check=(await db.query('select conciliacion_operativa_pos() as r')).rows[0].r;assert.equal(check.saldos_inconsistentes,0);
+ await db.exec('RESET ROLE');await identity('');
+ await db.query("insert into abonos(pedido_id,sucursal_id,monto,metodo_pago,afecta_caja,fecha_abono,notas) values((select id from pedidos limit 1),$1,10,'efectivo',false,now(),'Fixture historical noncash')",[A]);
+ await identity(OWNER);await db.exec('SET ROLE authenticated');
+ let hist=(await db.query('select conciliacion_operativa_pos() r')).rows[0].r;assert.equal(hist.abonos_historicos_sin_venta,1);assert.equal(hist.abonos_sin_venta,0);
+ await db.exec('RESET ROLE');await identity('');await db.exec('alter table abonos disable trigger trg_guard_libro_abonos');await db.exec('alter table abonos disable trigger trg_guard_abono_corte');
+ await db.exec("update abonos set afecta_caja=true where notas='Fixture historical noncash'");
+ await db.exec('alter table abonos enable trigger trg_guard_libro_abonos');await db.exec('alter table abonos enable trigger trg_guard_abono_corte');
+ await identity(OWNER);await db.exec('SET ROLE authenticated');hist=(await db.query('select conciliacion_operativa_pos() r')).rows[0].r;assert.equal(hist.abonos_historicos_sin_venta,0);assert.equal(hist.abonos_sin_venta,1);
+ console.log('PASS: historical noncash entries remain counted; cash orphan is not excluded by folio or amount');
  await db.exec('RESET ROLE');await db.query('update pedidos set total_abonado=999 where id=(select id from pedidos limit 1)');
  // Existing derived-saldo trigger prevents introducing a mismatch through a
  // legitimate write. Inject only in this isolated fixture to exercise alarm.

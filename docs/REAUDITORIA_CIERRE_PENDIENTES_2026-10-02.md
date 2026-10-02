@@ -35,6 +35,10 @@ Testigos contra código anterior: dos conexiones de impresora se solapaban; rein
 
 La puerta de publicación respeta la deuda de tipos contrastada contra la versión publicada; no se usaron @ts-ignore ni se apagó checkJs. Debe revisarse cada futura modificación del archivo de deuda. Las pruebas conservan casos históricos en vez de excluirlos silenciosamente.
 
+## Anticipos históricos sin movimiento de caja
+
+La comprobación posterior identificó PP-A-0029 ($1,000), PP-A-0031 ($400), PP-C-0001 ($100) y PP-C-0002 ($500): `afecta_caja=false`, corte nulo y nota de backfill explícita. No son ventas faltantes de una operación actual. Se conserva y muestra su conteo sin generar ingreso ni excluir folios del test; la regla es flag falso y ausencia de corte. Los flags nulos o un corte asociado siguen detectándose como enlace por revisar. Son distintos de los casos de cancelación siguientes. Prueba aislada: registro histórico contado como tal; convertirlo a movimiento de caja activa la alerta.
+
 ## Conciliación histórica que requiere comprobantes
 
 | Pedido | Venta cancelada | Abono positivo | Estado del pedido | Abonos negativos registrados |
@@ -57,6 +61,6 @@ Total $1,700. Las ventas tienen metadatos de devolución, pero no hay abono nega
 
 ## Publicación y recuperación
 
-Tres migraciones nuevas versionadas antes de aplicarlas: proteger_ventas_confirmadas, pedidos_web_idempotentes, voz_autorizada_y_deduplicada. Edge transcribir-nota-voz conserva verify_jwt=true y fallback opcional. Se despliega base/Edge antes del cliente; el contrato web anterior sigue disponible. Se avanza producción/APK sin force al mismo commit. Si falla una publicación, se detiene el avance de ramas y se registra el estado; no se revierte el libro de dinero ni se hacen migraciones destructivas.
+Cuatro migraciones nuevas versionadas antes de aplicarlas: proteger_ventas_confirmadas, pedidos_web_idempotentes, voz_autorizada_y_deduplicada y distinguir_abonos_historicos_conciliacion. Edge transcribir-nota-voz conserva verify_jwt=true y fallback opcional. Se despliega base/Edge antes del cliente; el contrato web anterior sigue disponible. Se avanza producción/APK sin force al mismo commit. Si falla una publicación, se detiene el avance de ramas y se registra el estado; no se revierte el libro de dinero ni se hacen migraciones destructivas.
 
 Evidencia final de versiones, hashes SQL y comprobaciones posteriores: se añade al cerrar el despliegue; la preparación anterior no sustituye esa verificación.

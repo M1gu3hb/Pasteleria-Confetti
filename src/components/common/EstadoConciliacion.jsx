@@ -12,7 +12,7 @@ export default function EstadoConciliacion({ sucursalId }) {
       await ensureSession();
       const { data: resultado, error: fallo } = await supabase.rpc('conciliacion_operativa_pos', { p_sucursal: sucursalId || null });
       if (fallo) throw new Error('No se pudo verificar la conciliación.');
-      const claves = ['saldos_inconsistentes', 'enlaces_inconsistentes', 'ventas_corte_cruzadas', 'abonos_sin_venta'];
+      const claves = ['saldos_inconsistentes', 'enlaces_inconsistentes', 'ventas_corte_cruzadas', 'abonos_sin_venta', 'abonos_historicos_sin_venta'];
       if (!resultado || !claves.every(k => typeof resultado[k] === 'number' && Number.isFinite(resultado[k])) || !Array.isArray(resultado.pagos_con_venta_cancelada)) throw new Error('La conciliación está incompleta.');
       return resultado;
     },
@@ -27,6 +27,7 @@ export default function EstadoConciliacion({ sucursalId }) {
     <p role={inconsistencias ? 'alert' : 'status'} className={inconsistencias ? 'font-semibold text-destructive' : 'text-muted-foreground'}>
       {inconsistencias ? `${inconsistencias} diferencia(s) en saldos o registros. Revisa los movimientos antes de ajustar dinero.` : 'Saldos y vínculos de pagos verificados.'}
     </p>
+    {!!data.abonos_historicos_sin_venta && <p className="text-xs text-muted-foreground">{data.abonos_historicos_sin_venta} anticipo(s) histórico(s) documentado(s) sin movimiento de caja.</p>}
     {!!historicos.length && <details>
       <summary className="cursor-pointer text-amber-800">{historicos.length} pago(s) histórico(s) con venta cancelada requieren comprobante</summary>
       <p className="my-2 text-xs">Confirma el motivo y el dinero realmente devuelto antes de corregir saldos. Esta consulta no registra cobros ni devoluciones.</p>
