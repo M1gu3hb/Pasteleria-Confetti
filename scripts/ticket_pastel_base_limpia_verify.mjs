@@ -160,11 +160,13 @@ const hashContenido = (ruta) =>
     .update(readFileSync(join(RAIZ, ruta), 'utf8').replace(/\r\n/g, '\n'))
     .digest('hex');
 
+// 2026-10-02: baseline actual verificada; cortes incorporan devoluciones F07/F10.
+// PreCuenta/Viewer no cambian: sus hashes anteriores ya estaban desactualizados.
 const HASHES = {
-  'components/tickets/CorteTicket.jsx':        '39474285498356c506b02428d66b327cf21d17c2310629d11dd387c9e5917f6b',
-  'components/tickets/CorteTicketTermico.jsx': 'ce96b89dce405bd3eb51441263bf1b289e00fcd19d315288b6895cd29e2099a9',
-  'components/tickets/PreCuentaTicket.jsx':    'adf90ead8361cbc4539f39b47451bf584bae2f007a7a0176114bee737b64b10a',
-  'components/tickets/TicketViewerDialog.jsx': '66b3145abeacab0a8d6ce1039b491a412a6cbc49b706ef85e5be102b97365f3c',
+  'components/tickets/CorteTicket.jsx':        '9941769140f5fd567982dc12f7ffa32a5e173bc0985a41db8cc44f8b13778dc6',
+  'components/tickets/CorteTicketTermico.jsx': '899d37befbbfcc64140cc5b886ae689bdf264bcc67dcf99243f50cd45a78e38a',
+  'components/tickets/PreCuentaTicket.jsx':    '25644140040d78acc95c4162fb7d0b81c4aa7f71f304004967c7e2b53b285b3e',
+  'components/tickets/TicketViewerDialog.jsx': '469b56c75a9f8b2e812d81345a8ff0a678a34a19002e6bbeba32ce74aab6397d',
   // TicketPedidoPastel.jsx ya no está en la lista: se ELIMINÓ (era el fósil).
   // Su ausencia la vigilan las comprobaciones 1b y 1c.
 };
@@ -260,3 +262,4 @@ console.log(
 
 console.log(`\n${ok} PASS, ${fail} FAIL`);
 process.exit(fail === 0 ? 0 : 1);
+

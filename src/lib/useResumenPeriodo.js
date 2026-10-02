@@ -1,8 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
-import {
-  startOfDay, endOfDay, subDays, startOfMonth, endOfMonth, startOfYear,
-} from 'date-fns';
+import { supabase, ensureSession } from '@/api/supabaseClient';
+import { fechaCDMX } from '@/utils/pedidoPastelUtils';
 
 /**
  * REGISTROS — Agregación de ventas por período DEL LADO DE LA BASE.
@@ -20,21 +18,23 @@ import {
  * NO toca creación de ventas/cortes ni sus campos. Solo lectura.
  */
 
-const PAGE = 1000;
 
 /** Calcula el rango {fromIso, toIso} según el período y, si aplica, custom. */
-export function rangoDesdePeriodo(periodo, desdeStr, hastaStr) {
-  const now = new Date();
-  let from, to;
-  if (periodo === 'today') { from = startOfDay(now); to = endOfDay(now); }
-  else if (periodo === '7d') { from = startOfDay(subDays(now, 6)); to = endOfDay(now); }
-  else if (periodo === '30d') { from = startOfDay(subDays(now, 29)); to = endOfDay(now); }
-  else if (periodo === 'mes') { from = startOfMonth(now); to = endOfMonth(now); }
-  else if (periodo === 'year') { from = startOfYear(now); to = endOfDay(now); }
-  else { // custom
-    from = startOfDay(desdeStr ? new Date(desdeStr) : now);
-    to = endOfDay(hastaStr ? new Date(hastaStr) : now);
-  }
+export function rangoDesdePeriodo(periodo, desdeStr, hastaStr, ahora = new Date()) {
+  const hoy = fechaCDMX(0, ahora);
+  const offset = (n) => fechaCDMX(n, ahora);
+  let inicio, fin;
+  if (periodo === 'today') { inicio = hoy; fin = hoy; }
+  else if (periodo === '7d') { inicio = offset(-6); fin = hoy; }
+  else if (periodo === '30d') { inicio = offset(-29); fin = hoy; }
+  else if (periodo === 'mes') {
+    inicio = `${hoy.slice(0, 7)}-01`;
+    fin = new Date(Date.UTC(Number(hoy.slice(0, 4)), Number(hoy.slice(5, 7)), 0)).toISOString().slice(0, 10);
+  } else if (periodo === 'year') { inicio = `${hoy.slice(0, 4)}-01-01`; fin = hoy; }
+  else { inicio = desdeStr || hoy; fin = hastaStr || hoy; }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(inicio) || !/^\d{4}-\d{2}-\d{2}$/.test(fin) || inicio > fin) throw new Error('Rango de fechas inválido');
+  const from = new Date(`${inicio}T00:00:00-06:00`);
+  const to = new Date(`${fin}T23:59:59.999-06:00`);
   return { from, to, fromIso: from.toISOString(), toIso: to.toISOString() };
 }
 
@@ -43,26 +43,13 @@ export function rangoDesdePeriodo(periodo, desdeStr, hastaStr) {
  * Devuelve { ingresos, nVentas, utilidad }.
  */
 async function agregarVentas(fromIso, toIso, sucId) {
-  let skip = 0, ingresos = 0, nVentas = 0, utilidad = 0, guard = 0;
-  const baseQuery = {
-    fecha_cierre: { $gte: fromIso, $lte: toIso },
-    estado: { $ne: 'cancelada' },
-  };
-  if (sucId) baseQuery.sucursal_id = sucId;
-  // Guard de 60 páginas = hasta 60.000 ventas por período. Suficiente y seguro.
-  while (guard < 60) {
-    guard++;
-    const page = await base44.entities.Venta.filter(baseQuery, '-fecha_cierre', PAGE, skip);
-    const arr = Array.isArray(page) ? page : [];
-    for (const v of arr) {
-      ingresos += Number(v?.total) || 0;
-      utilidad += Number(v?.utilidad_bruta_snapshot) || 0;
-    }
-    nVentas += arr.length;
-    if (arr.length < PAGE) break;
-    skip += PAGE;
-  }
-  return { ingresos, nVentas, utilidad };
+  await ensureSession();
+  const { data, error } = await supabase.rpc('resumen_periodo_pos', {
+    p_desde: fromIso, p_hasta: toIso, p_sucursal: sucId || null,
+  });
+  if (error) throw new Error(error.message);
+  if (!data || !Number.isFinite(Number(data.ingresos)) || !Number.isFinite(Number(data.nVentas))) throw new Error('Resumen incompleto');
+  return data;
 }
 
 /**
@@ -72,14 +59,18 @@ async function agregarVentas(fromIso, toIso, sucId) {
  *   página (no tienen sucursal_id y su volumen es bajo) → se pasan por props.
  */
 export function useResumenPeriodo({ periodo, desde, hasta, sucId, compras = [], gastos = [] }) {
-  const { fromIso, toIso, from, to } = rangoDesdePeriodo(periodo, desde, hasta);
+  let rango, errorRango;
+  try { rango = rangoDesdePeriodo(periodo, desde, hasta); }
+  catch (e) { errorRango = e; rango = rangoDesdePeriodo('today'); }
+  const { fromIso, toIso, from, to } = rango;
 
-  const { data, isLoading, isFetching } = useQuery({
+  const { data, isLoading, isFetching, error: errorConsulta, refetch, isPlaceholderData } = useQuery({
     queryKey: ['resumen_periodo_ventas', periodo, fromIso, toIso, sucId || 'all'],
     queryFn: () => agregarVentas(fromIso, toIso, sucId),
+    enabled: !errorRango,
     staleTime: 30000,
-    placeholderData: (prev) => prev,
   });
+  const error = errorRango || errorConsulta;
 
   const ventasAgg = data || { ingresos: 0, nVentas: 0, utilidad: 0 };
 
@@ -92,7 +83,7 @@ export function useResumenPeriodo({ periodo, desde, hasta, sucId, compras = [], 
   const gastosArr = Array.isArray(gastos) ? gastos : [];
   const comprasTotal = comprasArr.filter(c => inRange(c?.fecha || c?.created_date))
     .reduce((s, c) => s + (Number(c?.total_compra) || 0), 0);
-  const gastosTotal = gastosArr.filter(g => inRange(g?.fecha || g?.created_date))
+  const gastosTotalLocal = gastosArr.filter(g => inRange(g?.fecha || g?.created_date))
     .reduce((s, g) => s + (Number(g?.monto) || 0), 0);
 
   const ingresos = ventasAgg.ingresos;
@@ -100,6 +91,7 @@ export function useResumenPeriodo({ periodo, desde, hasta, sucId, compras = [], 
   const utilidad = ventasAgg.utilidad;
   const ticketPromedio = nVentas > 0 ? ingresos / nVentas : 0;
   const margen = ingresos > 0 ? (utilidad / ingresos) * 100 : 0;
+  const gastosTotal = data?.gastos ?? gastosTotalLocal;
   const neto = ingresos - comprasTotal - gastosTotal;
 
   return {
@@ -107,7 +99,9 @@ export function useResumenPeriodo({ periodo, desde, hasta, sucId, compras = [], 
     totals: { ingresos, nVentas, utilidad, compras: comprasTotal, gastos: gastosTotal, ticketPromedio },
     margen,
     neto,
-    cargando: isLoading,
+    error,
+    cargando: isLoading || !!error || isPlaceholderData,
+    reintentar: refetch,
     refrescando: isFetching && !isLoading,
   };
 }

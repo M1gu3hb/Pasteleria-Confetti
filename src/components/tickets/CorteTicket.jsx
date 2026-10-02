@@ -11,7 +11,7 @@ import { etiquetaMetodoPago } from '@/utils/metodoPago';
  * Internal printable corte de caja PDF/document.
  * Wraps content in `.ticket-printable` so the existing print CSS only prints this.
  */
-const CorteTicket = React.forwardRef(function CorteTicket({ corte, ventas = [], detalles = [], ingredientes = [], gastos = [], cancelaciones = [], detallesCancel = [], alertas = [], entregas = [], config = {}, isEsencial = false, isRP = false }, ref) {
+const CorteTicket = React.forwardRef(/** @param {any} props @param {any} ref */ function CorteTicket({ corte, ventas = [], detalles = [], ingredientes = [], gastos = [], cancelaciones = [], detallesCancel = [], abonos = [], alertas = [], entregas = [], config = {}, isEsencial = false, isRP = false }, ref) {
   // Parse desglose por mesero (guardado como JSON string). Tolerante a errores.
   let propinasPorMesero = [];
   try {
@@ -545,6 +545,18 @@ const CorteTicket = React.forwardRef(function CorteTicket({ corte, ventas = [], 
           <p className="text-[10px] text-gray-600 mt-2">
             * Las ventas canceladas y devueltas no se suman al total del corte ni a los totales por método. Listado informativo.
           </p>
+        </Section>
+      )}
+
+      {abonos.some(a => Number(a.monto) < 0) && (
+        <Section title="Devoluciones de anticipos">
+          {abonos.filter(a => Number(a.monto) < 0).map(a => (
+            <div key={a.id} className="flex justify-between gap-3 text-xs mb-1">
+              <span>{a.notas || 'Devolución'} · {etiquetaMetodoPago({ ...a, monto_efectivo: Math.abs(Number(a.monto_efectivo)), monto_tarjeta: Math.abs(Number(a.monto_tarjeta)), monto_transferencia: Math.abs(Number(a.monto_transferencia)) })}</span>
+              <strong>{formatCurrency(Number(a.monto))}</strong>
+            </div>
+          ))}
+          <p className="text-[10px]">El reembolso en efectivo está incluido en el efectivo esperado.</p>
         </Section>
       )}
 

@@ -1,6 +1,6 @@
 // Utilidades del módulo Pedidos de Pastel Personalizado (Fase 3).
 // Sin dependencias de caja/ventas — módulo aislado.
-import { base44 } from '@/api/base44Client';
+import { supabase, ensureSession } from '@/api/supabaseClient';
 
 export const ESTADOS_PEDIDO = {
   pendiente:    { label: 'Pendiente',    badge: 'bg-slate-100 text-slate-700 border-slate-300' },
@@ -49,56 +49,14 @@ export function getRatioPersonas(config, sucursalId) {
   return Number.isFinite(v) && v > 0 ? v : def;
 }
 
-// Genera el siguiente folio PP-[PREFIJO]-NNNN para la sucursal.
-// Si la query falla, fallback con timestamp corto.
-export async function generarFolioPedido(sucursalId, prefijo) {
-  const pref = (prefijo || 'X').toUpperCase();
-  try {
-    const contadores = await base44.entities.FolioContador.filter({
-      tipo: 'pedido_pastel',
-      sucursal_id: sucursalId
-    });
-    let contador = Array.isArray(contadores) && contadores.length > 0
-      ? contadores[0] : null;
-
-    if (!contador) {
-      // Inicialización: leer el máximo folio existente en esa sucursal
-      const previos = await base44.entities.PedidoPastel.filter(
-        { sucursal_id: sucursalId }, '-created_date', 200
-      );
-      const arr = Array.isArray(previos) ? previos : [];
-      let max = 0;
-      arr.forEach(p => {
-        const m = String(p?.folio || '').match(/PP-[A-Z0-9]+-(\d+)$/);
-        if (m) max = Math.max(max, parseInt(m[1], 10) || 0);
-      });
-      contador = await base44.entities.FolioContador.create({
-        tipo: 'pedido_pastel',
-        sucursal_id: sucursalId,
-        prefijo: pref,
-        ultimo_numero: max
-      });
-    }
-
-    // PARTE G — anti-race: verificamos que el folio de pedido no exista ya.
-    const MAX_INTENTOS = 5;
-    for (let i = 0; i < MAX_INTENTOS; i++) {
-      const siguiente = (contador.ultimo_numero || 0) + 1;
-      const folio = `PP-${pref}-${String(siguiente).padStart(4, '0')}`;
-      const pedidosConFolio = await base44.entities.PedidoPastel.filter({ folio }, null, 1);
-      await base44.entities.FolioContador.update(contador.id, { ultimo_numero: siguiente });
-      contador = { ...contador, ultimo_numero: siguiente };
-      if (Array.isArray(pedidosConFolio) && pedidosConFolio.length > 0) {
-        continue;
-      }
-      return folio;
-    }
-    throw new Error('No se pudo generar un folio único de pedido tras varios intentos.');
-  } catch (err) {
-    console.warn('[FolioContador] fallback timestamp:', err);
-    return `PP-${pref}-${Date.now().toString().slice(-6)}`;
-  }
+// Los folios se reservan en PostgreSQL, sin lectores/escritores cliente del contador.
+async function reservarFolio(tipo, sucursalId) {
+  await ensureSession();
+  const { data, error } = await supabase.rpc('reservar_folio_pos', { p_tipo: tipo, p_sucursal_id: sucursalId });
+  if (error) throw new Error(error.message);
+  return data;
 }
+export async function generarFolioPedido(sucursalId) { return reservarFolio('pedido_pastel', sucursalId); }
 
 // Link wa.me con mensaje prellenado.
 export function buildWhatsAppLink(pedido) {
@@ -111,7 +69,7 @@ export function buildWhatsAppLink(pedido) {
     `📅 Entrega: ${pedido.fecha_entrega || ''} ${pedido.hora_entrega || ''}\n` +
     `🎂 ${pedido.kilos || 0}kg${pedido.concepto ? ` - ${pedido.concepto}` : ''}\n` +
     `💰 Total: ${fmt(pedido.total_final)}\n` +
-    `💵 Anticipo: ${fmt(pedido.a_cuenta)} | Resta: ${fmt(pedido.resta)}\n` +
+    `💵 Abonado: ${fmt(pedido.total_abonado ?? pedido.a_cuenta)} | Resta: ${fmt(pedido.saldo_pendiente ?? pedido.resta)}\n` +
     `¡Gracias por tu preferencia! 🎉`;
   return `https://wa.me/${num}?text=${encodeURIComponent(msg)}`;
 }
@@ -133,7 +91,7 @@ export function buildMailtoLink(pedido) {
     pedido.decorado ? `Decorado: ${pedido.decorado}` : null,
     '',
     `Total: ${fmt(pedido.total_final)}`,
-    `Anticipo: ${fmt(pedido.a_cuenta)} | Resta: ${fmt(pedido.resta)}`,
+    `Abonado: ${fmt(pedido.total_abonado ?? pedido.a_cuenta)} | Resta: ${fmt(pedido.saldo_pendiente ?? pedido.resta)}`,
     '',
     `¡Gracias por tu preferencia!`,
   ].filter(l => l !== null);
@@ -141,81 +99,5 @@ export function buildMailtoLink(pedido) {
   return `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
-// ─── Fase 5: folios para Venta y CorteCaja ─────────────────────────
-
-export async function generarFolioVenta(sucursalId, prefijo) {
-  const pref = (prefijo || 'X').toUpperCase();
-  try {
-    // PARTE G — anti-race: si dos cajeros cobran a la vez, verificamos que el
-    // folio no exista ya antes de reservarlo. Si colisiona, incrementamos y
-    // reintentamos hasta MAX_INTENTOS.
-    const MAX_INTENTOS = 5;
-    const contadores = await base44.entities.FolioContador.filter({
-      tipo: 'venta',
-      sucursal_id: sucursalId
-    });
-    let contador = Array.isArray(contadores) && contadores.length > 0
-      ? contadores[0] : null;
-    if (!contador) {
-      contador = await base44.entities.FolioContador.create({
-        tipo: 'venta',
-        sucursal_id: sucursalId,
-        prefijo: pref,
-        ultimo_numero: 0
-      });
-    }
-    for (let i = 0; i < MAX_INTENTOS; i++) {
-      const numero = (contador.ultimo_numero || 0) + 1;
-      const folio = `CONF-${pref}-V${String(numero).padStart(4, '0')}`;
-      const ventasConFolio = await base44.entities.Venta.filter({ folio }, null, 1);
-      // Reservar el número en el contador (suba siempre, haya colisión o no).
-      await base44.entities.FolioContador.update(contador.id, { ultimo_numero: numero });
-      contador = { ...contador, ultimo_numero: numero };
-      if (Array.isArray(ventasConFolio) && ventasConFolio.length > 0) {
-        continue; // colisión → siguiente número
-      }
-      return folio;
-    }
-    throw new Error('No se pudo generar un folio único de venta tras varios intentos.');
-  } catch (err) {
-    console.warn('[FolioVenta] fallback:', err);
-    return `CONF-${pref}-V${Date.now().toString().slice(-6)}`;
-  }
-}
-
-export async function generarFolioCorte(sucursalId, prefijo) {
-  const pref = (prefijo || 'X').toUpperCase();
-  try {
-    // PARTE G — anti-race: verificamos que el folio de corte no exista ya.
-    const MAX_INTENTOS = 5;
-    const contadores = await base44.entities.FolioContador.filter({
-      tipo: 'corte',
-      sucursal_id: sucursalId
-    });
-    let contador = Array.isArray(contadores) && contadores.length > 0
-      ? contadores[0] : null;
-    if (!contador) {
-      contador = await base44.entities.FolioContador.create({
-        tipo: 'corte',
-        sucursal_id: sucursalId,
-        prefijo: pref,
-        ultimo_numero: 0
-      });
-    }
-    for (let i = 0; i < MAX_INTENTOS; i++) {
-      const numero = (contador.ultimo_numero || 0) + 1;
-      const folio = `CONF-${pref}-C${String(numero).padStart(3, '0')}`;
-      const cortesConFolio = await base44.entities.CorteCaja.filter({ folio }, null, 1);
-      await base44.entities.FolioContador.update(contador.id, { ultimo_numero: numero });
-      contador = { ...contador, ultimo_numero: numero };
-      if (Array.isArray(cortesConFolio) && cortesConFolio.length > 0) {
-        continue;
-      }
-      return folio;
-    }
-    throw new Error('No se pudo generar un folio único de corte tras varios intentos.');
-  } catch (err) {
-    console.warn('[FolioCorte] fallback:', err);
-    return `CONF-${pref}-C${Date.now().toString().slice(-5)}`;
-  }
-}
+export async function generarFolioVenta(sucursalId) { return reservarFolio('venta', sucursalId); }
+export async function generarFolioCorte(sucursalId, _prefijo = '') { return reservarFolio('corte', sucursalId); }

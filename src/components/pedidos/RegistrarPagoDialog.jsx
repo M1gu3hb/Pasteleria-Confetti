@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,7 @@ export default function RegistrarPagoDialog({ pedido, cajaAbierta, posUser, sucu
   const [montosMixto, setMontosMixto] = useState({ efectivo: '', tarjeta: '', transferencia: '' });
   const [notas, setNotas] = useState('');
   const [loading, setLoading] = useState(false);
+  const cobrandoRef = useRef(false);
   // FASE 4 — cuando un pago liquida el pedido, mostramos la pregunta "¿ya se
   // entrega?" antes de cerrar (en vez de cerrar directo).
   const [liquidado, setLiquidado] = useState(false);
@@ -37,7 +38,7 @@ export default function RegistrarPagoDialog({ pedido, cajaAbierta, posUser, sucu
   }, [open]);
 
   const confirmar = async () => {
-    if (loading || !pedido?.id) return;
+    if (cobrandoRef.current || loading || !pedido?.id) return;
     // PARTE F — detección de internet antes de cobrar.
     if (!navigator.onLine) {
       toast.error('Sin conexión a internet. No se puede procesar el cobro. Verifica tu conexión.');
@@ -56,15 +57,13 @@ export default function RegistrarPagoDialog({ pedido, cajaAbierta, posUser, sucu
     if (m <= 0) { toast.error('El monto debe ser mayor a 0'); return; }
     if (m > saldoActual + 0.01) { toast.error(`El monto excede el saldo pendiente ($${saldoActual.toFixed(2)})`); return; }
     if (!pagoValido) { toast.error('Revisa el método de pago (si es mixto, la suma debe cuadrar el monto).'); return; }
+    cobrandoRef.current = true;
     setLoading(true);
     try {
       // Lógica de cobro compartida (Abono + Venta paralela + recompute del pedido).
       // La MISMA que usa el anticipo al crear el pedido → no divergen.
       const res = await registrarPagoPedido({ pedido, monto: m, pago, cajaAbierta, posUser, sucursalEfectiva, notas });
-      if (res.ventaError) {
-        toast.error(`Error al registrar la venta paralela: ${res.ventaError}`);
-      }
-      toast.success(`Pago de $${m.toFixed(2)} registrado`);
+      toast.success(`Pago de $${Number(res.montoRegistrado).toFixed(2)} registrado${res.intencionRecuperada ? ' (intento recuperado)' : ''}`);
       // FASE 4 — si este pago LIQUIDA el pedido (saldo 0), preguntar si ya se
       // entrega antes de cerrar. Si no liquida, cierra como siempre.
       if (res.saldoPendiente <= 0) {
@@ -75,8 +74,9 @@ export default function RegistrarPagoDialog({ pedido, cajaAbierta, posUser, sucu
       }
     } catch (err) {
       console.error('[RegistrarPago]', err);
-      toast.error('No se pudo registrar el pago');
+      toast.error(err?.message || 'No se pudo confirmar el pago. Reintenta para recuperar el mismo intento.');
     } finally {
+      cobrandoRef.current = false;
       setLoading(false);
     }
   };
@@ -160,3 +160,4 @@ export default function RegistrarPagoDialog({ pedido, cajaAbierta, posUser, sucu
     </Dialog>
   );
 }
+

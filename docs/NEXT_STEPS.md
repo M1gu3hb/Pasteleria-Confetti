@@ -1,3 +1,5 @@
+> Actualización 2026-10-02: Segunda ronda: autoridad/último dueño/Abel, sesiones humanas vs terminales y credenciales/rate limit; entrada pública F16. Conciliar documentalmente las cuatro cancelaciones vinculadas. Validar físicamente tablets, impresión y cajón; abordar medios restantes sin mezclar con esta publicación. Ver `docs/REGISTRO_REPARACION_OPERATIVA_2026-10-02.md`. El contenido fechado anterior conserva contexto histórico.
+
 # NEXT_STEPS.md — Qué sigue (POS Confetti)
 
 > Para saber el estado VIVO no te fíes de este archivo: mira la rama `migracion/supabase`, el deployment de
@@ -201,3 +203,4 @@ funciones).
 Fases 0–5 de la migración Base44 → Supabase: **completas y firmadas**. WEB-0 a WEB-3: hechas. Bot de paridad de 60
 días: 60/60 limpios. El detalle fechado de todo lo hecho está en `docs/CHANGELOG.md`, que **sí** cita commits porque
 es un registro histórico.
+

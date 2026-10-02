@@ -8,7 +8,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
  * más. Así NO se cargan 11.000 registros de golpe.
  *
  * fetchPage(skip, limit) debe devolver un array (la página). El hook detecta el
- * final cuando una página viene con menos de `pageSize` elementos.
+ * final únicamente cuando una página viene vacía (el API puede tener otro cap).
  *
  * deps: cuando cambian (p. ej. sucursal activa), se reinicia desde la página 0.
  */
@@ -17,26 +17,41 @@ export function useListaPaginada(fetchPage, pageSize, deps = []) {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hayMas, setHayMas] = useState(false);
+  const [error, setError] = useState(null);
+  const generacionRef = useRef(0);
+  const enCursoRef = useRef(false);
   const skipRef = useRef(0);
   const fetchRef = useRef(fetchPage);
   fetchRef.current = fetchPage;
 
   const cargar = useCallback(async (reset) => {
+    if (!reset && enCursoRef.current) return;
+    if (reset) { generacionRef.current++; setItems([]); }
+    const generacion = generacionRef.current;
+    enCursoRef.current = true;
+    setError(null);
     const skip = reset ? 0 : skipRef.current;
     if (reset) { setLoading(true); } else { setLoadingMore(true); }
     try {
       const page = await fetchRef.current(skip, pageSize);
-      const arr = Array.isArray(page) ? page : [];
-      setItems(prev => (reset ? arr : [...prev, ...arr]));
+      if (generacion !== generacionRef.current) return;
+      if (!Array.isArray(page)) throw new Error('Lista incompleta; reintenta la consulta.');
+      const arr = page;
+      setItems(prev => { const seen = new Set(); return (reset ? arr : [...prev, ...arr]).filter(row => { if (seen.has(row.id)) return false; seen.add(row.id); return true; }); });
       skipRef.current = skip + arr.length;
-      setHayMas(arr.length === pageSize);
+      setHayMas(arr.length > 0);
     } catch (e) {
+      if (generacion !== generacionRef.current) return;
       console.warn('[useListaPaginada] error:', e);
+      setError(e);
       if (reset) setItems([]);
-      setHayMas(false);
+      setHayMas(true);
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
+      if (generacion === generacionRef.current) {
+        enCursoRef.current = false;
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageSize]);
@@ -44,6 +59,7 @@ export function useListaPaginada(fetchPage, pageSize, deps = []) {
   useEffect(() => {
     skipRef.current = 0;
     cargar(true);
+    return () => { generacionRef.current++; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 
@@ -53,5 +69,5 @@ export function useListaPaginada(fetchPage, pageSize, deps = []) {
 
   const recargar = useCallback(() => { skipRef.current = 0; cargar(true); }, [cargar]);
 
-  return { items, loading, loadingMore, hayMas, cargarMas, recargar };
+  return { items, loading, loadingMore, hayMas, cargarMas, recargar, error };
 }

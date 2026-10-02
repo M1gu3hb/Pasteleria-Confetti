@@ -18,7 +18,7 @@ import { toast } from 'sonner';
 import { Cake, Save, MessageCircle, Printer, Upload, Eye, ListChecks, Camera, X, Mic } from 'lucide-react';
 import NotaVozRecorder from '@/components/pedidos/NotaVozRecorder';
 import {
-  getPrecioKilo, getRatioPersonas, generarFolioPedido, buildWhatsAppLink,
+  getPrecioKilo, getRatioPersonas, buildWhatsAppLink,
 } from '@/utils/pedidoPastelUtils';
 import { parseExtrasSeleccionados } from '@/utils/extrasPedido';
 import { calcularImporteBase } from '@/utils/baseRangos';
@@ -35,7 +35,7 @@ import PedidoPastelDetalleDialog from '@/components/pedidos/PedidoPastelDetalleD
 import CanvasDibujo from '@/components/pedidos/CanvasDibujo';
 import MetodoPagoSelector from '@/components/pos/MetodoPagoSelector';
 import { construirPago } from '@/utils/metodoPago';
-import { registrarPagoPedido } from '@/utils/registrarPagoPedido';
+import { crearPedidoConAnticipo } from '@/utils/registrarPagoPedido';
 
 const fmt = (n) => `$${(Number(n) || 0).toFixed(2)}`;
 
@@ -439,76 +439,24 @@ export default function NuevoPedidoPastel() {
 
       let saved;
       if (editId && pedidoGuardado?.id) {
-        await base44.entities.PedidoPastel.update(pedidoGuardado.id, payload);
-        saved = { ...pedidoGuardado, ...payload };
+        saved = await base44.entities.PedidoPastel.update(pedidoGuardado.id, payload);
         toast.success('Pedido actualizado');
       } else {
-        // Folio: prefijo de la sucursal desde entidad Sucursal (fallback inicial del nombre)
-        let prefijo = '';
-        try {
-          const s = await base44.entities.Sucursal.get(sucId);
-          prefijo = s?.folio_prefijo || '';
-        } catch { /* fallback abajo */ }
-        if (!prefijo) prefijo = (sucNombre || 'X').trim().charAt(0).toUpperCase();
-        const folio = await generarFolioPedido(sucId, prefijo);
-        saved = await base44.entities.PedidoPastel.create({
-          ...payload,
-          folio,
-          estado: 'pendiente',
-          origen: 'pos_interno', // solo al CREAR desde el POS (no en UPDATE)
-          // Campos de PAGO: SOLO al crear (nunca en edición). Math.max evita
-          // negativos y que el pedido nazca con saldo_pendiente=null.
-          a_cuenta: calc.aCuenta,
-          resta: calc.resta,
-          total_abonado: calc.aCuenta,
-          saldo_pendiente: Math.max(0, (Number(calc.totalFinal) || 0) - (Number(calc.aCuenta) || 0)),
-          creado_por_id: posUser?.id || '',
-          creado_por_nombre: posUser?.nombre || '',
-        });
-        toast.success(`Pedido guardado · ${folio}`);
-
-        // FASE 2 (DINERO) — registrar el anticipo como PAGO REAL (Abono + venta
-        // paralela contable) para que entre al corte/dashboard/métodos. Reusa la
-        // MISMA lógica que RegistrarPagoDialog (util compartido) → no diverge. El
-        // anticipo cuenta por su venta paralela; NO se duplica ni rompe el
-        // efectivo esperado. Solo en CREAR (aquí), nunca en edición.
-        if (calc.aCuenta > 0 && cajaAbierta?.id) {
-          const { pago } = construirPago(calc.aCuenta, metodoAnticipo, montosAnticipo);
-          try {
-            const res = await registrarPagoPedido({
-              pedido: saved, monto: calc.aCuenta, pago,
-              cajaAbierta, posUser, sucursalEfectiva,
-              notas: 'Anticipo al crear el pedido',
-              // El pedido acaba de nacer con total_abonado=a_cuenta pero sin
-              // abonos; el abono real se crea ahora. NO hay anticipo histórico
-              // sin respaldo → sin backfill (evita duplicar el anticipo).
-              skipBackfill: true,
-            });
-            if (res.ventaError) {
-              toast.error(`Anticipo guardado, pero la venta no entró al corte: ${res.ventaError}`);
-            }
-            saved = { ...saved, total_abonado: res.totalAbonado, saldo_pendiente: res.saldoPendiente, estado: res.nuevoEstado };
-            queryClient.invalidateQueries({ queryKey: ['ventas_pagadas_caja'] });
-            queryClient.invalidateQueries({ queryKey: ['abonos_corte'] });
-            queryClient.invalidateQueries({ queryKey: ['dashboard_data'] });
-          } catch (eAnt) {
-            console.error('[NuevoPedidoPastel] anticipo:', eAnt);
-            toast.error('El pedido se guardó, pero el anticipo no se pudo registrar. Regístralo desde Pedidos de Pastel.');
-            // Sin abono real → no dejar un anticipo FANTASMA. El pedido queda con
-            // saldo completo (total_abonado=0, saldo=total_final) para no descuadrar.
-            try {
-              const tf = Number(calc.totalFinal) || 0;
-              await base44.entities.PedidoPastel.update(saved.id, { total_abonado: 0, saldo_pendiente: tf });
-              saved = { ...saved, total_abonado: 0, saldo_pendiente: tf };
-            } catch (eFix) { console.error('[NuevoPedidoPastel] limpiar anticipo fantasma:', eFix); }
-          }
-        }
+        const { pago } = construirPago(calc.aCuenta, metodoAnticipo, montosAnticipo);
+        const res = await crearPedidoConAnticipo({ pedido: { ...payload,
+          creado_por_id: posUser?.id || '', creado_por_nombre: posUser?.nombre || '' },
+          monto: calc.aCuenta, pago, cajaAbierta, posUser });
+        saved = res.pedido;
+        toast.success(`Pedido guardado · ${saved.folio}`);
+        queryClient.invalidateQueries({ queryKey: ['ventas_pagadas_caja'] });
+        queryClient.invalidateQueries({ queryKey: ['abonos_corte'] });
+        queryClient.invalidateQueries({ queryKey: ['dashboard_ventas'] });
       }
       queryClient.invalidateQueries({ queryKey: ['pedidos_pastel'] });
       setPedidoGuardado(saved);
     } catch (err) {
       console.error('[NuevoPedidoPastel] guardar:', err);
-      toast.error('No se pudo guardar el pedido. Intenta de nuevo.');
+      toast.error(err?.message || 'No se pudo confirmar el pedido. Reintenta para recuperar el mismo intento.');
     } finally {
       guardandoRef.current = false;
       setGuardando(false);

@@ -88,23 +88,23 @@ export default function ImportarDatosDialog({ open, onClose, tipo }) {
       // Cargar snapshot actual de BD según tipo
       let snapshot = {};
       if (tipo === 'inventario') {
-        snapshot.ingredientes = await base44.entities.Ingrediente.list('-created_date', 5000).catch(() => []);
+        snapshot.ingredientes = await base44.entities.Ingrediente.listAll('-created_date');
       } else if (tipo === 'productos') {
         const [productos, categorias] = await Promise.all([
-          base44.entities.ProductoTerminado.list('-created_date', 5000).catch(() => []),
-          base44.entities.CategoriaProducto.filter({ activo: true }).catch(() => []),
+          base44.entities.ProductoTerminado.listAll('-created_date'),
+          base44.entities.CategoriaProducto.filter({ activo: true }),
         ]);
         snapshot.productos = productos;
         snapshot.categorias = categorias;
       } else if (tipo === 'recetas') {
         const [ingredientes, productos] = await Promise.all([
-          base44.entities.Ingrediente.list('-created_date', 5000).catch(() => []),
-          base44.entities.ProductoTerminado.list('-created_date', 5000).catch(() => []),
+          base44.entities.Ingrediente.listAll('-created_date'),
+          base44.entities.ProductoTerminado.listAll('-created_date'),
         ]);
         snapshot.ingredientes = ingredientes;
         snapshot.productos = productos;
       } else if (tipo === 'proveedores') {
-        snapshot.proveedores = await base44.entities.Proveedor.list('-created_date', 5000).catch(() => []);
+        snapshot.proveedores = await base44.entities.Proveedor.listAll('-created_date');
       }
 
       let result = null;

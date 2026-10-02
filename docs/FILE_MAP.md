@@ -1,3 +1,5 @@
+> Actualización 2026-10-02: Archivos nuevos: src/utils/intencionPersistente.js, src/lib/intencionOperacion.js, src/lib/datosCorte.js; scripts/operacion_pedidos_verify.mjs, scripts/operacion_consultas_verify.mjs y scripts/fixtures/operacion_bootstrap.sql; tres migraciones operativas y dos de validación aislada/limpieza. Ver `docs/REGISTRO_REPARACION_OPERATIVA_2026-10-02.md`. El contenido fechado anterior conserva contexto histórico.
+
 # FILE_MAP — archivos del port y qué NO romper
 
 ---
@@ -120,3 +122,4 @@ Llama `ensureSession()` al montar (bootstrap terminal). `useAuth` con interfaz e
 - `supabase/migrations/0001-0016` — ver DATABASE.md / CHANGELOG.md.
 - `scripts/fase4_rls_adversarial.mjs` — harness adversarial de RLS (31/31). Requiere datos sembrados + cuentas de prueba (ver CHANGELOG).
 - `supabase/STAGING_NOTES.md` — cuenta de staging + env vars Vercel + modelo auth por operador.
+

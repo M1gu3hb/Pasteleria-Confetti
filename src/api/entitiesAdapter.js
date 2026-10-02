@@ -95,10 +95,11 @@ function applyCondition(builder, field, value) {
 
 // "-created_date" -> order(created_at, desc) ; "orden" -> order(orden, asc)
 function applySort(builder, sort) {
-  if (!sort || typeof sort !== 'string') return builder;
+  if (!sort || typeof sort !== 'string') return builder.order('id', { ascending: true });
   const desc = sort.startsWith('-');
   const col = mapField(desc ? sort.slice(1) : sort);
-  return builder.order(col, { ascending: !desc, nullsFirst: false });
+  const ordered = builder.order(col, { ascending: !desc, nullsFirst: false });
+  return col === 'id' ? ordered : ordered.order('id', { ascending: !desc });
 }
 
 function makeEntity(entityName) {
@@ -112,6 +113,8 @@ function makeEntity(entityName) {
     return {
       async filter() { return []; },
       async list() { return []; },
+      async listAll() { return []; },
+      async filterAll() { return []; },
       async get() { return null; },
       async create(obj) { return obj; },
       async update(id, obj) { return { id, ...obj }; },
@@ -150,14 +153,57 @@ function makeEntity(entityName) {
         return b;
       }).then(decorate);
     },
-    async list(sort, limit) {
+    async list(sort, limit, skip) {
       return run((q) => {
         let b = q.select('*');
         b = applySort(b, sort);
-        if (typeof limit === 'number') b = b.limit(limit);
+        if (typeof skip === 'number' && typeof limit === 'number') b = b.range(skip, skip + limit - 1);
+        else if (typeof limit === 'number') b = b.limit(limit);
         return b;
       }).then(decorate);
     },
+    async filterAll(query = {}, sort) {
+      const contar = async () => {
+        await ensureSession();
+        let b = supabase.from(table).select('id', { count: 'exact', head: true });
+        for (const [field, value] of Object.entries(query || {})) b = applyCondition(b, field, value);
+        const { count, error } = await b;
+        if (error) throw new Error(`[${table}] ${error.message}`);
+        if (typeof count !== 'number' || !Number.isFinite(count)) throw new Error(`[${table}] no se pudo verificar la cantidad de registros`);
+        return count;
+      };
+      const esperado = await contar();
+      const rows = [];
+      let cursor = null;
+      // Cursor por ID inmutable: no saltar PAGE si la API devuelve menos.
+      // La página vacía es el final; una página corta NO significa completo.
+      for (;;) {
+        const page = await run((q) => {
+          let b = q.select('*');
+          for (const [field, value] of Object.entries(query || {})) b = applyCondition(b, field, value);
+          if (cursor) b = b.gt('id', cursor);
+          return b.order('id', { ascending: true }).limit(500);
+        });
+        if (!Array.isArray(page)) throw new Error(`[${table}] respuesta incompleta`);
+        if (!page.length) break;
+        const next = page[page.length - 1]?.id;
+        if (!next || next === cursor) throw new Error(`[${table}] paginación sin avance`);
+        rows.push(...page);
+        cursor = next;
+      }
+      const obtenido = new Set(rows.map(row => row.id)).size;
+      if (obtenido !== rows.length || obtenido !== esperado || await contar() !== esperado) {
+        throw new Error(`[${table}] los datos cambiaron durante la consulta. Reintenta para obtener una lista completa.`);
+      }
+      if (sort) {
+        const desc = sort.startsWith('-');
+        const field = mapField(desc ? sort.slice(1) : sort);
+        rows.sort((a, b) => a[field] == null ? (b[field] == null ? 0 : 1) : b[field] == null ? -1 :
+          ((a[field] < b[field] ? -1 : a[field] > b[field] ? 1 : String(a.id).localeCompare(String(b.id))) * (desc ? -1 : 1)));
+      }
+      return decorate(rows);
+    },
+    async listAll(sort) { return this.filterAll({}, sort); },
     async get(id) {
       const data = await run((q) => q.select('*').eq('id', id).maybeSingle());
       return decorate(data);

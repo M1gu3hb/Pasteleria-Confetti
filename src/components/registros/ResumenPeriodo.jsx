@@ -5,10 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { formatCurrency } from '@/utils/financialUtils';
 import { Calendar, FileDown, TrendingUp, Receipt, ShoppingBag, DollarSign, Hash } from 'lucide-react';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
 import { useConfig } from '@/lib/ConfigContext';
 import { useResumenPeriodo } from '@/lib/useResumenPeriodo';
+import { fechaCDMX } from '@/utils/pedidoPastelUtils';
 
 const PERIODOS = [
   { id: 'today', label: 'Hoy' },
@@ -37,10 +36,10 @@ export default function ResumenPeriodo({ compras = [], gastos = [], sucId = null
   const colorize = config?.colorear_importes_monetarios !== false;
   const isEsencial = paquete_modo === 'esencial';
   const [periodo, setPeriodo] = useState('today');
-  const [desde, setDesde] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [hasta, setHasta] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [desde, setDesde] = useState(fechaCDMX());
+  const [hasta, setHasta] = useState(fechaCDMX());
 
-  const { from, to, totals, margen, neto, cargando, refrescando } = useResumenPeriodo({
+  const { from, to, totals, margen, neto, cargando, refrescando, error, reintentar } = useResumenPeriodo({
     periodo, desde, hasta, sucId, compras, gastos,
   });
 
@@ -57,11 +56,11 @@ export default function ResumenPeriodo({ compras = [], gastos = [], sucId = null
         <Button size="sm" disabled={cargando}
           onClick={() => {
             // CAMBIOS_V2 Fase 07 — incluir el detalle de gastos del periodo en el PDF.
-            const f = from?.getTime?.() || 0;
-            const t = to?.getTime?.() || Date.now();
+            const f = fechaCDMX(0, from);
+            const t = fechaCDMX(0, to);
             const gastosPeriodo = (Array.isArray(gastos) ? gastos : []).filter(g => {
-              const ts = new Date(g?.created_date || g?.fecha || 0).getTime();
-              return Number.isFinite(ts) && ts >= f && ts <= t;
+              const dia = g?.fecha || (g?.created_date ? fechaCDMX(0, new Date(g.created_date)) : '');
+              return dia >= f && dia <= t;
             });
             onPDF?.({ from, to, periodo, totals, margen, gastos: gastosPeriodo });
           }}>
@@ -91,7 +90,8 @@ export default function ResumenPeriodo({ compras = [], gastos = [], sucId = null
         </div>
       )}
 
-      {cargando && (
+      {error && (<div role="alert" className="mb-3 text-sm text-destructive">No se pudo verificar el periodo. {error.message}<button className="ml-2 underline" onClick={() => { void reintentar(); }}>Reintentar</button></div>)}
+      {cargando && !error && (
         <div className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
           <span className="w-3 h-3 border-2 border-muted-foreground/30 border-t-primary rounded-full animate-spin" />
           Calculando registros del periodo…
@@ -119,7 +119,7 @@ export default function ResumenPeriodo({ compras = [], gastos = [], sucId = null
           <div>
             <p className="text-xs text-muted-foreground">Neto del periodo (ingresos − compras − gastos)</p>
             <p className="text-[11px] text-muted-foreground">
-              {format(from, "d MMM", { locale: es })} – {format(to, "d MMM yyyy", { locale: es })}
+              {from.toLocaleDateString('es-MX', { timeZone: 'America/Mexico_City', day: 'numeric', month: 'short' })} – {to.toLocaleDateString('es-MX', { timeZone: 'America/Mexico_City', day: 'numeric', month: 'short', year: 'numeric' })}
             </p>
           </div>
           <p className={`font-heading font-black text-2xl ${colorize ? (neto >= 0 ? 'text-emerald-700' : 'text-red-600') : 'text-foreground'}`}>
@@ -132,7 +132,7 @@ export default function ResumenPeriodo({ compras = [], gastos = [], sucId = null
           <div>
             <p className="text-xs text-muted-foreground">Total cobrado en el periodo</p>
             <p className="text-[11px] text-muted-foreground">
-              {format(from, "d MMM", { locale: es })} – {format(to, "d MMM yyyy", { locale: es })}
+              {from.toLocaleDateString('es-MX', { timeZone: 'America/Mexico_City', day: 'numeric', month: 'short' })} – {to.toLocaleDateString('es-MX', { timeZone: 'America/Mexico_City', day: 'numeric', month: 'short', year: 'numeric' })}
             </p>
           </div>
           <p className={`font-heading font-black text-2xl ${colorize ? 'text-primary' : 'text-foreground'}`}>
@@ -144,7 +144,7 @@ export default function ResumenPeriodo({ compras = [], gastos = [], sucId = null
   );
 }
 
-function Stat({ icon: Icon, label, value, sub, color }) {
+function Stat({ icon: Icon, label, value, sub = undefined, color }) {
   return (
     <div className="p-3 rounded-xl border bg-white/80">
       <div className="flex items-center gap-1.5 text-muted-foreground text-[11px] mb-1">

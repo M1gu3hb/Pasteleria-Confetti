@@ -1,3 +1,5 @@
+> Actualización 2026-10-02: Nuevos contratos: pedidos.credito_historico, abonos.venta_id único, app_private.operaciones_pedido y backup de reparación de saldo; funciones/guardas para saldo, corte, folios, reportes e intención de venta. No se alteran helpers de identidad en esta ronda. Ver `docs/REGISTRO_REPARACION_OPERATIVA_2026-10-02.md`. El contenido fechado anterior conserva contexto histórico.
+
 # DATABASE — Supabase `ivqcxdpqxwjxfohiswqb`
 
 > ⚠️ **No es staging.** El título de este archivo decía "staging" y es **falso**: es la base **de producción**, en
@@ -218,3 +220,4 @@ provision_auth_operadores** los provisiona idempotentemente por `nombre` con los
 
 ## Quirk de doble conteo (ver BUGS_PENDING)
 `efectivo_esperado = total_efectivo + abonosEfectivo`, pero la venta paralela del abono ya está en total_efectivo → cuenta el abono efectivo dos veces. **Verificado = comportamiento de Base44 (18/20 cortes reales). CANDADO: idéntico.**
+

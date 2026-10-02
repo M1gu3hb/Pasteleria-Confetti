@@ -76,13 +76,7 @@ export default function Sidebar({ collapsed, onToggle }) {
         ...(badgeSucId ? { sucursal_id: badgeSucId } : {}),
         estado: { $nin: ['entregado', 'cancelado'] },
       };
-      const rows = [];
-      const pageSize = 500;
-      for (let offset = 0; ; offset += pageSize) {
-        const page = await base44.entities.PedidoPastel.filter(criteria, 'id', pageSize, offset);
-        rows.push(...page);
-        if (page.length < pageSize) break;
-      }
+      const rows = await base44.entities.PedidoPastel.filterAll(criteria, 'id');
       return rows;
     },
     refetchInterval: 60000,
@@ -563,3 +557,4 @@ export default function Sidebar({ collapsed, onToggle }) {
     </>
   );
 }
+

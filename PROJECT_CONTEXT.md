@@ -1,3 +1,7 @@
+> Contratos operativos y pruebas 2026-10-02: `docs/REGISTRO_REPARACION_OPERATIVA_2026-10-02.md`. La ronda de auth está pendiente. Verificar producción y APK contra el mismo commit; no asumir que una pestaña abierta ya cambió de versión.
+
+> Actualización 2026-10-01: Miguel autorizó la reparación operativa F05–F14 y tickets. Auth/usuarios quedan para otra ronda. Consultar `docs/PLAN_REPARACION_OPERATIVA_2026-10-01.md`; los párrafos fechados de incidentes anteriores son históricos, no evidencia de una incidencia actual. El canal APK debe sincronizarse en cada publicación.
+
 # PROJECT_CONTEXT.md — POS Pastelería Confetti
 
 > **Fuente principal de transferencia.** Si vas a continuar este proyecto en otra sesión, otra cuenta u otra IA, lee ESTE archivo completo, luego `CLAUDE.md`, luego `HANDOFF.md` (lo más reciente), y después `docs/`.
@@ -28,7 +32,7 @@ Resuelve: cobrar, llevar pedidos de pastel personalizado, controlar caja (apertu
 - Aislamiento por sucursal vía RLS. Roles: `caja` (terminal), `administrador`, `dueño`, `pastelero`.
 - Cierre de caja **protegido en tres capas** contra el bug de los **ceros** — ojo: **sólo contra el caso `total = 0`**; la truncación **parcial** sigue sin cubrir (ver §8 y §10).
 - Rol `pastelero` con permiso acotado para editar la nota y avanzar estados (migración `0060`).
-- APK Android (Capacitor) con impresión ESC/POS nativa — **pero apuntando a la rama equivocada**, ver §11.
+- APK Android (Capacitor) con impresión ESC/POS nativa — **con dos canales que deben mantenerse sincronizados**, ver §11.
 
 **Qué está incompleto:**
 - El árbol de rutas **no tiene ErrorBoundary**: cualquier excepción en render deja la app en blanco.
@@ -121,7 +125,7 @@ Detalle en **`docs/FILE_MAP.md`**. Los que no se rompen:
 
 **Día operativo.** Empieza a la **medianoche de América/Mexico_City** (UTC-6 fijo). **CANDADO 2. No son las 06:00.**
 
-**Abono a un pedido.** Crea `Abono` (sucursal del pedido) + una **venta paralela** `pagada` en el corte abierto de la sucursal de la terminal. `efectivo_esperado = total_efectivo + abonosEfectivo` — **hay doble conteo, y es un quirk de Base44 reproducido a propósito**: es CANDADO, no se "arregla".
+**Abono a un pedido.** Crea `Abono` (sucursal del pedido) + una **venta paralela** `pagada` en el corte abierto de la sucursal de la terminal. `efectivo_esperado = ventas efectivo + propinas efectivo + devoluciones efectivo − gastos efectivo` — los abonos positivos se representan por la venta paralela; sólo las devoluciones negativas se restan aparte. La fórmula vigente está en `efectivoEsperadoDeResumen`.
 
 **Entregar un pedido.** Exige `saldo_pendiente = 0`. La pantalla lo impide y, para el pastelero, el trigger también.
 
@@ -206,7 +210,7 @@ En **`docs/PROMPTS.md`**. Incluye el **prompt de arranque para una sesión nueva
 - **CANDADO 1** — fallback venta↔corte en `Caja.jsx`. Bit a bit.
 - **CANDADO 2** — día operativo = medianoche América/Mexico_City. **No 06:00.**
 - **CANDADO 3** — `handleBuscarFolioWeb` filtra por la sucursal del terminal (ya corregido).
-- **El doble conteo de `efectivo_esperado`** con abono en efectivo: es quirk de Base44 **reproducido a propósito**.
+- **No duplicar el ingreso del anticipo:** se cuenta por su venta paralela; la fórmula canónica no se cambia.
 - **El PIN de 4 dígitos** y el flujo de acceso tal cual. Sin CAPTCHA, sin pasos nuevos.
 - **`ModalPinAdmin` exige `'dueño'` CON TILDE.** No "normalices" el rol en la base.
 - **`logo_ticket_url`** manda sobre `logo_url` en los tickets. Si se ve una foto rara, es un dato, no un bug de código.
@@ -231,3 +235,4 @@ Sin cambios de código de aplicación. Regla nueva en `CLAUDE.md`: **exclusiones
 Resumen: se cerró el P0 del **cierre de caja en cero** (3 capas + recálculo de 11 cortes), el bug de **la nota que no se guardaba**, el permiso del **pastelero** (`0060`), la restauración del **rol de dueño y el logo del ticket** (`0061`), y una **regresión propia** que dejaba la app **en blanco** al entrar como dueño (`Illegal invocation` en `cajaRefresco`). Se corrigieron además `Number(null) === 0` en las guardas anti-ceros, fugas entre sucursales en `useCajaAbierta`, la sesión no restaurada al salir de dueño/pastelero, el pedido fantasma en el diálogo y `COLS_CIERRE` sin `sucursal_id`.
 
 Archivos tocados: `src/lib/{ventasCorte,cajaEstado,cajaRefresco,useCajaAbierta,useCorteAtrasado}.js`, `src/pages/{Caja,PedidosPastel}.jsx`, `src/components/common/Sidebar.jsx`, `src/components/pedidos/PedidoPastelDetalleDialog.jsx`, `src/api/entitiesAdapter.js`, `supabase/migrations/0050→0061`, `supabase/functions/transcribir-nota-voz/index.ts`, `scripts/*`, `docs/*`, `HANDOFF.md`.
+

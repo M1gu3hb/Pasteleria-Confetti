@@ -28,7 +28,7 @@ export default function PeriodoPDF({ data, config = {}, isEsencial = false, sucu
         <div className="text-right">
           <h2 className="text-lg font-bold">Reporte de periodo</h2>
           <p className="text-xs font-semibold">{sucursalNombre || 'Todas las sucursales'}</p>
-          <p className="text-xs">{format(from, "d MMM yyyy", { locale: es })} – {format(to, "d MMM yyyy", { locale: es })}</p>
+          <p className="text-xs">{from.toLocaleDateString('es-MX', { timeZone: 'America/Mexico_City', day: 'numeric', month: 'short', year: 'numeric' })} – {to.toLocaleDateString('es-MX', { timeZone: 'America/Mexico_City', day: 'numeric', month: 'short', year: 'numeric' })}</p>
           <p className="text-[10px] text-gray-500">Generado: {format(new Date(), "d MMM yyyy, HH:mm", { locale: es })}</p>
         </div>
       </div>

@@ -122,13 +122,7 @@ export default function PedidosPastel() {
     queryKey: ['pedidos_pastel', sucIdQuery, filtroEstado],
     queryFn: async () => {
       const criteria = { ...(sucIdQuery ? { sucursal_id: sucIdQuery } : {}), ...estadoCriteria };
-      const rows = [];
-      const pageSize = 500;
-      for (let offset = 0; ; offset += pageSize) {
-        const page = await base44.entities.PedidoPastel.filter(criteria, 'id', pageSize, offset);
-        rows.push(...page);
-        if (page.length < pageSize) break;
-      }
+      const rows = await base44.entities.PedidoPastel.filterAll(criteria, 'id');
       return rows.sort((a, b) =>
         (a.fecha_entrega || '\uffff').localeCompare(b.fecha_entrega || '\uffff') || a.id.localeCompare(b.id));
     },
@@ -319,7 +313,7 @@ export default function PedidosPastel() {
       {isError && (
         <div role="alert" className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800">
           No se pudo actualizar la lista de pedidos. Puede estar incompleta.
-          <Button variant="outline" size="sm" className="ml-3" onClick={() => refetch()}>Reintentar</Button>
+          <button className="ml-3 underline" onClick={() => { void refetch(); }}>Reintentar</button>
         </div>
       )}
 

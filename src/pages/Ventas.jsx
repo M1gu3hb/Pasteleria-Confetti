@@ -62,8 +62,8 @@ export default function Ventas() {
   const { data: ventas, isPending: ventasLoading } = useQuery({
     queryKey: ['ventas_all', sucId],
     queryFn: () => sucId
-      ? base44.entities.Venta.filter({ sucursal_id: sucId }, '-created_date', 200)
-      : base44.entities.Venta.list('-created_date', 200),
+      ? base44.entities.Venta.filterAll({ sucursal_id: sucId }, '-created_date')
+      : base44.entities.Venta.listAll('-created_date'),
     placeholderData: (prev) => prev,
     staleTime: 5000,
   });
@@ -72,7 +72,7 @@ export default function Ventas() {
 
   const { data: detalles = [] } = useQuery({
     queryKey: ['detalles_venta', selectedVenta?.id],
-    queryFn: () => base44.entities.DetalleVenta.filter({ venta_id: selectedVenta.id }),
+    queryFn: () => base44.entities.DetalleVenta.filterAll({ venta_id: selectedVenta.id }),
     enabled: !!selectedVenta,
     initialData: [],
   });

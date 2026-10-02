@@ -1,3 +1,5 @@
+> Actualización 2026-10-02: Pago, saldo, devolución y cierre ahora tienen contratos transaccionales de servidor. El plan/reporte de esta ronda reemplaza instrucciones históricas sobre pagos separados. No reconstruir los cuatro abonos de $1700: sus ventas están canceladas. Ver `docs/REGISTRO_REPARACION_OPERATIVA_2026-10-02.md`. El contenido fechado anterior conserva contexto histórico.
+
 # HANDOFF.md — Traspaso de sesión (POS Pastelería Confetti)
 
 > **Léeme COMPLETO antes de tocar nada.** Este archivo existe para que otra sesión, otra cuenta u otra IA continúe exactamente desde donde se quedó la anterior, sin preguntarle contexto a Miguel.
@@ -467,3 +469,4 @@ su fecha, en **`docs/CHANGELOG.md`**.
 - **Fuera de plan** (no abrir sin pedirlo): cutover de Auth, enrolamiento de terminales, las 6 políticas `USING true`
   y las 3 vistas `security_invoker=false` (SEG-2 sí está en la lista), Storage/imágenes, renombrar la fachada Base44,
   borrar `poc-auth-magiclink`, y los `filter()` sin límite del adaptador.
+

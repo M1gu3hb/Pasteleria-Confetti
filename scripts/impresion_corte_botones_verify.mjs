@@ -74,7 +74,7 @@ check('AutoDownloader: la guarda se libera en finally',
 const dlg = sinComentarios(leer('../src/components/cortes/CorteViewerDialog.jsx'));
 
 check('ViewerDialog: el botón Imprimir se deshabilita también con downloading',
-  /onClick=\{handlePrintCashCut\}\s+disabled=\{loading \|\| downloading\}/.test(dlg));
+  /onClick=\{handlePrintCashCut\}\s+disabled=\{loading \|\| downloading(?: \|\| !!errorDatos)?\}/.test(dlg));
 check('ViewerDialog: el botón Imprimir tiene aria-busy',
   /onClick=\{handlePrintCashCut\}[\s\S]{0,120}aria-busy=\{downloading\}/.test(dlg));
 check('ViewerDialog: el botón Imprimir muestra spinner mientras imprime',
@@ -94,3 +94,4 @@ check('ViewerDialog: la guarda se libera en finally',
 
 console.log(`\n${ok} PASS, ${fail} FAIL`);
 process.exit(fail === 0 ? 0 : 1);
+

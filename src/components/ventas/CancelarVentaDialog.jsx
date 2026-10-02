@@ -69,7 +69,7 @@ export default function CancelarVentaDialog({ open, onClose, venta, modo = 'canc
       onClose?.();
     } catch (e) {
       console.error('[CancelarVentaDialog]', e);
-      toast.error('No se pudo procesar. Intenta de nuevo.');
+      toast.error(e?.message || 'No se pudo procesar. Intenta de nuevo.');
     } finally {
       setGuardando(false);
     }

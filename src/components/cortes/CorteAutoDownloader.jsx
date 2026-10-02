@@ -1,9 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { base44 } from '@/api/base44Client';
+import { cargarDatosCorte } from '@/lib/datosCorte';
 import { useConfig } from '@/lib/ConfigContext';
-import { getStockStatus } from '@/utils/inventoryUtils';
-import { obtenerEntregasDelCorte } from '@/utils/entregasCorte';
 import { downloadNodeAsPDF, safeFileName } from '@/lib/pdfDownload';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -24,6 +22,7 @@ export default function CorteAutoDownloader({ corte, onDone }) {
   // manual no se pisen (el state llega tarde a un setTimeout).
   const enCursoRef = useRef(false);
   const [data, setData] = useState(null);
+  const [reintento, setReintento] = useState(0);
   const [downloading, setDownloading] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState(false);
@@ -31,96 +30,24 @@ export default function CorteAutoDownloader({ corte, onDone }) {
   // Carga de datos del corte
   useEffect(() => {
     if (!corte) return;
+    setData(null);
+    setError(false);
+    setDone(false);
     let cancelled = false;
     (async () => {
-      const inicio = corte.fecha_inicio ? new Date(corte.fecha_inicio).getTime() : 0;
-      const cierre = corte.fecha_cierre ? new Date(corte.fecha_cierre).getTime() : Date.now();
-      const corteId = corte.id;
-
-      const [allVentas, allGastos, allDescuentos, allIngredientes, allRecetas] = await Promise.all([
-        base44.entities.Venta.list('-fecha_cierre', 2000).catch(() => []),
-        base44.entities.GastoOperativo.list('-created_date', 500).catch(() => []),
-        base44.entities.DescuentoInventarioVenta.list('-created_date', 3000).catch(() => []),
-        base44.entities.Ingrediente.list().catch(() => []),
-        base44.entities.RecetaEscandallo.list('-created_date', 2000).catch(() => []),
-      ]);
-
-      const matchVenta = (v) => {
-        if (corteId && v.corte_caja_id === corteId) return true;
-        const t = v.fecha_cierre ? new Date(v.fecha_cierre).getTime() : 0;
-        if (t >= inicio && t <= cierre) return true;
-        if (!v.corte_caja_id && corte.fecha_inicio) {
-          const dayCorte = corte.fecha_inicio.slice(0, 10);
-          const dayVenta = (v.fecha_apertura || v.fecha_cierre || '').slice(0, 10);
-          if (dayCorte && dayCorte === dayVenta) return true;
-        }
-        return false;
-      };
-
-      const ventasCorte = allVentas.filter(v => v.estado === 'pagada' && matchVenta(v));
-      const cancelaciones = allVentas.filter(v => v.estado === 'cancelada' && (
-        (corteId && v.corte_caja_id === corteId) ||
-        (v.fecha_cierre && new Date(v.fecha_cierre).getTime() >= inicio && new Date(v.fecha_cierre).getTime() <= cierre)
-      ));
-      const ventaIds = ventasCorte.map(v => v.id);
-      // Optimización: UNA sola consulta con $in en vez de N+1 (una por venta).
-      // `detalles` solo se AGREGA (suma de consumo de ingredientes), así que el
-      // orden es irrelevante y el PDF del corte sale idéntico.
-      const detalles = ventaIds.length
-        ? (await base44.entities.DetalleVenta.filter({ venta_id: { $in: ventaIds } }, '-created_date', 5000).catch(() => []))
-        : [];
-      const gastosCorte = allGastos.filter(g => {
-        // CAMBIOS_V2 Fase 07 — scoping exacto por corte_caja_id; legacy por fecha.
-        if (g?.corte_caja_id) return g.corte_caja_id === corte.id;
-        const t = g.created_date ? new Date(g.created_date).getTime() : 0;
-        return t >= inicio && t <= cierre;
-      });
-
-      const descuentosCorte = allDescuentos.filter(d => ventaIds.includes(d.venta_id));
-      const ingMap = {};
-      const ingPorId = Object.fromEntries(allIngredientes.map(i => [i.id, i]));
-      const addIng = (ingId, nombre, unidad, qty, costoUnit) => {
-        if (!ingId || !qty) return;
-        if (!ingMap[ingId]) ingMap[ingId] = { nombre, unidad, cantidad: 0, costoUnit: costoUnit || 0, costoTotal: 0 };
-        ingMap[ingId].cantidad += qty;
-        ingMap[ingId].costoTotal += qty * (costoUnit || 0);
-      };
-      if (descuentosCorte.length > 0) {
-        descuentosCorte.forEach(d => addIng(d.ingrediente_id, d.ingrediente_nombre, d.unidad_base, d.cantidad_total_descontada || 0, d.costo_unitario_snapshot || 0));
-      } else {
-        detalles.forEach(det => {
-          const recetaLines = allRecetas.filter(r => r.producto_id === det.producto_id && r.activo !== false);
-          recetaLines.forEach(l => {
-            const ing = ingPorId[l.ingrediente_id];
-            if (!ing) return;
-            const merma = 1 + ((l.merma_porcentaje || 0) / 100);
-            const cantPorProd = (l.cantidad_convertida_unidad_base || 0) * merma;
-            const totalCant = cantPorProd * (det.cantidad || 0);
-            addIng(ing.id, ing.nombre, ing.unidad_base, totalCant, ing.costo_por_unidad_base || 0);
-          });
-        });
-      }
-      const ingredientesConsumidos = Object.values(ingMap).sort((a, b) => b.costoTotal - a.costoTotal);
-      const alertas = allIngredientes
-        .map(i => ({ ...i, status: getStockStatus(i) }))
-        .filter(i => ['critico', 'agotado', 'bajo'].includes(i.status));
-
-      // Fase 3 #6 — entregas del rango del corte (informativo, no toca totales).
-      const entregas = await obtenerEntregasDelCorte({
-        sucursalId: corte.sucursal_id,
-        desde: corte.fecha_inicio,
-        hasta: corte.fecha_cierre,
-      }).catch(() => []);
-
-      if (!cancelled) {
-        setData({ ventas: ventasCorte, detalles, gastos: gastosCorte, ingredientes: ingredientesConsumidos, cancelaciones, alertas, entregas });
+      try {
+        const resultado = await cargarDatosCorte(corte);
+        if (!cancelled) setData(resultado);
+      } catch (e) {
+        if (!cancelled) { setError(true); toast.error(`No se preparó el PDF: ${e.message}`); }
       }
     })();
     return () => { cancelled = true; };
-  }, [corte]);
+  }, [corte, reintento]);
 
   const triggerDownload = async () => {
-    if (!ref.current || !data) return;
+    if (!data) { setReintento(n => n + 1); return; }
+    if (!ref.current) return;
     // GUARDA SÍNCRONA. El `downloading` de estado NO sirve aquí: el disparo
     // automático es un setTimeout de 300 ms y el botón manual ya está activo en
     // esa ventana, así que los dos podían entrar a la vez y generar DOS PDFs
@@ -170,7 +97,7 @@ export default function CorteAutoDownloader({ corte, onDone }) {
       {/* Botón visible (fallback / reintento) */}
       {!done && (
         <div className="fixed bottom-6 right-6 z-[60] no-print">
-          <Button onClick={triggerDownload} disabled={downloading || !data} className="shadow-lg">
+          <Button onClick={triggerDownload} disabled={downloading || (!data && !error)} className="shadow-lg">
             {downloading
               ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Generando PDF…</>
               : <><Download className="w-4 h-4 mr-1" /> Descargar PDF del corte</>}
@@ -194,12 +121,14 @@ export default function CorteAutoDownloader({ corte, onDone }) {
         <div style={{ position: 'fixed', left: '-10000px', top: 0, width: '210mm', background: '#fff', zIndex: -1 }} aria-hidden>
           <CorteTicket
             ref={ref}
-            corte={corte}
+            corte={data.corte}
             ventas={data.ventas}
             detalles={data.detalles}
             gastos={data.gastos}
+            abonos={data.abonos}
             ingredientes={data.ingredientes}
             cancelaciones={data.cancelaciones}
+            detallesCancel={data.detallesCancel}
             alertas={data.alertas}
             entregas={data.entregas}
             config={config}

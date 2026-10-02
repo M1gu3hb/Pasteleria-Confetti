@@ -20,9 +20,9 @@ import { etiquetaMetodoPago } from '@/utils/metodoPago';
 const C_TXT = '#000';
 const C_MUTED = '#000';
 
-const CorteTicketTermico = React.forwardRef(function CorteTicketTermico({
+const CorteTicketTermico = React.forwardRef(/** @param {any} props @param {any} ref */ function CorteTicketTermico({
   corte, ventas = [], detalles = [], ingredientes = [], gastos = [], cancelaciones = [],
-  detallesCancel = [], alertas = [], entregas = [], config = {}, isEsencial = false, isRP = false,
+  detallesCancel = [], abonos = [], alertas = [], entregas = [], config = {}, isEsencial = false, isRP = false,
 }, ref) {
   // ===== Derivaciones — VERBATIM de CorteTicket (mismos números) =====
   let propinasPorMesero = [];
@@ -332,6 +332,16 @@ const CorteTicketTermico = React.forwardRef(function CorteTicketTermico({
         </>
       )}
 
+      {abonos.some(a => Number(a.monto) < 0) && (
+        <>
+          <Titulo>Devoluciones de anticipos</Titulo>
+          {abonos.filter(a => Number(a.monto) < 0).map(a => (
+            <Fila key={a.id} label={`${a.notas || 'Devolución'} · ${etiquetaMetodoPago({ ...a, monto_efectivo: Math.abs(Number(a.monto_efectivo)), monto_tarjeta: Math.abs(Number(a.monto_tarjeta)), monto_transferencia: Math.abs(Number(a.monto_transferencia)) })}`} value={formatCurrency(Number(a.monto))} bold />
+          ))}
+          <div style={{ fontSize: '9px' }}>El reembolso en efectivo está incluido en el efectivo esperado.</div>
+        </>
+      )}
+
       {/* Firmas / footer */}
       <Linea />
       <div style={{ marginTop: '18px' }}>
@@ -366,7 +376,7 @@ function Titulo({ children }) {
   );
 }
 
-function Fila({ label, value, bold, indent }) {
+function Fila({ label, value, bold = false, indent = false }) {
   if (value === null || value === undefined || value === '') return null;
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', fontSize: '11px', paddingLeft: indent ? '8px' : 0 }}>

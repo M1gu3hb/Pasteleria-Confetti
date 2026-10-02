@@ -24,8 +24,7 @@ export async function obtenerEntregasDelCorte({ sucursalId, desde, hasta }) {
   const hastaMs = hasta ? new Date(hasta).getTime() : Date.now();
 
   const pedidos = await base44.entities.PedidoPastel
-    .filter({ estado: 'entregado' }, '-fecha_entrega_real', 500)
-    .catch(() => []);
+    .filterAll({ estado: 'entregado', ...(sucursalId ? { sucursal_id: sucursalId } : {}), fecha_entrega_real: { $gte: new Date(desdeMs).toISOString(), $lte: new Date(hastaMs).toISOString() } }, '-fecha_entrega_real');
   const arr = Array.isArray(pedidos) ? pedidos : [];
 
   const mismaSucursal = (p) => !sucursalId || !p?.sucursal_id || p.sucursal_id === sucursalId;
@@ -47,3 +46,4 @@ export async function obtenerEntregasDelCorte({ sucursalId, desde, hasta }) {
     }))
     .sort((a, b) => a.fechaMs - b.fechaMs);
 }
+

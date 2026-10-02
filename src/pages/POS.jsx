@@ -596,8 +596,8 @@ export default function POS() {
       // Mostrar ticket final (snapshot defensivo)
       try {
         setTicketFinal({
-          venta: { ...venta, ...paymentData, total, subtotal: total, estado: 'pagada' },
-          detalles: detallesParaTicket,
+          venta: _resVenta.venta,
+          detalles: _resVenta.detalles,
         });
         setShowTicket(true);
       } catch (errTicket) {
@@ -612,10 +612,11 @@ export default function POS() {
       ventaIdemKeyRef.current = null;
       // Reset propina para la próxima venta
       setPropina({ propina_monto: 0, propina_porcentaje: 0, propina_tipo: 'sin_propina', propina_origen: 'tradicional' });
-      toast.success(`Venta ${folio} cobrada: ${formatCurrency(total)}`);
+      toast.success(`Venta ${folio} cobrada: ${formatCurrency(_resVenta.venta.total)}`);
+      if (_resVenta.recuperada) toast.info("Se recuperó la operación pendiente. Revisa el ticket antes de otro cobro.");
     } catch (err) {
       console.error('[POS] Error al cobrar:', err);
-      toast.error('No se pudo completar la venta. Intenta de nuevo.');
+      toast.error(err?.message || 'No se pudo confirmar la venta. Reintenta para recuperar el mismo intento.');
     } finally {
       setProcessing(false);
     }

@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { supabase, ensureSession } from '@/api/supabaseClient';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useConfig } from '@/lib/ConfigContext';
@@ -56,18 +57,17 @@ export default function Dashboard() {
 
   // ── Ventas pagadas. Una sola fuente de verdad. ──
   // Filtra por sucursal si hay sucursal activa; trae todas si es vista general.
-  const { data: ventasRaw, isPending: ventasLoading } = useQuery({
-    queryKey: ['dashboard_ventas', sucId],
-    queryFn: () => {
-      // NO usamos $gte sobre created_date — Base44 lo maneja inconsistente y
-      // devolvía vacío. Traemos las últimas 200 pagadas y filtramos en memoria.
-      const base = sucId
-        ? { estado: 'pagada', sucursal_id: sucId }
-        : { estado: 'pagada' };
-      return base44.entities.Venta.filter(base, '-created_date', 200);
+  const { data: ventasRaw, isPending: ventasLoading, error: ventasError, isPlaceholderData: ventasPlaceholder } = useQuery({
+    queryKey: ['dashboard_ventas', sucId, corteActualId],
+    queryFn: async () => {
+      await ensureSession();
+      const { data, error } = await supabase.rpc('ventas_cajas_activas_pos', { p_sucursal: sucId || null });
+      if (error) throw new Error(error.message);
+      if (!Array.isArray(data)) throw new Error('Resumen de cajas incompleto');
+      return data;
     },
-    placeholderData: (prev) => prev,
     staleTime: 5000,
+    refetchInterval: 8000,
   });
 
   // ── Cortes (cajas) abiertos por sucursal — solo en VISTA GENERAL ──
@@ -142,10 +142,11 @@ export default function Dashboard() {
     { name: 'Transferencia', value: stats.transferencia, fill: PAYMENT_COLORS.transferencia },
   ].filter((d) => d.value > 0);
 
-  const cargando = cajaVerificando || (ventasLoading && !ventasRaw);
+  const cargando = cajaVerificando || (ventasLoading && !ventasRaw) || ventasPlaceholder || !!ventasError;
 
   return (
     <div className="space-y-5">
+      {ventasError && <p role="alert" className="text-destructive">No se pudo verificar el resumen de cajas. Toca Actualizar para reintentar.</p>}
       {/* Sección 1 — Encabezado */}
       <PageHeader
         title="Buen día"

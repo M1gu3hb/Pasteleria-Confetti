@@ -183,12 +183,13 @@ for (const p of Object.keys(OTROS)) {
 // 6. La lógica del DINERO no se tocó
 // ─────────────────────────────────────────────────────────────────────
 const pago = leer('src/utils/registrarPagoPedido.js');
-check('13. registrarPagoPedido sigue recalculando desde TODOS los abonos',
-  /const totalAbonado = \(Array\.isArray\(abonos\) \? abonos : \[\]\)\.reduce/.test(pago));
-check('14. sigue creando la venta paralela que entra al corte',
-  /corte_caja_id: cajaAbierta\.id/.test(pago));
+const rpcPago = leer('supabase/migrations/20261001234206_operaciones_pedidos_atomicas.sql');
+check('13. el servidor deriva saldo desde TODOS los abonos y conserva crédito histórico',
+  /sum\(a\.monto\)/.test(rpcPago) && /credito_historico/.test(rpcPago) && /operacion_pedido_tx/.test(pago));
+check('14. sigue creando venta paralela en la misma transacción y corte',
+  /insert into public\.ventas/.test(rpcPago) && /'pagada'/.test(rpcPago) && /ef,ta,tr,corte/.test(rpcPago));
 check('15. el concepto del corte sigue llevando el folio del pedido',
-  /producto_nombre: `Anticipo pedido \$\{pedido\.folio\}`/.test(pago));
+  /'Anticipo pedido '\|\|p\.folio/.test(rpcPago));
 
 const efe = leer('src/utils/efectivoEsperado.js');
 check('16. efectivoEsperado SIGUE sin sumar los abonos positivos',
@@ -204,3 +205,4 @@ check('17. sigue existiendo la config local de impresora por dispositivo',
 
 console.log(`\n${ok} PASS, ${fail} FAIL`);
 process.exit(fail === 0 ? 0 : 1);
+

@@ -1,3 +1,5 @@
+> Actualización 2026-10-02: Reparación F05–F14: pagos y devoluciones atómicos, saldo derivado, folios de servidor, cierre coordinado, comprobantes por corte/sucursal, paginación completa y calendario CDMX. Tests de fallo y concurrencia, sin movimientos ficticios en tablas operativas. Ver `docs/REGISTRO_REPARACION_OPERATIVA_2026-10-02.md`. El contenido fechado anterior conserva contexto histórico.
+
 # CHANGELOG
 
 ## 2026-09-16 — El ticket impreso mentía sobre lo que el cliente ya pagó
@@ -1217,3 +1219,4 @@ Validación de FLUJO CRUZADO sobre el Supabase compartido (solo lectura + datos 
 - **FLUJO 2 (producto POS → catálogo web):** edición de `Cheesecake` (nombre/precio) reflejada **de inmediato** en el catálogo web (misma fila vía `catalogo_publico`, sin sync); `visible_en_web` toggle funciona; la vista no expone costo/margen. Restaurado a originales.
 - **Regresión:** ningún cambio de esquema/código POS. Limpieza: transaccional=0, folio_contador=0; maestros intactos (productos 20, sucursales 3). Residual: 2 imágenes de prueba en `web-uploads/pedidos/` (ver BUGS_PENDING (h)).
 - **Sin diffs vs Base44** en el flujo cruzado. POS+Web listos para la auditoría de Miguel antes del bot de pruebas agresivas.
+

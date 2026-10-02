@@ -1,3 +1,5 @@
+> Actualización 2026-10-02: F05–F14 tienen implementación y pruebas de esta ronda. Auth F01–F04/F16 y restantes medios siguen pendientes. Los cuatro abonos/ventas canceladas necesitan conciliación documental, no recreación automática. No inferir cierre de la auditoría completa. Ver `docs/REGISTRO_REPARACION_OPERATIVA_2026-10-02.md`. El contenido fechado anterior conserva contexto histórico.
+
 # BUGS_PENDING / riesgos conocidos
 
 ---
@@ -628,3 +630,4 @@ El proyecto APK (rama `apk/capacitor`) compila verde (vite + gradlew assembleRel
 - Eliminar la cuenta `staging-pos@confetti.local` cuando el login real esté wireado.
 - Rotar la api_key Base44 `847df…`.
 - **Re-hospedar fotos de producto (`productos.imagen_url`) fuera de `media.base44.com`** — ver (g), bloqueante.
+

@@ -1,4 +1,4 @@
-import { supabase, ensureSession } from '@/api/supabaseClient';
+import { claveIntencion, ejecutarIntencion } from '@/lib/intencionOperacion';
 
 /**
  * crearVentaDirecta — venta directa de mostrador (DINERO), atómica + idempotente.
@@ -21,16 +21,15 @@ import { supabase, ensureSession } from '@/api/supabaseClient';
  * @param {{sucursal_id:string,sucursal_nombre?:string}} args.sucursal
  * @param {object} args.posUser
  * @param {string} [args.idempotencyKey] clave estable por intento (dedup de reintentos)
- * @returns {Promise<{ ventaId:string, folio:string, idempotentHit:boolean, detalleIds:string[] }>}
+ * @returns {Promise<{ venta:any, detalles:any[], recuperada:boolean, ventaId:string, folio:string, idempotentHit:boolean, detalleIds:string[] }>}
  * @throws Error('SIN_CAJA'|'SIN_SUCURSAL'|'SUCURSAL_AJENA'|'CORTE_*'|'DESGLOSE_*'|'DETALLE_NO_CUADRA'|...)
  */
-export async function crearVentaDirecta({ cabecera, detalle, pago, corteCajaId, sucursal, posUser, idempotencyKey } = {}) {
+export async function crearVentaDirecta({ cabecera, detalle, pago, corteCajaId, sucursal, posUser } = {}) {
   if (!corteCajaId) throw new Error('SIN_CAJA');
   if (!sucursal?.sucursal_id) throw new Error('SIN_SUCURSAL');
   if (!Array.isArray(detalle) || detalle.length === 0) throw new Error('DETALLE_VACIO');
 
-  await ensureSession(); // sesión terminal (authenticated) lista antes del RPC
-  const { data, error } = await supabase.rpc('crear_venta_directa_tx', {
+  const { data, recuperada } = await ejecutarIntencion(claveIntencion('venta', sucursal.sucursal_id, posUser?.id), 'crear_venta_directa_tx', {
     p_cabecera: cabecera,
     p_detalle: detalle,
     p_metodo_pago: pago.metodo_pago,
@@ -43,11 +42,12 @@ export async function crearVentaDirecta({ cabecera, detalle, pago, corteCajaId, 
     p_sucursal_nombre: sucursal.sucursal_nombre || '',
     p_usuario_id: posUser?.id ?? null,
     p_usuario_nombre: posUser?.nombre ?? null,
-    p_idempotency_key: idempotencyKey ?? null,
-  });
-  if (error) throw new Error(error.message || 'No se pudo registrar la venta.');
+  }, 'p_idempotency_key');
 
   return {
+    recuperada,
+    venta: data?.venta,
+    detalles: data?.detalles,
     ventaId: data?.venta_id,
     folio: data?.folio,
     idempotentHit: !!data?.idempotent_hit,

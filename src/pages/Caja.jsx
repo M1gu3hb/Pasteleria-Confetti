@@ -199,7 +199,7 @@ export default function Caja() {
   const { data: abonosCorteRaw } = useQuery({
     queryKey: ['abonos_corte', cajaAbierta?.id],
     queryFn: () => cajaAbierta?.id
-      ? base44.entities.Abono.filter({ corte_caja_id: cajaAbierta.id }, '-fecha_abono', 200)
+      ? base44.entities.Abono.filterAll({ corte_caja_id: cajaAbierta.id }, '-fecha_abono')
       : [],
     enabled: !!cajaAbierta?.id,
     refetchInterval: 15000,
@@ -259,8 +259,8 @@ export default function Caja() {
   const ventasHoy = Array.isArray(ventasHoyRaw) ? ventasHoyRaw : [];
 
   const { data: gastosRaw } = useQuery({
-    queryKey: ['gastos_hoy'],
-    queryFn: () => base44.entities.GastoOperativo.list('-created_date', 100),
+    queryKey: ['gastos_hoy', sucursalEfectiva?.sucursal_id || 'all'],
+    queryFn: () => base44.entities.GastoOperativo.filterAll(sucursalEfectiva?.sucursal_id ? { sucursal_id: sucursalEfectiva.sucursal_id } : {}, '-created_date'),
     placeholderData: (prev) => prev,
     staleTime: 5000,
   });
@@ -420,7 +420,7 @@ export default function Caja() {
       }
       // Historial extenso. Si el negocio tiene más de 5000 ventas, el cliente
       // puede reportar al cajero el ticket exacto; el límite cubre meses normales.
-      const hist = await base44.entities.Venta.list('-created_date', 5000).catch(() => []);
+      const hist = await base44.entities.Venta.filterAll(sucursalEfectiva?.sucursal_id ? { sucursal_id: sucursalEfectiva.sucursal_id } : {}, '-created_date');
       lista.push(...(Array.isArray(hist) ? hist : []));
       // Deduplicar
       const seen = new Set();
@@ -1485,21 +1485,6 @@ export default function Caja() {
       const cerrado = await base44.entities.CorteCaja.update(cajaAbierta.id, data);
       const corteId = cajaAbierta.id;
 
-      // Asociar al corte ventas sueltas pagadas tras la apertura sin corte_caja_id
-      try {
-        const aperturaIso = cajaAbierta.fecha_apertura || cajaAbierta.fecha_inicio || cajaAbierta.created_date;
-        const apertura = aperturaIso ? new Date(aperturaIso).getTime() : 0;
-        const ventasSueltas = (Array.isArray(ventasHoy) ? ventasHoy : []).filter(v =>
-          v?.estado === 'pagada' && !v?.corte_caja_id && v?.fecha_cierre &&
-          new Date(v.fecha_cierre).getTime() >= apertura
-        );
-        await Promise.all(ventasSueltas.map(v =>
-          base44.entities.Venta.update(v.id, { corte_caja_id: corteId }).catch(() => {})
-        ));
-      } catch (err) {
-        console.warn('[Caja] asociar ventas al cierre:', err);
-      }
-
       // Cola de sincronización (no bloqueante)
       try {
         const nowIso = new Date().toISOString();
@@ -1546,7 +1531,10 @@ export default function Caja() {
       // Se decide por MARCADOR, no por SQLSTATE, y NUNCA se vuelca el error
       // crudo a la pantalla: si no reconocemos el marcador, se muestra el
       // genérico de siempre.
-      if (cierreBloqueadoPorLaBase(err)) {
+      if (err?.message?.includes('CIERRE_CAMBIO')) {
+        invalidarCajaQueries();
+        toast.error('La caja sigue abierta. Hubo movimientos nuevos; espera a que se actualice el resumen y vuelve a cerrar.');
+      } else if (cierreBloqueadoPorLaBase(err)) {
         toast.error('Todavía no se guardó el corte', {
           duration: 60000,
           description: (

@@ -19,7 +19,7 @@ const BLOQUES = [
     key: 'inventario',
     titulo: 'Inventario / Ingredientes',
     descripcion: 'Todos los ingredientes con stock, costo y datos maestros.',
-    fetch: () => base44.entities.Ingrediente.list('-created_date', 5000),
+    fetch: () => base44.entities.Ingrediente.listAll('-created_date'),
     columns: [
       { key: 'id', label: 'id' },
       { key: 'nombre', label: 'nombre' },
@@ -39,7 +39,7 @@ const BLOQUES = [
     key: 'productos',
     titulo: 'Productos',
     descripcion: 'Catálogo de productos vendibles con precio y categoría.',
-    fetch: () => base44.entities.ProductoTerminado.list('-created_date', 5000),
+    fetch: () => base44.entities.ProductoTerminado.listAll('-created_date'),
     columns: [
       { key: 'id', label: 'id' },
       { key: 'nombre', label: 'nombre' },
@@ -58,8 +58,8 @@ const BLOQUES = [
     custom: async () => {
       // Cruzamos productos para obtener nombres legibles.
       const [recetas, productos] = await Promise.all([
-        base44.entities.RecetaEscandallo.list('-created_date', 10000),
-        base44.entities.ProductoTerminado.list('-created_date', 5000),
+        base44.entities.RecetaEscandallo.listAll('-created_date'),
+        base44.entities.ProductoTerminado.listAll('-created_date'),
       ]);
       const safeProductos = Array.isArray(productos) ? productos : [];
       const mapProd = new Map(safeProductos.map(p => [p.id, p.nombre]));
@@ -88,7 +88,7 @@ const BLOQUES = [
     key: 'proveedores',
     titulo: 'Proveedores',
     descripcion: 'Directorio completo (activos e inactivos).',
-    fetch: () => base44.entities.Proveedor.list('-created_date', 5000),
+    fetch: () => base44.entities.Proveedor.listAll('-created_date'),
     columns: [
       { key: 'id', label: 'id' },
       { key: 'nombre', label: 'nombre' },
@@ -103,7 +103,7 @@ const BLOQUES = [
     key: 'compras',
     titulo: 'Compras de insumos',
     descripcion: 'Historial de compras registradas. SOLO EXPORTACIÓN.',
-    fetch: () => base44.entities.CompraInsumo.list('-fecha', 10000),
+    fetch: () => base44.entities.CompraInsumo.listAll('-fecha'),
     columns: [
       { key: 'id', label: 'id' },
       { key: 'fecha', label: 'fecha' },
@@ -118,7 +118,7 @@ const BLOQUES = [
     key: 'gastos',
     titulo: 'Gastos operativos',
     descripcion: 'Historial completo de gastos (renta, servicios, etc.).',
-    fetch: () => base44.entities.GastoOperativo.list('-fecha', 10000),
+    fetch: () => base44.entities.GastoOperativo.listAll('-fecha'),
     columns: [
       { key: 'id', label: 'id' },
       { key: 'fecha', label: 'fecha' },
@@ -204,7 +204,8 @@ export default function ExportarDatos() {
       }
     }
     setExportandoTodo(false);
-    toast.success(`Respaldo completo: ${ok} archivo(s) descargado(s)${fail ? `, ${fail} falló(aron)` : ''}.`);
+    if (fail) toast.error(`Exportación incompleta: ${ok} archivo(s) descargado(s), ${fail} bloque(s) fallaron. Reintenta los bloques pendientes.`);
+    else toast.success(`Exportación terminada: ${ok} archivo(s) descargado(s).`);
   };
 
   return (

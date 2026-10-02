@@ -98,7 +98,7 @@ export default function Registros() {
   // general del dueño). Cortes: 50/pág. Ventas: 200/pág.
   const {
     items: cortes, loading: cortesFirstLoad, loadingMore: cortesMore,
-    hayMas: hayMasCortes, cargarMas: cargarMasCortes,
+    hayMas: hayMasCortes, cargarMas: cargarMasCortes, error: errorCortes,
   } = useListaPaginada(
     (skip, limit) => sucId
       ? base44.entities.CorteCaja.filter({ sucursal_id: sucId }, '-created_date', limit, skip)
@@ -108,7 +108,7 @@ export default function Registros() {
   );
   const {
     items: ventas, loading: ventasFirstLoad, loadingMore: ventasMore,
-    hayMas: hayMasVentas, cargarMas: cargarMasVentas,
+    hayMas: hayMasVentas, cargarMas: cargarMasVentas, error: errorVentas,
   } = useListaPaginada(
     (skip, limit) => sucId
       ? base44.entities.Venta.filter({ sucursal_id: sucId }, '-created_date', limit, skip)
@@ -131,8 +131,8 @@ export default function Registros() {
   const { data: gastosRaw, isPending: gastosLoading } = useQuery({
     queryKey: ['registros_gastos', sucId],
     queryFn: () => sucId
-      ? base44.entities.GastoOperativo.filter({ sucursal_id: sucId }, '-created_date', 300)
-      : base44.entities.GastoOperativo.list('-created_date', 300),
+      ? base44.entities.GastoOperativo.filterAll({ sucursal_id: sucId }, '-created_date')
+      : base44.entities.GastoOperativo.listAll('-created_date'),
     placeholderData: (prev) => prev,
     staleTime: 5000,
   });
@@ -259,6 +259,7 @@ export default function Registros() {
         </div>
       </div>
 
+      {(errorCortes || errorVentas) && <p role="alert" className="text-destructive">No se completó la consulta. Reintenta con «Cargar más».</p>}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="flex-wrap h-auto bg-white/70 backdrop-blur-sm">
           <TabsTrigger value="cortes" className="gap-1"><FileText className="w-3 h-3" />Cortes ({cortes.length}{hayMasCortes ? '+' : ''})</TabsTrigger>
@@ -311,10 +312,10 @@ export default function Registros() {
         {/* VENTAS */}
         <TabsContent value="ventas" className="mt-4 space-y-3">
           <div className="flex justify-end gap-2 flex-wrap">
-            <ExportarSeccionButton rows={ventasFiltradas} columns={COLUMNS_VENTAS} filename="ventas" />
+            <ExportarSeccionButton rows={ventasFiltradas} label={hayMasVentas ? "Exportar cargados" : "Exportar"} columns={COLUMNS_VENTAS} filename="ventas" />
             {/* 6B / 1.I — Export granular por producto (líneas de venta).
                 Distingue cantidad lógica vs cantidad variable (500 g / 4 shots). */}
-            <ExportarDetallesButton ventas={ventasFiltradas} />
+            <ExportarDetallesButton ventas={ventasFiltradas} parcial={hayMasVentas} />
             <LimpiarSeccionButton seccion="ventas" />
           </div>
           <div className="space-y-2">
@@ -506,7 +507,7 @@ function LoadingRow({ label = 'Cargando…' }) {
  * Distingue cantidad lógica (líneas) vs cantidad variable real (g, ml, shots).
  * Para productos precio_fijo, las columnas variables salen vacías (no NaN).
  */
-function ExportarDetallesButton({ ventas }) {
+function ExportarDetallesButton({ ventas, parcial = false }) {
   const [busy, setBusy] = useState(false);
   const run = async () => {
     const lista = Array.isArray(ventas) ? ventas : [];
@@ -530,7 +531,7 @@ function ExportarDetallesButton({ ventas }) {
         const slice = lista.slice(i, i + CHUNK);
         const results = await Promise.all(
           slice.map(v =>
-            base44.entities.DetalleVenta.filter({ venta_id: v.id }).catch(() => [])
+            base44.entities.DetalleVenta.filterAll({ venta_id: v.id })
           )
         );
         results.forEach((arr, idx) => {
@@ -560,7 +561,7 @@ function ExportarDetallesButton({ ventas }) {
   return (
     <Button size="sm" variant="outline" disabled={busy} onClick={run} className="gap-1.5">
       <FileText className="w-4 h-4" />
-      {busy ? 'Exportando…' : 'Exportar productos'}
+      {busy ? 'Exportando…' : parcial ? 'Exportar productos cargados' : 'Exportar productos'}
     </Button>
   );
 }

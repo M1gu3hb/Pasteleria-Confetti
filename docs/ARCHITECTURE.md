@@ -1,3 +1,5 @@
+> Actualización 2026-10-02: Pedidos/pagos usan operacion_pedido_tx y registro privado de intención. Cierre y escritores financieros comparten bloqueo de corte. Comprobantes usan datos_corte_pos. Agregados financieros se calculan en servidor. Ver `docs/REGISTRO_REPARACION_OPERATIVA_2026-10-02.md`. El contenido fechado anterior conserva contexto histórico.
+
 # ARCHITECTURE — Opción A (DB compartida + RLS)
 
 ---
@@ -110,3 +112,4 @@ El POS conserva la lectura de `pedidos WHERE origen='web' AND estado='pendiente'
 
 ## Reglas globales (de los MDs de origen)
 snake_case; lógica de negocio en frontend; `sucursal_id` columna vertebral; cancelar nunca borra (cambio de estado); snapshots en líneas de venta; cargas por lotes `$in`; paginación + filtros por fecha/sucursal en historiales.
+
