@@ -56,3 +56,24 @@ No se hacen cobros, pedidos ni cierres ficticios en producción. La evidencia po
 ## Límites pendientes
 
 La reconstrucción y la protección no fabrican el evento histórico que el sistema no capturó. Sigue pendiente conciliar formalmente el libro de los cuatro pedidos originales con los pedidos válidos, preservando referencia y reversibilidad, sin duplicar caja. También siguen pendientes restauración integral/alertas externas, lectores firmados y abuso de subidas anónimas, actualización física del APK/impresora, deuda de tipos, migración del router y protección administrativa de ramas. No se declara la auditoría integral cerrada por esta ronda.
+
+## Comprobación posterior a publicación — 2026-10-02, 23:03–23:09 UTC
+
+- Migración versionada primero en aab08ed015957cf0f9c6a60669d70f23fe40628a; aplicada como 20261002230338_evidencia_financiera_pos. MD5 del SQL desplegado y archivo: 0ac86ad9feb6e129b36377c66422420f. No se editó una migración anterior.
+- Lectura real como dueño authenticated: saldos_inconsistentes=0, enlaces_inconsistentes=0, ventas_corte_cruzadas=0, abonos_sin_venta=0. Cuatro históricos no caja y cuatro pagos cancelados permanecen explícitos.
+- Se contrastaron antes/después todos los campos de los cuatro pedidos, las cuatro ventas y los tres cortes: idénticos. La migración no registró ingresos ni devoluciones y no alteró esos saldos.
+- Observación inicial: 16,685 registros financieros — ventas 6,416; detalles 7,987; pedidos 511; abonos 672; cortes 270; gastos 829. Cada observación lleva fecha de captura, no fecha histórica inventada. La primera consulta no encontró aún eventos de operación posteriores; no se simula un cobro para generar evidencia.
+- Privilegios efectivos: authenticated SELECT de bitácora=false; servicio UPDATE=false; authenticated DELETE pedidos=false; anon EXECUTE historial=false; authenticated EXECUTE base privada=false. Dueño obtiene cuatro observaciones enlazadas de PP-A-0212 mediante la RPC autorizada.
+- Producción READY dpl_HHJGGxNjProa6ks99ifX6L2yDMkj; APK READY dpl_3oXPatEpfdgXh8DDX8as1nBv9dFh; staging READY dpl_4jA1H1wDdnf9yB7XVEENHmsE5TvB, todos del commit anterior. HTTP200 producción/APK y mismo index-D2m7OyV6.js, contenido byte idéntico (2,396,252 caracteres), con historial_evidencia_pos, comprobante y mensaje de conciliación presentes. El cierre posterior sólo mejora explicación al empleado y documenta resultados; se vuelven a verificar sus versiones vivas.
+- Web sin cambios de código en esta ronda: build con puerta de calidad aprobado; HTTP200, index-Bdqk0nNU.js. Las pruebas de idempotencia/formularios anteriores siguen aprobadas.
+- POS build con calidad/regresiones/evidencia aprobado, sin diagnósticos TypeScript nuevos. Ticket abonado 40/40, base limpia 21/21, bloqueo de cierre 25/25 y avance/corte 25/25. Las ramas avanzaron sin force y sin modificar Caja/efectivoEsperado ni diseños anteriores.
+
+Advisors consultados tras DDL: siguen avisos de vistas definer, permisos de funciones, protección de contraseñas, tablas privadas con RLS sin policy, FK/índices/PK de respaldos, políticas múltiples y configuración de conexiones Auth. No se borraron respaldos ni se declaran cero avisos.
+
+Referencias de remediación: [RLS privada](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy), [vistas](https://supabase.com/docs/guides/database/database-linter?lint=0010_security_definer_view), [RPC](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable), [contraseñas](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection), [índices/FK](https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys), [conexiones Auth](https://supabase.com/docs/guides/deployment/going-into-prod).
+
+## Estado de documentación
+
+CLAUDE.md, PROJECT_CONTEXT.md, HANDOFF.md, CHANGELOG.md, DATABASE.md, FILE_MAP.md, BUGS_PENDING.md, NEXT_STEPS.md, DECISIONS.md y ARCHITECTURE.md actualizados. README deja de dirigir a Base44.
+
+Próximo paso recomendado: conciliar los cuatro originales mediante la evidencia interna y los pedidos válidos relacionados, con una corrección explícita del libro que no vuelva a afectar caja.

@@ -46,3 +46,7 @@ query={...query,error:null};tree=render();walk(tree,n=>{if(n.props.ref)n.props.r
 assert(!read('src/components/common/EstadoConciliacion.jsx').includes('requieren comprobante'));
 walk(tree,n=>{if(n.props.ref)n.props.ref.current={querySelector:()=>null};});const prior=prints;await button(tree).props.onClick();assert.equal(prints,prior,'Missing own receipt must not print another DOM ticket');
 console.log('PASS: actual owner dialog disables partial/error history; prints own DOM once on double tap; print error is visible and retryable; no external receipt prerequisite');
+const ec=vm.createContext({Object});vm.runInContext(strip(read('src/utils/errorOperacion.js'))+'\nglobalThis.message=mensajeOperacion;',ec);
+const deliveryMessage=ec.message({message:'[pedidos] CONCILIAR_PAGO_CANCELADO: server message'});assert(deliveryMessage.includes('Dashboard'));assert(deliveryMessage.includes('No se registró dinero'));
+for(const p of ['src/components/pedidos/PedidoPastelDetalleDialog.jsx','src/components/pedidos/RegistrarPagoDialog.jsx'])assert(read(p).includes('CONCILIAR_PAGO_CANCELADO')&&read(p).includes('mensajeOperacion('));
+console.log('PASS: employee delivery error explains the cancellation conflict and owner evidence; no misleading generic success');

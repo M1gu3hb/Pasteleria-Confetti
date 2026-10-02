@@ -28,7 +28,7 @@ export default function EstadoConciliacion({ sucursalId }) {
   const historicos = data.pagos_con_venta_cancelada;
   return <div className="border rounded-xl p-3 text-sm space-y-2">
     <p role={inconsistencias ? 'alert' : 'status'} className={inconsistencias ? 'font-semibold text-destructive' : 'text-muted-foreground'}>
-      {inconsistencias ? `${inconsistencias} diferencia(s) en saldos o registros. Revisa los movimientos antes de ajustar dinero.` : 'Saldos y vínculos de pagos verificados.'}
+      {inconsistencias ? `${inconsistencias} diferencia(s) en saldos o registros. Revisa los movimientos antes de ajustar dinero.` : historicos.length ? 'Cifras y vínculos revisados; hay pagos cancelados pendientes de conciliación interna.' : 'Saldos y vínculos de pagos verificados.'}
     </p>
     {!!data.abonos_historicos_sin_venta && <p className="text-xs text-muted-foreground">{data.abonos_historicos_sin_venta} anticipo(s) histórico(s) documentado(s) sin movimiento de caja.</p>}
     {!!historicos.length && <details>

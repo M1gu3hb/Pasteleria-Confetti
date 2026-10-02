@@ -1,4 +1,5 @@
 import { tieneIntencionPendiente } from '@/utils/intencionPersistente';
+import { mensajeOperacion } from '@/utils/errorOperacion';
 import { recuperarOperacionPedido } from '@/utils/registrarPagoPedido';
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
@@ -220,7 +221,7 @@ export default function PedidoPastelDetalleDialog({ pedido: pedidoProp, open, on
       onClose?.();
     } catch (err) {
       console.error('[PedidoPastel] cambiarEstado:', err);
-      toast.error('No se pudo actualizar el pedido');
+      toast.error(err?.message?.includes('CONCILIAR_PAGO_CANCELADO') ? mensajeOperacion(err) : 'No se pudo actualizar el pedido');
     } finally {
       setAccion(false);
     }
@@ -488,4 +489,3 @@ export default function PedidoPastelDetalleDialog({ pedido: pedidoProp, open, on
     </Dialog>
   );
 }
-

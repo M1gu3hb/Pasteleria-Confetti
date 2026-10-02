@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { mensajeOperacion } from '@/utils/errorOperacion';
 import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -100,7 +101,7 @@ export default function RegistrarPagoDialog({ pedido, cajaAbierta, posUser, sucu
       toast.success('Pedido marcado como entregado');
     } catch (e) {
       console.error('[RegistrarPago] marcar entregado:', e);
-      toast.error('No se pudo marcar como entregado.');
+      toast.error(e?.message?.includes('CONCILIAR_PAGO_CANCELADO') ? mensajeOperacion(e) : 'No se pudo marcar como entregado.');
     } finally {
       setLoading(false);
       cerrarTrasLiquidar();
@@ -165,4 +166,3 @@ export default function RegistrarPagoDialog({ pedido, cajaAbierta, posUser, sucu
     </Dialog>
   );
 }
-
