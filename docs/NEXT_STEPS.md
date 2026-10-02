@@ -2,7 +2,11 @@
 
 Revisado el 2026-10-02.
 
-Orden operativo siguiente: obtener comprobantes de las cuatro cancelaciones; verificar versión cargada/ticket/papel/cajón en cada sucursal sin generar cobros ficticios; instrumentar alertas externas y ensayar restauración integral; desplegar lectores firmados antes de privatizar Storage; abordar deuda de tipos y actualización mayor del router. Una nueva sesión debe repetir lecturas vivas de versiones/permisos. No recrear ingresos antiguos ni reabrir cortes sin conciliación.
+Orden operativo siguiente: conciliar internamente las cuatro cancelaciones con la evidencia conservada por el POS; verificar versión cargada/ticket/papel/cajón en cada sucursal sin generar cobros ficticios; instrumentar alertas externas y ensayar restauración integral; desplegar lectores firmados antes de privatizar Storage; abordar deuda de tipos y actualización mayor del router. Una nueva sesión debe repetir lecturas vivas de versiones/permisos. No recrear ingresos antiguos ni reabrir cortes sin conciliación.
+
+## Evidencia financiera y cancelaciones
+
+Bitácora automática privada de las seis tablas financieras, guardada en la misma transacción; observación inicial distinguida de eventos reales. Evidencia y reconstrucción de cancelaciones en [REAUDITORIA_EVIDENCIA_FINANCIERA_2026-10-02.md](REAUDITORIA_EVIDENCIA_FINANCIERA_2026-10-02.md). Los pedidos con abono ligado a venta cancelada requieren conciliación interna antes de nuevos cobros, devoluciones o entrega; reintentos confirmados siguen recuperables. Nunca recrear dinero antiguo ni exigir otro POS/comprobante externo como requisito.
 
 ## Contratos que se deben conservar
 

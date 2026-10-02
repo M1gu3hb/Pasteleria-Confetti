@@ -1,39 +1,9 @@
-**Welcome to your Base44 project** 
+# Confetti POS
 
-**About**
+POS de tres sucursales: React/Vite, Supabase y Vercel. Lee CLAUDE.md, PROJECT_CONTEXT.md y HANDOFF.md antes de cambiar código o dinero. El histórico Base44 se conserva como documentación; ya no es el servicio de producción.
 
-View and Edit  your app on [Base44.com](http://Base44.com) 
+Instala con `npm ci`. Para desarrollo usa VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY del proyecto autorizado; nunca credenciales de servicio/contraseñas en VITE. Ejecuta `npm run dev`. `npm run build` exige lint, puerta de tipos y pruebas operativas/autoridad/evidencia antes de Vite.
 
-This project contains everything you need to run your app locally.
+La rama de producción es migracion/supabase; apk/capacitor debe avanzar al mismo commit porque los APK instalados cargan su alias Vercel. No repuntar ni recompilar APK sin verificar compatibilidad. Código/migraciones y estados se consultan en GitHub/Supabase/Vercel; un deploy no demuestra que la tablet recargó.
 
-**Edit the code in your local development environment**
-
-Any change pushed to the repo will also be reflected in the Base44 Builder.
-
-**Prerequisites:** 
-
-1. Clone the repository using the project's Git URL 
-2. Navigate to the project directory
-3. Install dependencies: `npm install`
-4. Create an `.env.local` file and set the right environment variables
-
-```
-VITE_BASE44_APP_ID=your_app_id
-VITE_BASE44_APP_BASE_URL=your_backend_url
-
-e.g.
-VITE_BASE44_APP_ID=cbef744a8545c389ef439ea6
-VITE_BASE44_APP_BASE_URL=https://my-to-do-list-81bfaad7.base44.app
-```
-
-Run the app: `npm run dev`
-
-**Publish your changes**
-
-Open [Base44.com](http://Base44.com) and click on Publish.
-
-**Docs & Support**
-
-Documentation: [https://docs.base44.com/Integrations/Using-GitHub](https://docs.base44.com/Integrations/Using-GitHub)
-
-Support: [https://app.base44.com/support](https://app.base44.com/support)
+Pruebas usan fixtures aislados. No generar cobros, pedidos o cortes ficticios en producción. La fórmula de efectivo y los tres candados de Caja están en CLAUDE.md.

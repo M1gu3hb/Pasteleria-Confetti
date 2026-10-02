@@ -2,7 +2,11 @@
 
 Revisado el 2026-10-02.
 
-Nuevas funciones: guard_venta_confirmada y conciliacion_operativa_pos (sólo dueño activo); crear_pedido_web_idempotente y wrapper legado; solicitar_transcripcion_pos (Auth POS), completar_transcripcion_pos (sólo servicio). Tablas privadas con RLS sin acceso cliente: intenciones_pedido_web, cuotas_pedido_web, transcripciones_voz y cuotas_voz. No tocar migraciones aplicadas; cambios futuros mediante nueva migración CLI. Comparar hash SQL desplegado con archivo versionado.
+Bitácora: app_private.eventos_financieros_pos (RLS sin grants cliente), auditar_finanzas_pos y snapshot_financiero_pos; historial_evidencia_pos exige dueño y cursor. Las funciones base de operación/conciliación quedan privadas, llamadas sólo por envolturas controladas. Nuevas funciones: guard_venta_confirmada y conciliacion_operativa_pos (sólo dueño activo); crear_pedido_web_idempotente y wrapper legado; solicitar_transcripcion_pos (Auth POS), completar_transcripcion_pos (sólo servicio). Tablas privadas con RLS sin acceso cliente: intenciones_pedido_web, cuotas_pedido_web, transcripciones_voz y cuotas_voz. No tocar migraciones aplicadas; cambios futuros mediante nueva migración CLI. Comparar hash SQL desplegado con archivo versionado.
+
+## Evidencia financiera y cancelaciones
+
+Bitácora automática privada de las seis tablas financieras, guardada en la misma transacción; observación inicial distinguida de eventos reales. Evidencia y reconstrucción de cancelaciones en [REAUDITORIA_EVIDENCIA_FINANCIERA_2026-10-02.md](REAUDITORIA_EVIDENCIA_FINANCIERA_2026-10-02.md). Los pedidos con abono ligado a venta cancelada requieren conciliación interna antes de nuevos cobros, devoluciones o entrega; reintentos confirmados siguen recuperables. Nunca recrear dinero antiguo ni exigir otro POS/comprobante externo como requisito.
 
 ## Contratos que se deben conservar
 

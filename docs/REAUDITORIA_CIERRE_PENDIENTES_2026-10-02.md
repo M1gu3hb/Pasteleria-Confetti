@@ -39,7 +39,7 @@ La puerta de publicación respeta la deuda de tipos contrastada contra la versi�
 
 La comprobación posterior identificó PP-A-0029 ($1,000), PP-A-0031 ($400), PP-C-0001 ($100) y PP-C-0002 ($500): `afecta_caja=false`, corte nulo y nota de backfill explícita. No son ventas faltantes de una operación actual. Se conserva y muestra su conteo sin generar ingreso ni excluir folios del test; la regla es flag falso y ausencia de corte. Los flags nulos o un corte asociado siguen detectándose como enlace por revisar. Son distintos de los casos de cancelación siguientes. Prueba aislada: registro histórico contado como tal; convertirlo a movimiento de caja activa la alerta.
 
-## Conciliación histórica que requiere comprobantes
+## Conciliación histórica — conclusión corregida por revisión posterior
 
 | Pedido | Venta cancelada | Abono positivo | Estado del pedido | Abonos negativos registrados |
 |---|---|---:|---|---:|
@@ -48,7 +48,7 @@ La comprobación posterior identificó PP-A-0029 ($1,000), PP-A-0031 ($400), PP-
 | PP-C-0006 | CONF-C-V0172 | $280 efectivo | cancelado | 0 |
 | PP-C-0007 | CONF-C-V0173 | $280 efectivo | cancelado | 0 |
 
-Total $1,700. Las ventas tienen metadatos de devolución, pero no hay abono negativo que documente esa salida en el libro del pedido. Esto no prueba si se devolvió físicamente el dinero. No se recrearon ingresos ni se descontaron saldos a ciegas. Se necesita recibo de cobro/devolución, fecha, método y sucursal/corte para decidir una corrección compensatoria auditada. Esos casos permanecen visibles para el dueño.
+Total $1,700. Las ventas tienen metadatos de devolución, pero no hay abono negativo que documente esa salida en el libro del pedido. Esto no prueba si se devolvió físicamente el dinero. No se recrearon ingresos ni se descontaron saldos a ciegas. Corrección de la conclusión de esta ronda: el POS conserva precisamente fecha, método, corte, motivo e importe de cancelación. La revisión posterior reconstruye la evidencia interna en REAUDITORIA_EVIDENCIA_FINANCIERA_2026-10-02.md; no exige recibos externos. No debe duplicarse una salida en los cortes, que ya excluyen esas ventas.
 
 ## Pendientes que esta publicación no certifica
 
@@ -69,7 +69,7 @@ Cuatro migraciones nuevas versionadas antes de aplicarlas: proteger_ventas_confi
 - Código POS/APK: f70e6df6edbc887878f8089baf421a628a1996f0; ambos refs iguales y avance sin force. Deployments READY: producción dpl_HRGaGAdU45qc4y68TvyiKHpEnhwQ, APK dpl_HdZT4RMKjjzouF72sLxsC92NN39i.
 - Web: 3d9dabe46119b59ba71fd851a1420bc613744177; READY dpl_DNHpsHm4xZzqPuctGR9f7vSuAnkj. Los commits de cierre posteriores sólo añaden evidencia/configuración del build; consultar sus refs actuales para la versión viva.
 - HTTP 200 de producción, alias APK y www.pasteleria-confetti.com; POS/APK sirven `/assets/index-Kp38hSGR.js`, byte idéntico. Web sirve `/assets/index-Bdqk0nNU.js`, idioma es y RPC/recuperación presentes.
-- Lectura SQL con snapshot repetible y rol authenticated del dueño: saldos_inconsistentes=0, enlaces_inconsistentes=0, ventas_corte_cruzadas=0, abonos_sin_venta=0; abonos_historicos_sin_venta=4, pagos_con_venta_cancelada=4. Estos últimos requieren comprobantes y no se consideran resueltos.
+- Lectura SQL con snapshot repetible y rol authenticated del dueño: saldos_inconsistentes=0, enlaces_inconsistentes=0, ventas_corte_cruzadas=0, abonos_sin_venta=0; abonos_historicos_sin_venta=4, pagos_con_venta_cancelada=4. La revisión posterior reconstruye su evidencia interna; sigue separada la conciliación del libro frente a la entrega física de dinero.
 - 6,398 ventas pagadas en el snapshot de 21:22; cero tickets positivos con detalles ausentes/subtotal discordante. El volumen puede crecer con la operación real.
 - Un dueño activo y tres terminales enroladas. Anonymous INSERT pedidos=false; leer cuotas/intenciones privadas=false. Solicitar voz como anon=false; completar voz como anon/auth=false y servicio=true.
 - Edge transcribir-nota-voz ACTIVE v4, verify_jwt=true. Contenido descargado de la función exactamente igual al versionado; SHA256 ddbf9211db79fbac29596d515e8ca7498362b54d137f516a46e08d9751b67479.

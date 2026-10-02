@@ -2,7 +2,11 @@
 
 Revisado el 2026-10-02.
 
-Pendientes vigentes: cuatro cancelaciones por $1,700 con ausencia de abonos negativos; lectores firmados/privacidad F18; validación física y configuración/firma APK F19; deuda TypeScript POS 677/web 23 y protección administrativa F23; dos avisos moderados del router F24; respaldo/restauración/alertas externas F26. F05–F14 y autoridad F01–F04/F16 tienen reparación y evidencia en informes, sin certificar papel, efectivo físico o todos los dispositivos.
+Pendientes vigentes: conciliación del libro de cuatro pedidos cuyos pagos y cancelaciones sí están documentados en el POS ($1,700), con motivos que distinguen devolución de posible duplicado; lectores firmados/privacidad F18; validación física y configuración/firma APK F19; deuda TypeScript POS 677/web 23 y protección administrativa F23; dos avisos moderados del router F24; respaldo/restauración/alertas externas F26. F05–F14 y autoridad F01–F04/F16 tienen reparación y evidencia en informes, sin certificar papel, efectivo físico o todos los dispositivos.
+
+## Evidencia financiera y cancelaciones
+
+Bitácora automática privada de las seis tablas financieras, guardada en la misma transacción; observación inicial distinguida de eventos reales. Evidencia y reconstrucción de cancelaciones en [REAUDITORIA_EVIDENCIA_FINANCIERA_2026-10-02.md](REAUDITORIA_EVIDENCIA_FINANCIERA_2026-10-02.md). Los pedidos con abono ligado a venta cancelada requieren conciliación interna antes de nuevos cobros, devoluciones o entrega; reintentos confirmados siguen recuperables. Nunca recrear dinero antiguo ni exigir otro POS/comprobante externo como requisito.
 
 ## Contratos que se deben conservar
 

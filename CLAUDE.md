@@ -1,3 +1,5 @@
+> Evidencia financiera: bitácora de servidor anexa anterior/posterior; OBSERVADO no es un cobro histórico. Cancelaciones/payload/fecha/detalle confirmado protegidos. Reconstruir comprobantes desde el POS, no pedir evidencia externa como requisito; no duplicar salidas en cortes antiguos. Ver docs/REAUDITORIA_EVIDENCIA_FINANCIERA_2026-10-02.md.
+
 > Contrato vigente tras segunda ronda: identidad/usuarios por RPC; PIN solo Edge con límite persistente; administrador en sesión propia; terminal técnica por registro privado, sin exigir activo humano. No agregar credenciales VITE ni restaurar contraseñas compartidas. Ver docs/REAUDITORIA_SEGUNDA_RONDA_2026-10-02.md. Las reglas de Caja/efectivo/CDMX/APK siguen vigentes.
 
 # CLAUDE.md — Reglas permanentes del proyecto (POS Confetti)

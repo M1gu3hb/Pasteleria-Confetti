@@ -1,3 +1,7 @@
+## 2026-10-02 — Reconstrucción interna y evidencia financiera
+
+Se corrige la exigencia de comprobantes externos para $1,700: el POS conserva ventas canceladas, motivos, cortes y pedidos cercanos. Se impide devolver/cobrar otra vez sobre esos abonos contradictorios y entregar sin conciliación; se protegen metadatos, intención, fecha y detalles cancelados. Bitácora automática del servidor con anterior/posterior y observación inicial explícita; consulta e impresión de evidencia al dueño. No se cambian importes históricos ni se duplican salidas en cortes. Ver REAUDITORIA_EVIDENCIA_FINANCIERA_2026-10-02.md.
+
 ## 2026-10-02 — Reauditoría y pendientes operativos
 
 Protección de importes/historial de ventas confirmadas; visor con lectura actual completa y bloqueo ante error; cola nativa completa; pedidos web recuperables con cuotas; autorización/cache/lease de voz; importaciones reales; puerta automatizada de build; actualización compatible de dependencias; accesibilidad de formularios y conciliación visible al dueño. Tipos antiguos, router, privacidad de medios, dispositivos/restauración y cuatro cancelaciones siguen explícitamente pendientes. Ver REAUDITORIA_CIERRE_PENDIENTES_2026-10-02.md.
@@ -60,7 +64,7 @@ Regla reescrita con esa evidencia y con la advertencia de no devolverle el doble
 
 ### Hallazgos registrados, sin tocar (requieren decisión de Miguel)
 
-- **4 anticipos sin venta paralela, $1,700** — todos de la pantalla de *crear pedido*, no del botón de abonar.
+- **4 anticipos por $1,700, considerados entonces sin venta paralela.** Rectificación del 2026-10-02: sus ventas existen y están canceladas; se reconstruyen junto con motivos, cortes y pedidos cercanos. Ver REAUDITORIA_EVIDENCIA_FINANCIERA_2026-10-02.md.
 - **6 pedidos donde `total_final − total_abonado ≠ saldo_pendiente`** — datos viejos: el pedido se editó después de
   pagar y `saldo_pendiente` quedó rezagado.
 
