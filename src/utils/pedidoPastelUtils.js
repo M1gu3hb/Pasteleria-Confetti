@@ -64,12 +64,21 @@ export function buildWhatsAppLink(pedido) {
   const tel = String(pedido.cliente_telefono || '').replace(/\D/g, '');
   const num = tel.length === 10 ? `52${tel}` : tel;
   const fmt = (n) => `$${(Number(n) || 0).toFixed(2)}`;
+  // El importe histórico del pedido ya forma parte del total. No consultar
+  // los rangos actuales ni recalcular dinero al compartir el comprobante.
+  const importeBase = Number(pedido.precio_base);
+  const mensajeBase = pedido.tipo_pedido !== 'productos_catalogo' && pedido.incluye_base &&
+    Number.isFinite(importeBase) && importeBase > 0
+    ? `↩️ Importe de base: ${fmt(importeBase)} (incluido en el total).\n` +
+      `Al devolver la base limpia, se te devolverán ${fmt(importeBase)}.\n`
+    : '';
   const msg =
     `Hola ${pedido.cliente_nombre || ''}, tu pedido en Pastelería Confetti quedó registrado con el folio ${pedido.folio}.\n` +
     `📅 Entrega: ${pedido.fecha_entrega || ''} ${pedido.hora_entrega || ''}\n` +
     `🎂 ${pedido.kilos || 0}kg${pedido.concepto ? ` - ${pedido.concepto}` : ''}\n` +
     `💰 Total: ${fmt(pedido.total_final)}\n` +
     `💵 Abonado: ${fmt(pedido.total_abonado ?? pedido.a_cuenta)} | Resta: ${fmt(pedido.saldo_pendiente ?? pedido.resta)}\n` +
+    mensajeBase +
     `¡Gracias por tu preferencia! 🎉`;
   return `https://wa.me/${num}?text=${encodeURIComponent(msg)}`;
 }

@@ -558,6 +558,7 @@ export default function NuevoPedidoPastel() {
           <div>
             <Label className="text-xs">Hora de entrega</Label>
             <Input type="time" value={form.hora_entrega} onChange={e => set('hora_entrega', e.target.value)} className="skeu-input h-11 mt-1" />
+            <p className="text-xs text-muted-foreground mt-1">15:00 = 3 p. m. · 17:00 = 5 p. m.</p>
           </div>
         </CardContent>
       </Card>

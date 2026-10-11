@@ -1,6 +1,10 @@
 # PROJECT_CONTEXT — contratos vigentes
 
-Revisado el 2026-10-02.
+## Pedidos personalizados
+
+Orden por fecha y hora local, con hora ausente al final de su día y desempate por ID. La cuarta fila de accesos rápidos filtra horarios; búsqueda limpia filtros, pero conserva sucursal. WhatsApp incluye la base guardada y su devolución con base limpia, sin sumarla otra vez al total. El ticket visual/impresión conserva su componente. Pruebas: npm run test:pedidos.
+
+Revisado el 2026-10-11.
 
 POS Confetti opera dinero real en tres sucursales, con React/Vite, Supabase y Vercel. El APK carga el alias de apk/capacitor. Prioridad: cobros, abonos, comprobantes y aislamiento por sucursal. Este archivo registra mecanismos; las versiones vivas se consultan en los servicios.
 

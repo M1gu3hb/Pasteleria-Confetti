@@ -1,5 +1,9 @@
 # MEJORAS POST-CUTOVER — Pastelería Confetti
 
+> HISTÓRICO de la migración de junio. No usar como contrato vigente: las
+> menciones de doble conteo están revocadas en CLAUDE.md y los cobros se
+> verifican con las RPC actuales. Ver docs vigentes/reauditorías de octubre.
+
 > Cosas que **NO** son parte de la migración (regla: migrar IDÉNTICO a Base44 primero, mejorar después). Se evalúan con Miguel **después** del cutover. NO se hacen a media migración.
 
 | # | Mejora | Por qué post-cutover (no es fidelidad) | Origen |

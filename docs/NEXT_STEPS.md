@@ -1,6 +1,10 @@
 # NEXT_STEPS — contratos vigentes
 
-Revisado el 2026-10-02.
+## Validación en tablet
+
+Después de cerrar y reabrir la app, revisar la cuarta fila de Horario, el orden y la vista previa de WhatsApp con un pedido real ya guardado. No enviar mensajes ni crear cobros ficticios para verificar. Definir con Miguel base para kilos fraccionarios; no recalcular historial.
+
+Revisado el 2026-10-11.
 
 Orden operativo siguiente: conciliar internamente las cuatro cancelaciones con la evidencia conservada por el POS; verificar versión cargada/ticket/papel/cajón en cada sucursal sin generar cobros ficticios; instrumentar alertas externas y ensayar restauración integral; desplegar lectores firmados antes de privatizar Storage; abordar deuda de tipos y actualización mayor del router. Una nueva sesión debe repetir lecturas vivas de versiones/permisos. No recrear ingresos antiguos ni reabrir cortes sin conciliación.
 

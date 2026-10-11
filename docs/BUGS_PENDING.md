@@ -1,6 +1,10 @@
 # BUGS_PENDING — contratos vigentes
 
-Revisado el 2026-10-02.
+## Horario y WhatsApp
+
+Corregidos orden sin hora y omisión de base en WhatsApp; test:pedidos cubre ambos y sucursales. No se corrigen horarios históricos por inferencia. Pendiente decisión comercial: base_rangos tiene huecos para kilos fraccionarios entre rangos, donde devuelve cero. La ayuda de BaseRangosSection dice «se usa el último», pero el cálculo real cotiza aparte por encima del máximo. No cambiar cargos pasados ni rangos sin definir la regla. Evidencia fechada en AUDITORIA_HORARIOS_WHATSAPP_2026-10-11.md.
+
+Revisado el 2026-10-11.
 
 Pendientes vigentes: conciliación del libro de cuatro pedidos cuyos pagos y cancelaciones sí están documentados en el POS ($1,700), con motivos que distinguen devolución de posible duplicado; lectores firmados/privacidad F18; validación física y configuración/firma APK F19; deuda TypeScript POS 677/web 23 y protección administrativa F23; dos avisos moderados del router F24; respaldo/restauración/alertas externas F26. F05–F14 y autoridad F01–F04/F16 tienen reparación y evidencia en informes, sin certificar papel, efectivo físico o todos los dispositivos.
 

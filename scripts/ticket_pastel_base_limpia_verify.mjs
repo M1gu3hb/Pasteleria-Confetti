@@ -166,7 +166,10 @@ const hashContenido = (ruta) =>
 const HASHES = {
   'components/tickets/CorteTicket.jsx':        '9941769140f5fd567982dc12f7ffa32a5e173bc0985a41db8cc44f8b13778dc6',
   'components/tickets/CorteTicketTermico.jsx': '899d37befbbfcc64140cc5b886ae689bdf264bcc67dcf99243f50cd45a78e38a',
-  'components/tickets/PreCuentaTicket.jsx':    '25644140040d78acc95c4162fb7d0b81c4aa7f71f304004967c7e2b53b285b3e',
+  // 2026-10-11: contrastado con el árbol desplegado 5e2e02c y sin diff local.
+  // El hash anterior omitía nombreLineaTicket, incorporado en 13c89ae
+  // (2026-07-12) para ventas libres; era un fallo previo, no un cambio de diseño.
+  'components/tickets/PreCuentaTicket.jsx':    'adf90ead8361cbc4539f39b47451bf584bae2f007a7a0176114bee737b64b10a',
   // TicketPedidoPastel.jsx ya no está en la lista: se ELIMINÓ (era el fósil).
   // Su ausencia la vigilan las comprobaciones 1b y 1c.
 };

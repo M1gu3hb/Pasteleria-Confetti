@@ -1,6 +1,10 @@
 # ARCHITECTURE — contratos vigentes
 
-Revisado el 2026-10-02.
+## Horarios de pedidos
+
+Se ordena la respuesta completa por fecha/hora/ID en el cliente. No se pagina por la hora editable ni se reemplaza la RPC de snapshot. El filtro horario es local y se cruza con sucursal/estado/fecha. La fila nueva comparte AccesosRapidos y su desplazamiento horizontal interno.
+
+Revisado el 2026-10-11.
 
 El cliente usa adapters sobre tablas/RPC. Escrituras financieras son servidor/transacción; lecturas financieras completas son snapshots con RLS. Pedido web usa intención/hash/cuota en app_private; voces usan autorización de objeto y lease antes de IA. Impresión nativa comparte una cola completa con cajón y cortes. Storage público aún exige fase de lectores firmados antes de privatizar.
 

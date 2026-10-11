@@ -1,6 +1,10 @@
 # HANDOFF — contratos vigentes
 
-Revisado el 2026-10-02.
+## Horario y WhatsApp
+
+compararEntregaPedidos y coincideHorarioEntrega viven en src/utils/horarioPedidos.js. La pantalla mantiene consulta/cache/filtro local por sucursal. WhatsApp usa precio_base histórico, no los rangos actuales. No corregir horas AM/PM ni bases históricas por suposición. Ejecutar npm run test:pedidos y build; verificar el alias de la APK, no sólo producción. Ver docs/AUDITORIA_HORARIOS_WHATSAPP_2026-10-11.md.
+
+Revisado el 2026-10-11.
 
 Antes de continuar: leer CLAUDE.md y el informe de reauditoría. Mantener los tres candados de Caja (selección venta/corte, medianoche CDMX y buscador web por sucursal) y efectivoEsperado. Las limpiezas de importaciones no modifican esas reglas. Verificar base y canales antes de actuar, nunca inferir despliegue por documentación.
 

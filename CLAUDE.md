@@ -4,6 +4,10 @@
 
 # CLAUDE.md — Reglas permanentes del proyecto (POS Confetti)
 
+## Pedidos personalizados: horario y WhatsApp
+
+Fecha → hora local 24 h → ID; hora ausente al final del mismo día. Los accesos de horario nunca amplían la sucursal seleccionada. WhatsApp muestra precio_base guardado, incluido en total, sin recalcularlo. Ver docs/AUDITORIA_HORARIOS_WHATSAPP_2026-10-11.md y npm run test:pedidos.
+
 ## Propósito
 
 Instrucciones permanentes para **cualquier** sesión de Claude Code, otra cuenta u otra IA que trabaje en este proyecto. Estas reglas mandan sobre cualquier costumbre por defecto.

@@ -1,6 +1,10 @@
 # DECISIONS — contratos vigentes
 
-Revisado el 2026-10-02.
+## Horario y base compartida
+
+Fecha es la clave principal; hora local 24 h sin Date/zona del dispositivo. Ausente/inválida va al final de su día y queda visible con «Sin hora»; no se modifica el dato. La sucursal sigue en queryKey, filtro de servidor, filtro local y guardia del detalle. Compartir base usa precio_base guardado con cargo positivo e incluye_base; no consulta configuración ni registra cobros/devoluciones de dinero.
+
+Revisado el 2026-10-11.
 
 La evidencia de las cuatro cancelaciones se reconstruye desde el POS; no se exige un comprobante externo como requisito. Los cortes ya excluyen esas ventas: no se duplica la salida en caja. Los motivos de San Gregorio describen duplicación, por lo que no se asume una devolución física. No se revocan todas las sesiones técnicas para resolver sesiones humanas. No se privatizan audios/imágenes antes de desplegar lectores compatibles. Importaciones sin respaldo real se ocultan/rechazan. Cuotas de abuso limitan nuevas intenciones por ventana, no almacenamiento/historial. No se usa audit fix --force para saltar de router ni se declara deuda de tipos resuelta.
 

@@ -1,5 +1,9 @@
 # MEJORAS POST-VALIDACIÓN — Pastelería Confetti
 
+> HISTÓRICO de junio: afirmaciones de Base44 operativo, cutover pendiente y
+> doble conteo no describen el sistema vigente. Consultar PROJECT_CONTEXT.md,
+> CLAUDE.md y reauditorías de octubre antes de actuar sobre dinero/canales.
+
 > Fase que arranca **después** de la validación. El sistema migrado ya es FIEL a lo que Abel usaba en
 > Base44 (POS + Web independientes, validados, y respaldados por 60 días de bot). Estas son las mejoras
 > que **quedaron pendientes en Base44 por falta de créditos** y ahora SÍ se hacen, **en orden**.

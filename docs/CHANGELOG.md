@@ -1,3 +1,18 @@
+## 2026-10-11 — Horario de pedidos y base en WhatsApp
+
+Pedidos personalizados ordena fecha → hora local 24 h → ID; antes desempató
+sólo por ID y podía mostrar 17:00 antes de 15:00. Cuarta fila «Horario» con
+Todas/Antes de 12/12–17:59/Desde 18/Sin hora, mismas filas y controles táctiles
+de 44 px. Búsqueda limpia horario y conserva sucursal. Captura explica 15/17 h.
+WhatsApp incluye precio_base guardado, incluido en total, y su devolución con
+base limpia. Sin DDL, datos ficticios, cambios de caja/pagos/impresión ni APK.
+
+test:pedidos ejecuta pantalla/helper reales, límites y cambio de sucursal;
+comprobado que falla contra las funciones anteriores por separado. Build con
+puerta de calidad aprobado (lint cero; sin tipos nuevos; 677 diagnósticos
+antiguos). Ver AUDITORIA_HORARIOS_WHATSAPP_2026-10-11.md para alcance,
+verificaciones y comprobación posterior de publicación.
+
 ## 2026-10-02 — Reconstrucción interna y evidencia financiera
 
 Se corrige la exigencia de comprobantes externos para $1,700: el POS conserva ventas canceladas, motivos, cortes y pedidos cercanos. Se impide devolver/cobrar otra vez sobre esos abonos contradictorios y entregar sin conciliación; se protegen metadatos, intención, fecha y detalles cancelados. Bitácora automática del servidor con anterior/posterior y observación inicial explícita; consulta e impresión de evidencia al dueño. No se cambian importes históricos ni se duplican salidas en cortes. Ver REAUDITORIA_EVIDENCIA_FINANCIERA_2026-10-02.md.

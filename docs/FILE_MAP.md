@@ -1,6 +1,10 @@
 # FILE_MAP — contratos vigentes
 
-Revisado el 2026-10-02.
+## Horario y WhatsApp
+
+src/pages/PedidosPastel.jsx: cuatro filas de accesos, consulta y filtro por sucursal. src/utils/horarioPedidos.js: hora 24 h, orden y franjas. src/utils/pedidoPastelUtils.js: WhatsApp con base guardada. src/pages/NuevoPedidoPastel.jsx: ayuda de captura 15:00/17:00. scripts/pedidos_horario_whatsapp_verify.mjs integra npm run test:pedidos y build.
+
+Revisado el 2026-10-11.
 
 Evidencia: evidenciaFinanciera.js, EvidenciaPagoDialog.jsx, migración evidencia_financiera_pos y suites evidencia_financiera/evidencia_cliente. Dinero: operacion_pedido_tx y migraciones operativas; historial: historial_operativo_pos; reimpresión: cargarTicketVenta/TicketViewerDialog; impresión: colaImpresion/printTicket; importación: importacionesDisponibles/importExecutors; conciliación: EstadoConciliacion; web: envioPedidoWeb y ambos formularios. Suites: operacion_*, autoridad_*, recuperacion_auth, pendientes_sql, pendientes_cliente, voz_edge; puerta de build: calidad_types_verify con fixtures/typecheck_deuda_conocida.json.
 

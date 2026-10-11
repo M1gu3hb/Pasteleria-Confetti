@@ -15,6 +15,7 @@ import PedidoPastelDetalleDialog from '@/components/pedidos/PedidoPastelDetalleD
 import { useConfig } from '@/lib/ConfigContext';
 import { ESTADOS_PEDIDO, fechaCDMX } from '@/utils/pedidoPastelUtils';
 import { paletaSucursal } from '@/utils/coloresSucursal';
+import { compararEntregaPedidos, coincideHorarioEntrega } from '@/utils/horarioPedidos';
 
 const ACCESOS_ESTADO = [
   { value: 'activos', label: 'Por entregar' },
@@ -33,6 +34,13 @@ const ACCESOS_FECHA = [
   { value: 'hoy', label: 'Hoy' },
   { value: 'todos', label: 'Todas' },
 ];
+const ACCESOS_HORA = [
+  { value: 'todos', label: 'Todas las horas' },
+  { value: 'manana', label: 'Antes de 12:00' },
+  { value: 'tarde', label: '12:00–17:59' },
+  { value: 'noche', label: 'Desde 18:00' },
+  { value: 'sin_hora', label: 'Sin hora' },
+];
 const COLORES_FILA = {
   pedidos: {
     fila: 'border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30',
@@ -49,6 +57,11 @@ const COLORES_FILA = {
     titulo: 'text-blue-900 dark:text-blue-200',
     activo: 'border-blue-600 bg-blue-600 text-white hover:bg-blue-700 hover:text-white',
   },
+  hora: {
+    fila: 'border-violet-200 bg-violet-50 dark:border-violet-900 dark:bg-violet-950/30',
+    titulo: 'text-violet-900 dark:text-violet-200',
+    activo: 'border-violet-600 bg-violet-600 text-white hover:bg-violet-700 hover:text-white',
+  },
 };
 
 function AccesosRapidos({ titulo, tono, opciones, valor, onChange }) {
@@ -60,7 +73,7 @@ function AccesosRapidos({ titulo, tono, opciones, valor, onChange }) {
         {opciones.map(({ value, label }) => (
           <Button key={value} type="button" variant="outline" aria-pressed={valor === value}
             onClick={() => onChange(value)}
-            className={`h-10 shrink-0 whitespace-nowrap px-2.5 text-xs font-semibold sm:text-sm ${
+            className={`h-11 shrink-0 whitespace-nowrap px-2.5 text-xs font-semibold sm:text-sm ${
               valor === value ? colores.activo : 'border-border bg-card text-foreground hover:bg-muted'
             }`}
           >{label}</Button>
@@ -80,6 +93,7 @@ export default function PedidosPastel() {
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('activos');
   const [filtroFecha, setFiltroFecha] = useState('todos');
+  const [filtroHora, setFiltroHora] = useState('todos');
   const [filtroPago, setFiltroPago] = useState('todos');
   const [filtroOrigen, setFiltroOrigen] = useState('todos');
   const [pedidoVer, setPedidoVer] = useState(null);
@@ -123,8 +137,7 @@ export default function PedidosPastel() {
     queryFn: async () => {
       const criteria = { ...(sucIdQuery ? { sucursal_id: sucIdQuery } : {}), ...estadoCriteria };
       const rows = await base44.entities.PedidoPastel.filterAll(criteria, 'id');
-      return rows.sort((a, b) =>
-        (a.fecha_entrega || '\uffff').localeCompare(b.fecha_entrega || '\uffff') || a.id.localeCompare(b.id));
+      return rows.sort(compararEntregaPedidos);
     },
     // Al cambiar de sucursal o estado no mostrar pedidos de la consulta anterior.
     staleTime: 5000,
@@ -167,6 +180,7 @@ export default function PedidosPastel() {
       if (filtroFecha === 'pasado_manana' && fe !== pasadoManana) return false;
       if (filtroFecha === 'semana' && (fe < hoyStr || fe > en7)) return false;
       if (filtroFecha === 'mes' && (fe < hoyStr || fe > en30)) return false;
+      if (!coincideHorarioEntrega(p.hora_entrega, filtroHora)) return false;
       // Búsqueda de texto
       if (q) {
         const blob = `${p.folio || ''} ${p.cliente_nombre || ''} ${p.cliente_telefono || ''} ${p.nota_interna || ''}`.toLowerCase();
@@ -174,7 +188,7 @@ export default function PedidosPastel() {
       }
       return true;
     });
-  }, [pedidos, busqueda, filtroEstado, filtroFecha, filtroPago, filtroOrigen, sucIdQuery]);
+  }, [pedidos, busqueda, filtroEstado, filtroFecha, filtroHora, filtroPago, filtroOrigen, sucIdQuery]);
 
   // Si se cambia de sucursal mientras un detalle está abierto, no conservar
   // una acción sobre un pedido de otra sucursal.
@@ -215,12 +229,13 @@ export default function PedidosPastel() {
           Patrón visual de los tabs del mostrador (POS.jsx) + color por sucursal (helper).
           Responsive: overflow-x-auto para teléfono/tablet/POS. */}
       {esPastelero && (
-        <div className="flex gap-2 overflow-x-auto pb-1">
+        <div role="group" aria-label="Sucursales" className="flex gap-2 overflow-x-auto pb-1">
           <Button
             variant={sucursalTab === 'todas' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setSucursalTab('todas')}
-            className="shrink-0"
+            aria-pressed={sucursalTab === 'todas'}
+            className="h-11 shrink-0"
           >
             Todas
           </Button>
@@ -233,7 +248,8 @@ export default function PedidosPastel() {
                 variant="outline"
                 size="sm"
                 onClick={() => setSucursalTab(s.id)}
-                className={`shrink-0 ${activo ? pal.activo : pal.badge}`}
+                aria-pressed={activo}
+                className={`h-11 shrink-0 ${activo ? pal.activo : pal.badge}`}
               >
                 {s.nombre}
               </Button>
@@ -255,6 +271,7 @@ export default function PedidosPastel() {
               if (e.target.value.trim()) {
                 if (filtroEstado !== 'todos') setFiltroEstado('todos');
                 if (filtroFecha !== 'todos') setFiltroFecha('todos');
+                if (filtroHora !== 'todos') setFiltroHora('todos');
                 if (filtroPago !== 'todos') setFiltroPago('todos');
                 if (filtroOrigen !== 'todos') setFiltroOrigen('todos');
               }
@@ -301,12 +318,15 @@ export default function PedidosPastel() {
           valor={filtroPago} onChange={setFiltroPago} />
         <AccesosRapidos titulo="Entrega" tono="fecha" opciones={ACCESOS_FECHA}
           valor={filtroFecha} onChange={setFiltroFecha} />
+        <AccesosRapidos titulo="Horario" tono="hora" opciones={ACCESOS_HORA}
+          valor={filtroHora} onChange={setFiltroHora} />
       </div>
 
       {!isLoading && !isError && (
         <p className="text-sm text-muted-foreground" aria-live="polite">
           {filtrados.length} {filtrados.length === 1 ? 'pedido encontrado' : 'pedidos encontrados'}
           {sucIdQuery ? ` · ${sucursalEfectiva?.sucursal_nombre || sucursales.find(s => s.id === sucIdQuery)?.nombre || 'Sucursal seleccionada'}` : ' · Todas las sucursales'}
+          {' · Por fecha y hora'}
         </p>
       )}
 
