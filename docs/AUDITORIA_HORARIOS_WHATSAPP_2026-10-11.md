@@ -21,6 +21,7 @@ cabeceras advierten que son históricos y dirigen al contrato vigente.
 | Accesos | Tres filas (Pedidos/Pagos/Entrega) | Cuarta fila Horario con el mismo componente/alineación; botones de 44 px. |
 | Filtros | Consulta/snapshot, clave de cache y guardia local por sucursal | Horario se cruza con esos filtros. Búsqueda restablece horario sin soltar sucursal. |
 | Detalle | Se cierra al cambiar de sucursal; guardia evita pedido ajeno | Contrato conservado y probado frente a respuesta/caché con filas de otra sucursal. |
+| Indicador | Cuenta pastelero global mostraba «Todas» en cabecera aunque el tab filtrase una sucursal | Cabecera refleja la sucursal del tab. Tarjetas sin hora lo indican explícitamente. |
 | WhatsApp | Link wa.me con texto; no adjunta ticket ni mostraba base | Base guardada y leyenda de devolución con base limpia. No recalcula ni suma dinero. |
 | Ticket | TicketPastelConfetti incluye precio_base positivo y aviso base limpia | Componente visual, diseño e impresión sin cambios. Render real probado. |
 | Datos | RLS de pedidos activada; roles globales/terminal con alcance existente | Ninguna policy/RPC/DDL ni escritura de producción. |
@@ -90,7 +91,7 @@ usar CONFETTI_CHROMIUM_EXECUTABLE. No agrega dependencias de navegador al POS.
 ## Archivos y límites
 
 Código: PedidosPastel, NuevoPedidoPastel (sólo ayuda), pedidoPastelUtils,
-horarioPedidos. Pruebas: pedidos_horario_whatsapp_verify, pedidos_browser_verify,
+horarioPedidos y PedidoPastelCard (leyenda Sin hora). Pruebas: pedidos_horario_whatsapp_verify, pedidos_browser_verify,
 huella de ticket_pastel_base_limpia_verify y test:pedidos en package.json.
 Documentación de contexto/traspaso, mapa, arquitectura, decisiones, base,
 pendientes y changelog actualizada con mecanismos, sin versiones volátiles.
@@ -103,5 +104,24 @@ No se certifica operación física ni que una tablet abierta ya cargó el client
 
 ## Publicación
 
-Pendiente registrar aquí la comprobación de commit, READY y bundle servido
-de producción y del alias APK tras la publicación autorizada.
+Primera comprobación: commit 4830ddbb9f101f6ec54ae4a3dfb005eb63ebfde5,
+árbol 4f889a015a14e5f21fc44356812fe75ee2406952, idéntico al probado localmente.
+Producción READY dpl_G1QQzTypd13USnDC9p3zqhn7JM3F y APK READY
+dpl_5SuPYnKqzV5rBU1qa4GTSt1c8k5e. Ambos dominios respondieron HTTP200 con
+index-ngo2ZxeF.js, SHA256 bee73d87effb85316767a8a0bc878c1d53ce7e3cffd0541569ee96d4b8aadb75.
+Todos los marcadores de horario/base/captura estaban presentes; sw.js
+referenciaba el mismo bundle nuevo. Runtime Vercel no reportó error/fatal de
+ese deployment en la ventana consultada; POS es principalmente estático,
+por lo que esto no certifica todos los errores de clientes/servicio Supabase.
+
+La revisión visual posterior aclara la cabecera de sucursal al seleccionar
+un tab pastelero y marca Sin hora en la tarjeta; tests de navegador/página
+incluyen ambos y pasaron. Se repitió build para esa entrega final con código 0.
+Consultar
+Git/Vercel y repetir la descarga del bundle para identificar la versión viva.
+
+Tres suites antiguas (fase4_rls_adversarial, fase5_corte_fidelity,
+web1_gaps_verify) se ejecutaron y se detuvieron en ENOENT .env, como advierte
+CLAUDE.md. No se buscaron contraseñas ni se generaron operaciones de prueba
+en producción para forzarlas. La regresión de RLS/transacciones actual se
+ejecutó en PGlite y el estado real se consultó en Supabase sólo en lectura.

@@ -65,7 +65,7 @@ export default function PedidoPastelCard({ pedido, onVer, mostrarSucursal }) {
           </p>
           <p className={`text-xs flex items-center gap-1 font-semibold ${urgente ? 'text-red-600' : 'text-muted-foreground'}`}>
             <Calendar className="w-3 h-3" />
-            {pedido.fecha_entrega} {pedido.hora_entrega || ''}
+            {pedido.fecha_entrega} {pedido.hora_entrega || 'Sin hora'}
             {urgente && ' ⚠'}
           </p>
           <p className="text-xs flex items-center gap-1 text-muted-foreground">

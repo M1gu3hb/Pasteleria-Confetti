@@ -121,6 +121,10 @@ export default function PedidosPastel() {
 
   // La sucursal seleccionada forma parte de la query y del filtro local de seguridad.
   const sucIdQuery = (esPastelero && sucursalTab !== 'todas') ? sucursalTab : sucId;
+  // La cabecera refleja el tab, no el alcance global de la cuenta pastelero.
+  const sucursalVista = esPastelero && sucIdQuery
+    ? { sucursal_id: sucIdQuery, sucursal_nombre: sucursales.find(s => s.id === sucIdQuery)?.nombre || 'Sucursal seleccionada' }
+    : sucursalEfectiva;
 
   // El detalle no debe volver a abrirse al cambiar entre sucursales.
   useEffect(() => { setPedidoVer(null); }, [sucIdQuery]);
@@ -205,7 +209,7 @@ export default function PedidosPastel() {
             <Cake className="w-5 h-5 text-white" />
           </div>
           <h1 className="text-xl font-display font-bold">Pedidos de Pastel</h1>
-          <SucursalBadge sucursalEfectiva={sucursalEfectiva} />
+          <SucursalBadge sucursalEfectiva={sucursalVista} />
         </div>
         {/* El pastelero puede editar la nota y avanzar estados (0060), pero SIGUE sin
             poder CREAR pedidos (la política nueva es sólo FOR UPDATE): "Nuevo pedido"

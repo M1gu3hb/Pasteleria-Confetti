@@ -4,6 +4,8 @@ Pedidos personalizados ordena fecha → hora local 24 h → ID; antes desempató
 sólo por ID y podía mostrar 17:00 antes de 15:00. Cuarta fila «Horario» con
 Todas/Antes de 12/12–17:59/Desde 18/Sin hora, mismas filas y controles táctiles
 de 44 px. Búsqueda limpia horario y conserva sucursal. Captura explica 15/17 h.
+La cabecera indica la sucursal seleccionada del pastelero y la tarjeta marca
+explícitamente Sin hora cuando falta el dato.
 WhatsApp incluye precio_base guardado, incluido en total, y su devolución con
 base limpia. Sin DDL, datos ficticios, cambios de caja/pagos/impresión ni APK.
 

@@ -68,6 +68,8 @@ try{
   await new Promise(r=>setTimeout(r,200));assert((await cards().innerText()).includes('B-15'));
   await suc.getByRole('button',{name:'San Gregorio',exact:true}).click();
   await page.waitForFunction(()=>document.querySelectorAll('button.skeu-card').length===4);
+  assert(await page.getByText('Sucursal: San Gregorio',{exact:true}).count());
+  assert((await cards().filter({hasText:'C-SIN'}).innerText()).includes('Sin hora'));
   const hours=page.getByRole('group',{name:'Horario',exact:true});
   await hours.getByRole('button',{name:'Desde 18:00',exact:true}).click();
   assert((await cards().innerText()).includes('C-18'));

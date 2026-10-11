@@ -97,6 +97,7 @@ assert.deepEqual(ids(tree),['b','z','a']); // mismos días: 15:00 antes que 17:0
 tree=click(tree,'Xochimilco');
 assert.equal(requested.sucursal_id,undefined);
 supplied=await options.queryFn();tree=render();assert.equal(requested.sucursal_id,'A');assert.deepEqual(ids(tree),['z','a']);
+assert.equal(all(tree,n=>n.type==='SucursalBadge')[0].props.sucursalEfectiva.sucursal_id,'A');
 // Una respuesta/caché con otras sucursales nunca pasa el segundo filtro local.
 assert(!ids(tree).includes('b'));
 tree=click(tree,'Desde 18:00');assert.deepEqual(ids(tree),[]);
