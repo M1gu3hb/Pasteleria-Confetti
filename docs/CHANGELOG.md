@@ -2,6 +2,8 @@
 
 Corregidos dos efectos del cambio: el badge Sidebar seguía contando por estado e incluía antiguos pagados; ahora usa total Actuales de la misma RPC con una sola fila y se invalida al cobrar/editar. Consultar mucho historial repetía todas sus páginas cada 15 s; se desactiva sólo ese polling histórico, conservando Actuales/Anteriores vivos. También se corrige una condición preexistente de Registros: gastos de la sucursal anterior podían viajar en caché a informes durante el cambio de alcance; se filtran antes de informes/exportación y se retira placeholderData en esa consulta. Sin DDL, escrituras operativas ni cambios de dinero/impresión.
 
+El build APK detectó además una prueba preexistente de cuotas que cruzaba el cambio de minuto. Se fijan ventanas por transacciones/savepoints sólo en PGlite, manteniendo las comprobaciones de rechazo y sin cambiar SQL de producción.
+
 Regresiones reales de sidebar, pantalla y gastos probadas contra 00134fa: las tres fallan antes y pasan después. Suite nueva historial_integracion_verify se integra en quality/build. Se actualizan referencias a fila Horario y deuda de tipos. Informe: REAUDITORIA_PEDIDOS_HISTORIAL_2026-10-17.md.
 
 ## 2026-10-17 — Pedidos anteriores e historial conservado

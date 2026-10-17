@@ -11,6 +11,8 @@ Revisión solicitada por Miguel de todos los cambios de 67b7eba a 00134fa: 32 ar
 3. **Gastos anteriores en caché al cambiar de sucursal, condición preexistente en Registros.** La consulta tenía placeholderData previo y sus gastos podían pasar a ResumenPeriodo/exportación durante el cambio. Se retira ese placeholder y se añade filtro local estricto por sucursal antes de ambos consumidores. La guarda también rechaza una respuesta tardía/mezclada de otro alcance.
 4. **Documentación vigente desfasada.** Se corrigen referencias a la cuarta fila de filtros y a 677 diagnósticos de tipos: actualmente son 597 conocidos, sin diagnósticos nuevos aceptados. Se registran el contador compartido y la actualización selectiva del historial. Los informes fechados anteriores permanecen como evidencia histórica.
 
+5. **Prueba de cuotas sensible al reloj.** El build APK dpl_DBXzC86GgT2MzWymfVhUwFPpk6YM preparó una cuota al final de 19:06:59 UTC y comprobó el rechazo a las 19:07:00.003: el reinicio legítimo de minuto produjo un falso fallo. Se fijan las ventanas de minuto/hora mediante transacciones de la base aislada; los rechazos esperados usan rollback/savepoints. Se conservan todos los casos de rechazo, reintento y reinicio de cuota, sin cambiar funciones del servidor. El fallo de build dejó el alias APK en su versión anterior; se publica un commit posterior en ambos canales y se verifica su convergencia.
+
 ## Pruebas de regresión y contraste
 
 - historial_integracion_verify ejecuta el bloque real de Sidebar: contador 1 frente a 2 filas antiguas, total de servidor con página 1, invalidación y cambio de sucursal. También renderiza Registros real con gastos de A/B y comprueba que sólo A llega al reporte de A.

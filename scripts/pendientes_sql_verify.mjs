@@ -52,27 +52,42 @@ try {
  await db.query("update ventas set estado='cancelada',motivo_cancelacion='Ticket en cero',fecha_cierre=now() where id=$1",[zero]);
  console.log('PASS: confirmed money/folio/cut immutable; delete/reopen/excess refund denied; valid cancellation and zero-ticket cleanup preserved');
 
- await identity('');await db.exec('SET ROLE anon');
+ // Congelar también la ventana por teléfono durante la secuencia de pruebas.
+ // Los errores esperados se aíslan con savepoints sin abortar esa secuencia.
+ const rechazoEnTransaccion=async(fn,pattern)=>{
+  await db.exec('SAVEPOINT rechazo_esperado');
+  try { await assert.rejects(fn,pattern); }
+  finally { await db.exec('ROLLBACK TO SAVEPOINT rechazo_esperado; RELEASE SAVEPOINT rechazo_esperado'); }
+ };
+ await identity('');await db.exec('BEGIN; SET LOCAL ROLE anon');
  const payload={sucursal_id:A,sucursal_nombre:'A',tipo_pedido:'pastel_personalizado',cliente_nombre:'Fixture',cliente_telefono:'5500000000',kilos:1,total_final:100,fecha_entrega:'2099-10-01'};
  const key=randomUUID();
  const call=async(k,p)=>(await db.query('select crear_pedido_web_idempotente($1,$2::jsonb) as f',[k,JSON.stringify(p)])).rows[0].f;
  const folio=await call(key,payload);assert.equal(await call(key,payload),folio);
- await assert.rejects(()=>call(key,{...payload,total_final:200}),/INTENCION_DISTINTA/);
- await assert.rejects(()=>db.query('select * from app_private.intenciones_pedido_web'),/permission denied/);
+ await rechazoEnTransaccion(()=>call(key,{...payload,total_final:200}),/INTENCION_DISTINTA/);
+ await rechazoEnTransaccion(()=>db.query('select * from app_private.intenciones_pedido_web'),/permission denied/);
  await db.exec('RESET ROLE');
  assert.equal((await db.query('select count(*)::int n from pedidos')).rows[0].n,1);
  assert.equal((await db.query("select solicitudes from app_private.cuotas_pedido_web where clave='global'")).rows[0].solicitudes,1);
  await db.exec('SET ROLE anon');
  for(let i=1;i<20;i++)await call(randomUUID(),payload);
- await assert.rejects(()=>call(randomUUID(),payload),/LIMITE_PEDIDOS_WEB/);
- await assert.rejects(()=>db.query('select crear_pedido_web($1::jsonb)',[JSON.stringify(payload)]),/LIMITE_PEDIDOS_WEB/);
+ await rechazoEnTransaccion(()=>call(randomUUID(),payload),/LIMITE_PEDIDOS_WEB/);
+ await rechazoEnTransaccion(()=>db.query('select crear_pedido_web($1::jsonb)',[JSON.stringify(payload)]),/LIMITE_PEDIDOS_WEB/);
  await db.exec('RESET ROLE');assert.equal((await db.query('select count(*)::int n from pedidos')).rows[0].n,20);
  const before=(await db.query("select solicitudes from app_private.cuotas_pedido_web where clave='global'")).rows[0].solicitudes;
  await db.exec('SET ROLE anon');await call(randomUUID(),{...payload,cliente_telefono:'5511111111'});
- await assert.rejects(()=>call(randomUUID(),{...payload,cliente_telefono:'5522222222',total_abonado:100}),/PAGO_WEB_PROHIBIDO/);
+ await rechazoEnTransaccion(()=>call(randomUUID(),{...payload,cliente_telefono:'5522222222',total_abonado:100}),/PAGO_WEB_PROHIBIDO/);
  await db.exec('RESET ROLE');assert.equal((await db.query("select solicitudes from app_private.cuotas_pedido_web where clave='global'")).rows[0].solicitudes,before+1);
+ await db.exec('COMMIT');
+ // now() debe ser el mismo al preparar y comprobar la ventana. Sin transacción,
+ // cambiar de minuto entre ambos pasos permite correctamente otro pedido y
+ // produce un falso fallo (ocurrió en CI el 17/10 a las 19:07:00.003 UTC).
+ await db.exec('BEGIN');
  await db.exec("update app_private.cuotas_pedido_web set solicitudes=120,ventana=date_trunc('minute',now()) where clave='global'");
- await db.exec('SET ROLE anon');await assert.rejects(()=>call(randomUUID(),{...payload,cliente_telefono:'5533333333'}),/LIMITE_PEDIDOS_WEB/);assert.equal(await call(key,payload),folio);
+ await db.exec('SET LOCAL ROLE anon');assert.equal(await call(key,payload),folio);
+ await assert.rejects(()=>call(randomUUID(),{...payload,cliente_telefono:'5533333333'}),/LIMITE_PEDIDOS_WEB/);
+ // La excepción aborta únicamente esta transacción de prueba aislada.
+ await db.exec('ROLLBACK');
  await db.exec('RESET ROLE');await db.exec("update app_private.cuotas_pedido_web set ventana=now()-interval '2 hours'");await db.exec('SET ROLE anon');await call(randomUUID(),payload);await db.exec('RESET ROLE');
  console.log('PASS: real public RPC replays one order; rejects changed payload; budgets shared with legacy; duplicate/invalid/rejected requests do not consume accepted creation slots');
 
@@ -98,7 +113,8 @@ try {
  for(let i=0;i<2;i++){await db.exec("update app_private.transcripciones_voz set lease_hasta=now()-interval '1 second' where archivo='retry.webm'");await db.exec('SET ROLE authenticated');retry=(await db.query("select solicitar_transcripcion_pos('retry.webm') r")).rows[0].r;assert.equal(retry.estado,'nueva');await db.exec('RESET ROLE');}
  await db.exec("update app_private.transcripciones_voz set lease_hasta=now()-interval '1 second' where archivo='retry.webm'");await db.exec('SET ROLE authenticated');assert.equal((await db.query("select solicitar_transcripcion_pos('retry.webm') r")).rows[0].r.estado,'agotada');await db.exec('RESET ROLE');
  await db.query("insert into storage.objects(bucket_id,name,owner,owner_id) values('notas-voz','quota.webm',$1::uuid,$1::uuid::text)",[TERM]);
- await db.exec("update app_private.cuotas_voz set solicitudes=120,ventana=date_trunc('hour',now()) where clave like 'actor:%'");await db.exec('SET ROLE authenticated');assert.equal((await db.query("select solicitar_transcripcion_pos('quota.webm') r")).rows[0].r.estado,'limite');assert.equal((await db.query("select solicitar_transcripcion_pos('fixture.webm') r")).rows[0].r.estado,'completa');await db.exec('RESET ROLE');
+ await db.exec('BEGIN');
+ await db.exec("update app_private.cuotas_voz set solicitudes=120,ventana=date_trunc('hour',now()) where clave like 'actor:%'");await db.exec('SET LOCAL ROLE authenticated');assert.equal((await db.query("select solicitar_transcripcion_pos('quota.webm') r")).rows[0].r.estado,'limite');assert.equal((await db.query("select solicitar_transcripcion_pos('fixture.webm') r")).rows[0].r.estado,'completa');await db.exec('COMMIT');await db.exec('RESET ROLE');
  await identity('');await db.exec('SET ROLE anon');
  await assert.rejects(()=>db.query("select solicitar_transcripcion_pos('fixture.webm')"),/permission denied/);
  await db.exec('RESET ROLE');await identity(OWNER);await db.exec('SET ROLE authenticated');
