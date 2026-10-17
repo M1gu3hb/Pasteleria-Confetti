@@ -1,5 +1,7 @@
 # Auditoría y cambio de pedidos e historial — 17 de octubre de 2026
 
+Revisión posterior: ver [REAUDITORIA_PEDIDOS_HISTORIAL_2026-10-17.md](REAUDITORIA_PEDIDOS_HISTORIAL_2026-10-17.md) para correcciones de integración de contador, polling histórico y gastos en caché.
+
 ## Alcance y autorización
 
 Miguel autorizó auditar, implementar, probar y publicar en migracion/supabase y apk/capacitor; la autorización abarca la migración aditiva de lectura. Se leyó documentación vigente, informes operativos de octubre, código POS/web, base y despliegues vivos. El screenshot de Abel confirma que Entregado ocultaba el pedido por estado: no era borrado físico, pues seguía buscable por folio.

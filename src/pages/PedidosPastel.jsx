@@ -142,7 +142,7 @@ export default function PedidosPastel() {
     initialPageParam: null,
     queryFn: ({ pageParam }) => cargarPaginaPedidos({ sucursal: sucIdQuery, vista, filtros, cursor: pageParam }),
     getNextPageParam: pagina => pagina.hay_mas ? pagina.siguiente : undefined,
-    staleTime: 5000, refetchInterval: 15000,
+    staleTime: 5000, refetchInterval: vista === 'historial' ? false : 15000,
   });
   const resumen = data?.pages?.[0];
   // Segunda barrera: ni una respuesta antigua de otra sucursal llega a una tarjeta.

@@ -17,7 +17,7 @@
     "prebuild": "npm run quality",
     "test:evidencia": "node scripts/evidencia_financiera_verify.mjs && node scripts/evidencia_cliente_verify.mjs",
     "test:pedidos": "node scripts/pedidos_horario_whatsapp_verify.mjs",
-    "test:historial": "node scripts/pedidos_anteriores_sql_verify.mjs && node scripts/pedidos_historial_cliente_verify.mjs"
+    "test:historial": "node scripts/pedidos_anteriores_sql_verify.mjs && node scripts/pedidos_historial_cliente_verify.mjs && node scripts/historial_integracion_verify.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.1",

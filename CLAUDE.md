@@ -121,7 +121,7 @@ Dos bugs graves se colaron porque **las pruebas probaban el arnés, no el códig
   > BASE LIMPIA" que Abel pedía y nunca salía en el papel. Nadie lo leyó porque "39 es la línea base".
   > **Cuando la cifra BAJE, bájala aquí también**: si se queda en 39, el hueco que acabas de liberar se rellena con
   > un error nuevo sin que nadie se entere. Y de vez en cuando **lee la lista**, no sólo el número.
-- `npm run typecheck` sigue fallando: **677 diagnósticos POS** (2026-10-02). `calidad_types_verify.mjs` compara mensaje, código, ancla y multiplicidad contra deuda contrastada con producción; no acepta errores nuevos aunque baje el total. Build ejecuta esa puerta y las regresiones. No confundirla con types completamente limpios.
+- `npm run typecheck` sigue fallando: **597 diagnósticos POS** (2026-10-17). `calidad_types_verify.mjs` compara mensaje, código, ancla y multiplicidad contra deuda contrastada con producción; no acepta errores nuevos aunque baje el total. Build ejecuta esa puerta y las regresiones. No confundirla con types completamente limpios.
 - Corre las suites de `scripts/*.mjs`. **Corrección 2026-08-09:** este documento afirmaba que **todas** funcionan sin
   credenciales, y es **falso**. Tres exigen un `.env` que no está en el repo y mueren con `ENOENT ... .env`:
   `fase4_rls_adversarial.mjs`, `fase5_corte_fidelity.mjs` y `web1_gaps_verify.mjs`. Las demás sí corren en seco. Si

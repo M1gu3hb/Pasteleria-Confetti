@@ -1,3 +1,9 @@
+## 2026-10-17 — Revisión de integración del historial
+
+Corregidos dos efectos del cambio: el badge Sidebar seguía contando por estado e incluía antiguos pagados; ahora usa total Actuales de la misma RPC con una sola fila y se invalida al cobrar/editar. Consultar mucho historial repetía todas sus páginas cada 15 s; se desactiva sólo ese polling histórico, conservando Actuales/Anteriores vivos. También se corrige una condición preexistente de Registros: gastos de la sucursal anterior podían viajar en caché a informes durante el cambio de alcance; se filtran antes de informes/exportación y se retira placeholderData en esa consulta. Sin DDL, escrituras operativas ni cambios de dinero/impresión.
+
+Regresiones reales de sidebar, pantalla y gastos probadas contra 00134fa: las tres fallan antes y pasan después. Suite nueva historial_integracion_verify se integra en quality/build. Se actualizan referencias a fila Horario y deuda de tipos. Informe: REAUDITORIA_PEDIDOS_HISTORIAL_2026-10-17.md.
+
 ## 2026-10-17 — Pedidos anteriores e historial conservado
 
 Se retiran Entregado y su pregunta posterior al pago en personalizados. Actuales/Anteriores/Historial se calculan por saldo y entrega, con margen CDMX de dos días y treinta días en Anteriores, sin borrar ni marcar entregas físicas. Búsqueda histórica conserva sucursal, tarjetas distinguen deuda fuera de fecha y pago futuro. Nueva RPC sólo lectura con RLS y cursor; regresión aislada con 1,212 pedidos. Caja/Dashboard paginan cortes; Registros deja cargar más durante búsquedas; Ventas dosifica tarjetas conservando totales completos. Se refuerza el descarte inmediato de datos/detalles de otra sucursal. Catálogo conserva su entrega manual.

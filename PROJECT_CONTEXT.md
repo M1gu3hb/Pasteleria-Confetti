@@ -6,9 +6,11 @@ Personalizados no ofrece Entregado ni la pregunta al liquidar. La fecha de entre
 
 Sucursal en RPC, RLS, cache, respuesta y detalle. Dueño/pastelero conservan alcance global deliberado; terminal/administrador sólo su sucursal. Buscar abre Historial completo conservando sucursal. Pedidos/Caja/Dashboard/Registros ofrecen Cargar más con nombre explícito; Ventas limita tarjetas sin truncar totales. Ver docs/AUDITORIA_PEDIDOS_HISTORIAL_2026-10-17.md y npm run test:historial.
 
+El contador del menú usa la misma RPC/vista Actuales (página de una fila y total completo); se invalida con pagos/ediciones. Actuales/Anteriores se refrescan cada 15 s; Historial completo sólo al consultarlo, invalidarlo o reconectar. Registros descarta gastos en caché de otra sucursal antes de informes/exportación. Reauditoría e integración: scripts/historial_integracion_verify.mjs.
+
 ## Pedidos personalizados
 
-Orden por fecha y hora local, con hora ausente al final de su día y desempate por ID. La cuarta fila de accesos rápidos filtra horarios; búsqueda limpia filtros, pero conserva sucursal. WhatsApp incluye la base guardada y su devolución con base limpia, sin sumarla otra vez al total. El ticket visual/impresión conserva su componente. Pruebas: npm run test:pedidos.
+Orden por fecha y hora local, con hora ausente al final de su día y desempate por ID. La fila Horario de accesos rápidos filtra horarios; búsqueda limpia filtros, pero conserva sucursal. WhatsApp incluye la base guardada y su devolución con base limpia, sin sumarla otra vez al total. El ticket visual/impresión conserva su componente. Pruebas: npm run test:pedidos.
 
 Revisado el 2026-10-17.
 

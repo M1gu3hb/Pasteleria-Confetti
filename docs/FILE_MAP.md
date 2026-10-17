@@ -2,7 +2,7 @@
 
 ## Pedidos anteriores y paginación
 
-src/pages/PedidosPastel.jsx: vistas y navegación obvia; src/lib/pedidosAnteriores.js: lector validado; src/utils/situacionPedido.js: etiquetas; PedidoPastelCard/DetalleDialog/RegistrarPagoDialog: tarjetas y retiro de entrega manual de personalizados. CorteHistorialList/CortesRecientesDashboard: historial compartido; Registros/useListaPaginada/Ventas: cargar más y alcance. Nueva migración listar_pedidos_pastel_pos. scripts/pedidos_anteriores_sql_verify.mjs y pedidos_historial_cliente_verify.mjs integran quality/build. historial_browser_fixture.mjs genera sólo una prueba aislada con datos sintéticos y sin conexión al negocio; no se incorpora al build.
+src/pages/PedidosPastel.jsx: vistas y navegación obvia; src/lib/pedidosAnteriores.js: lector validado y contador Actuales de Sidebar; src/utils/situacionPedido.js: etiquetas; PedidoPastelCard/DetalleDialog/RegistrarPagoDialog: tarjetas y retiro de entrega manual de personalizados. CorteHistorialList/CortesRecientesDashboard: historial compartido; Registros/useListaPaginada/Ventas: cargar más y alcance. Nueva migración listar_pedidos_pastel_pos. scripts/pedidos_anteriores_sql_verify.mjs, pedidos_historial_cliente_verify.mjs e historial_integracion_verify.mjs integran quality/build. historial_browser_fixture.mjs genera sólo una prueba aislada con datos sintéticos y sin conexión al negocio; no se incorpora al build.
 
 Revisado el 2026-10-17.
 

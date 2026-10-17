@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { cargarPaginaPedidos } from '@/lib/pedidosAnteriores';
 import { loginConPin, loginTerminal, logoutOperador } from '@/api/supabaseClient';
 import { usePOSAuth } from '@/lib/POSAuthContext';
 import { useTerminal } from '@/lib/TerminalContext';
@@ -65,33 +65,19 @@ export default function Sidebar({ collapsed, onToggle }) {
   const esDueno = adminRole === 'dueno';
   const esPastelero = adminRole === 'pastelero';
 
-  // Badge "Pedidos de Pastel": cuenta SOLO pedidos personalizados activos
-  // y respeta la sucursal efectiva.
-  // NUNCA cuenta productos_catalogo (esos tienen su badge en Caja → Pedidos).
+  // Misma clasificación de Actuales que la pantalla, con RLS/sucursal.
+  // Pedidos anteriores/archivados y catálogo nunca inflan el contador.
   const badgeSucId = sucursalEfectiva?.sucursal_id || null;
-  const { data: pedidosPastelPend } = useQuery({
-    queryKey: ['pedidos_pastel_pendientes_badge', badgeSucId],
+  const { data: pedidosActualesTotal } = useQuery({
+    queryKey: ['pedidos_pastel', 'conteo_actuales', badgeSucId],
     queryFn: async () => {
-      const criteria = {
-        ...(badgeSucId ? { sucursal_id: badgeSucId } : {}),
-        estado: { $nin: ['entregado', 'cancelado'] },
-      };
-      const rows = await base44.entities.PedidoPastel.filterAll(criteria, 'id');
-      return rows;
+      const pagina = await cargarPaginaPedidos({ sucursal: badgeSucId, vista: 'actuales', filtros: {}, limite: 1 });
+      return pagina.total;
     },
     refetchInterval: 60000,
     staleTime: 30000,
   });
-  // Lógica por EXCLUSIÓN: cuenta todo pastel personalizado que aún no terminó
-  // su flujo (incluye 'pagado' no entregado). Si en el futuro se agrega un
-  // estado nuevo, cuenta automáticamente sin tocar código.
-  const ESTADOS_TERMINADOS_PASTEL = ['entregado', 'cancelado'];
-  const conteoWebPendientes = (Array.isArray(pedidosPastelPend) ? pedidosPastelPend : [])
-    .filter(p =>
-      p &&
-      p.tipo_pedido !== 'productos_catalogo' &&
-      !ESTADOS_TERMINADOS_PASTEL.includes(p.estado)
-    ).length;
+  const conteoWebPendientes = Number.isSafeInteger(pedidosActualesTotal) ? pedidosActualesTotal : 0;
 
   // Cerrar al cambiar de ruta
   useEffect(() => { setMobileOpen(false); }, [location.pathname]);

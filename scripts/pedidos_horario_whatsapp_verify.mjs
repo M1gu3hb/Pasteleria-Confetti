@@ -101,6 +101,7 @@ const a3={...fixture,id:'z',folio:'A-15',sucursal_id:'A',estado:'confirmado'};
 const a5={...a3,id:'a',folio:'A-17',hora_entrega:'17:00'};
 const foreign={...a3,id:'b',folio:'B-15',sucursal_id:'B'};
 supplied=[a5,a3,foreign]; let tree=render();
+assert.equal(options.refetchInterval,15000,'Activos se actualizan en vivo');
 supplied=(await options.queryFn({pageParam:null})).pedidos; tree=render();
 assert.deepEqual(ids(tree),['b','z','a']); // mismos días: 15:00 antes que 17:00 aunque UUID diga lo contrario
 tree=click(tree,'Xochimilco');
@@ -111,6 +112,7 @@ assert.equal(all(tree,n=>n.type==='SucursalBadge')[0].props.sucursalEfectiva.suc
 assert(!ids(tree).includes('b'));
 tree=click(tree,'Desde 18:00');assert.deepEqual(ids(tree),[]);
 const search=all(tree,n=>n.type==='Input')[0];search.props.onChange({target:{value:'A-15'}});tree=render();
+assert.equal(options.refetchInterval,false,'Consultar historial no vuelve a descargar todas sus páginas cada 15 segundos');
 assert.deepEqual(ids(tree),['z']);assert.equal(all(tree,n=>n.type==='Button'&&label(n)==='Todas las horas')[0].props['aria-pressed'],true);
 // Buscar abre historial/horarios pero conserva SIEMPRE la sucursal seleccionada.
 search.props.onChange({target:{value:'B-15'}});tree=render();assert.deepEqual(ids(tree),[]);

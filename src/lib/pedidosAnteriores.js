@@ -2,11 +2,11 @@ import { supabase, ensureSession } from '@/api/supabaseClient';
 
 // Cada respuesta es una página real del servidor, con conteos de la sucursal.
 // El cursor incluye el límite de creación capturado en la primera página.
-export async function cargarPaginaPedidos({ sucursal, vista, filtros, cursor = null }) {
+export async function cargarPaginaPedidos({ sucursal, vista, filtros, cursor = null, limite = 50 }) {
   await ensureSession();
   const { data, error } = await supabase.rpc('listar_pedidos_pastel_pos', {
     p_sucursal: sucursal || null, p_vista: vista, p_filtros: filtros,
-    p_limite: 50, p_cursor: cursor,
+    p_limite: limite, p_cursor: cursor,
   });
   if (error) throw new Error(error.message);
   if (!data || !Array.isArray(data.pedidos) || !data.conteos || typeof data.hay_mas !== 'boolean' ||

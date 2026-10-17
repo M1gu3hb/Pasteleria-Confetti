@@ -133,7 +133,6 @@ export default function Registros() {
     queryFn: () => sucId
       ? base44.entities.GastoOperativo.filterAll({ sucursal_id: sucId }, '-created_date')
       : base44.entities.GastoOperativo.listAll('-created_date'),
-    placeholderData: (prev) => prev,
     staleTime: 5000,
   });
 
@@ -141,7 +140,7 @@ export default function Registros() {
   // cortes/ventas vienen ya como arrays del hook de paginación incremental.
   const compras = Array.isArray(comprasRaw) ? comprasRaw : [];
   const movimientos = Array.isArray(movimientosRaw) ? movimientosRaw : [];
-  const gastos = Array.isArray(gastosRaw) ? gastosRaw : [];
+  const gastos = (Array.isArray(gastosRaw) ? gastosRaw : []).filter(g => !sucId || g.sucursal_id === sucId);
 
   // Flags de "primera carga aún en curso": NO mostrar empty mientras esté true.
   const comprasFirstLoad = comprasLoading && !comprasRaw;
