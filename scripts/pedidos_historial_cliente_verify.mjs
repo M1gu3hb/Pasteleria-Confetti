@@ -57,3 +57,20 @@ const renderPay=()=>{cursor=0;return pc.component({pedido:row,cajaAbierta:{id:'c
 renderPay();const tree=renderPay();const buttons=walk(tree,n=>n.type==='Button');assert.equal(buttons.length,1);await buttons[0].props.onClick();assert.equal(calls,1);assert.equal(notified,1);assert.equal(closed,1);assert(!JSON.stringify(renderPay()).includes('marcar entregado'));
 const detail=read('src/components/pedidos/PedidoPastelDetalleDialog.jsx');assert(detail.includes('!finalizado && esCatalogo &&'));assert(detail.includes('open={esCatalogo && confirmarEntrega}'));
 console.log('PASS: real custom payment dialog confirms once and closes without a delivery mutation; manual delivery exists only under the catalogue guard');
+
+// Lista de cortes real: el servidor puede responder menos del límite pedido.
+// Debe seguir desde la longitud recibida, sin saltar a 100 ni detenerse en 100.
+let cutOptions,cutPages=[],nextPage=0;const offsets=[];
+const cutRows=Array.from({length:205},(_,i)=>({id:'C'+i,folio:'CORTE-'+i,sucursal_id:'A',estado:'cerrado',tipo_corte:'cierre_diario',total_general:100,numero_ventas:1}));
+const cutContext=vm.createContext({React,useState:v=>[v,()=>{}],useMemo:fn=>fn(),useEffect:()=>{},useTerminal:()=>({sucursalEfectiva:{sucursal_id:'A'}}),
+ useInfiniteQuery:o=>{cutOptions=o;return{data:{pages:cutPages},hasNextPage:nextPage!==undefined,isPending:false,isError:false,fetchNextPage:()=>{},refetch:()=>{}};},
+ base44:{entities:{CorteCaja:{filter:async(f,sort,limit,skip)=>{assert.equal(f.sucursal_id,'A');assert.equal(sort,'-fecha_cierre');assert.equal(limit,100);offsets.push(skip);return cutRows.slice(skip,skip+73);}}}},
+ Card:'Card',Button:'Button',Input:'Input',CorteViewerDialog:'Viewer',FileText:'File',Eye:'Eye',Calendar:'Calendar',DoorOpen:'Door',Scissors:'Scissors',Lock:'Lock',format:()=>'',es:{},formatCurrency:n=>'$'+n});
+vm.runInContext(ts.transpileModule(strip(read('src/components/cortes/CorteHistorialList.jsx'))+'\nglobalThis.component=CorteHistorialList;',{compilerOptions:{jsx:ts.JsxEmit.React,target:ts.ScriptTarget.ES2022}}).outputText,cutContext);
+cutContext.component({limit:100});
+while(nextPage!==undefined){const chunk=await cutOptions.queryFn({pageParam:nextPage});cutPages.push(chunk);nextPage=cutOptions.getNextPageParam(chunk,cutPages);}
+assert.deepEqual(offsets,[0,73,146,205]);assert.equal(new Set(cutPages.flat().map(c=>c.id)).size,205);
+const cutTree=cutContext.component({limit:100});assert.equal(walk(cutTree,n=>n.type==='Card').length,205);
+cutPages=[cutPages[0]];nextPage=73;const partialTree=cutContext.component({limit:100});
+assert(walk(partialTree,n=>n.type==='Button'&&JSON.stringify(n.children).includes('Cargar más cortes de caja')).length===1);
+console.log('PASS: actual Caja/Dashboard cut list reaches 205 records despite a 73-row server cap, advances by received rows and labels the incremental button explicitly');

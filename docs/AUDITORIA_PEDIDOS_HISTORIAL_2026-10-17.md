@@ -22,15 +22,21 @@ Miguel autorizó auditar, implementar, probar y publicar en migracion/supabase y
 
 ## Contrato del servidor
 
-La migración 20261017175554_pedidos_anteriores_historial_lectura.sql agrega una RPC STABLE SECURITY INVOKER con search_path vacío y execute sólo authenticated. Conserva RLS, autorización de sesión y alcance global deliberado del dueño/pastelero. Terminal y administrador requieren su sucursal, incluso si manipulan parámetros. Consulta sólo personalizados, incluidos legado sin tipo; catálogo queda fuera.
+La migración 20261017181425_pedidos_anteriores_historial_lectura.sql agrega una RPC STABLE SECURITY INVOKER con search_path vacío y execute sólo authenticated. Conserva RLS, autorización de sesión y alcance global deliberado del dueño/pastelero. Terminal y administrador requieren su sucursal, incluso si manipulan parámetros. Consulta sólo personalizados, incluidos legado sin tipo; catálogo queda fuera.
 
 Cursor por fecha/hora/UUID, ligado a sucursal, vista y filtros. Páginas de 50 en cliente, máximo de 100 por solicitud en servidor; no es un máximo histórico. Lectura por servidor evita descargar años de pedidos cada quince segundos. No cambia columnas, policies, cron ni registros de pedidos/pagos/cortes. No hay DELETE, TTL ni limpieza física al archivar. Cancelados permanecen en Historial completo; antiguos Entregados vuelven a clasificarse por saldo y fecha, sin reescribir su estado.
+
+La versión de archivo se alineó con 20261017181425, la versión efectivamente registrada por apply_migration; el SQL no cambió. Hash MD5 de prosrc local y vivo: 21010163d656c9f447171c441b600d17. SECURITY INVOKER/STABLE confirmados, sin execute anónimo.
 
 Esta lista es viva, no un snapshot financiero. Si otra persona edita fecha/hora/saldo entre páginas, puede cambiar la posición; la actualización periódica vuelve a recorrer las páginas. Los informes financieros mantienen historial_operativo_pos. Ventas sigue obteniendo todo el alcance para sus totales: consultar muchos años puede requerir optimización futura. Paginación de cortes por offset también refleja una lista viva.
 
 ## Evidencia de datos reales (sólo lectura)
 
 A la revisión: 588 pedidos, 316 cortes totales, 313 cerrados. El primero es CONF-A-C001: inicio 30 de junio de 2026 a las 00:04 y cierre 1 de julio a las 10:49, CDMX; total $325. Estas fechas distinguen apertura y cierre. No se conoce desde una base actual si existieron intentos que jamás llegaron al servidor; persistencia presente no demuestra ausencia de todo borrado histórico.
+
+Antes/después de aplicar la migración coincidieron conteos y huellas completas de 588 pedidos, 316 cortes, 7,469 ventas y 796 abonos: ninguna modificación de datos operativos. Conciliación viva: cero saldos inconsistentes, enlaces inconsistentes, abonos de caja sin venta o ventas cruzadas de corte. Permanecen cuatro cancelaciones ya documentadas; no se normalizaron importes.
+
+La RPC viva dio, por sucursal: Xochimilco 192 Actuales, 57 Anteriores y 398 en Historial completo; Topilejo 42, 45 y 128; San Gregorio 2, 17 y 62. Historial incluye todas las secciones y cancelados, por eso no se suman esas tres columnas.
 
 Los topes de página no eliminan datos al llegar a fin de año. No se promete almacenamiento infinito: respaldo/restauración, capacidad del plan y operación de las cuentas siguen siendo obligaciones operativas. Se conserva la evidencia financiera anterior y sus pendientes de conciliación, sin ajustar dinero para que cuadre un informe.
 
@@ -43,6 +49,7 @@ La suite pendientes_sql_verify compara los hashes de las tres funciones probadas
 ## Validaciones reproducibles
 
 - npm run test:historial: SQL real en PGlite, ambas condiciones, límites de dos y treinta días, pago tardío, faltantes, entregado accidental, exclusión catálogo, roles/RLS, cursor de otra vista/sucursal, búsqueda y cero mutaciones al leer. 1,212 registros de una sucursal recorridos sin pérdidas ni duplicados.
+- Cortes: componente real alcanza 205 registros aunque el servidor responda sólo 73 por página; offsets 0/73/146/205 y botón explícito.
 - Cliente real: loader valida sucursal/respuesta/cursor/error; hook no muestra sucursal anterior antes de efectos; diálogo de pago cobra una vez, notifica una vez y cierra sin cambiar entrega. Ambas regresiones se ejecutaron contra código anterior y fallaron por la condición que corrigen.
 - Pruebas de horario/WhatsApp y recuperación adaptadas a consulta paginada y eliminación de la segunda pregunta; las verificaciones financieras anteriores se conservan.
 - quality/build incluye todas estas pruebas además de operación, autoridad, cancelaciones/evidencia, impresión nativa, consultas completas y formularios web. Lint sin errores; puerta de tipos no admite nuevos diagnósticos. Persisten 597 diagnósticos POS históricos (antes 677; se tipó Input correctamente), 23 en web; no se declara TypeScript limpio.
@@ -50,4 +57,6 @@ La suite pendientes_sql_verify compara los hashes de las tres funciones probadas
 
 ## Publicación
 
-La verificación final del commit, migración, aliases y prueba visual se documentará después de completar el despliegue. La prueba física en tablets/impresoras y la recepción de la nueva versión por cada equipo no puede certificarse desde un despliegue remoto. Reabrir/recargar la app para recibir el cliente actualizado.
+Preview de código 5814c20568914bd5a0d50bf5b5c36d82fe39158b: READY en Vercel. Prueba visual aislada en rama qa/historial-sintetico-20261017 (fa37197618c920de5fac3dbef4dbfce3ecbca736); su HTML sintético NO forma parte del árbol de producción. Componentes reales con datos/conexiones simulados, no transacciones del negocio. Se verificó: Anteriores y volver, detalle sin Entregado, búsqueda de pedido de junio, resultado vacío al cambiar a otra sucursal, 50→60 pedidos, 73→146→205 cortes, terminal B sólo su corte, pago completo cierra sin segunda pregunta y error de red visible.
+
+La migración aplicada y su hash coinciden con el archivo versionado. Canales operativos: migracion/supabase (alias pasteleria-confetti.vercel.app) y apk/capacitor (alias configurado en capacitor.config.ts). El release se avanza sin force y se comprueban estado READY, SHA y contenido servido en ambos; los identificadores de despliegue se consultan en Vercel para el commit informado al usuario. La prueba física en tablets/impresoras y la recepción de la nueva versión por cada equipo no puede certificarse desde un despliegue remoto. Reabrir/recargar la app para recibir el cliente actualizado.

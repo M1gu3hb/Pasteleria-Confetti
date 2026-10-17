@@ -2,7 +2,7 @@
 
 ## Consulta de pedidos anteriores
 
-Nueva migración 20261017175554_pedidos_anteriores_historial_lectura.sql, creada con CLI. Sólo agrega listar_pedidos_pastel_pos(uuid,text,jsonb,integer,jsonb), STABLE SECURITY INVOKER, search_path vacío; execute sólo authenticated. Mantiene RLS. Rechaza sesión ausente/deshabilitada y sucursal ajena; el rol administrador no es dueño global. No agrega cron/TTL/DELETE, columnas ni escrituras. Fecha CDMX y clasificación derivada de saldo, entrega y fecha_pago_completo. JSON devuelve pedidos, total, hoy, conteos y cursor. Historial contiene todos los personalizados permitidos, incluidos cancelados y entregados antiguos.
+Nueva migración 20261017181425_pedidos_anteriores_historial_lectura.sql, creada con CLI. Sólo agrega listar_pedidos_pastel_pos(uuid,text,jsonb,integer,jsonb), STABLE SECURITY INVOKER, search_path vacío; execute sólo authenticated. Mantiene RLS. Rechaza sesión ausente/deshabilitada y sucursal ajena; el rol administrador no es dueño global. No agrega cron/TTL/DELETE, columnas ni escrituras. Fecha CDMX y clasificación derivada de saldo, entrega y fecha_pago_completo. JSON devuelve pedidos, total, hoy, conteos y cursor. Historial contiene todos los personalizados permitidos, incluidos cancelados y entregados antiguos.
 
 Revisado el 2026-10-17.
 

@@ -11,7 +11,7 @@ try {
   for (const file of ['20261001234206_operaciones_pedidos_atomicas.sql', '20261001234848_cortes_folios_reportes_atomicos.sql',
     '20261001235227_venta_intencion_resumen_periodo.sql', '20261002175251_auditoria_integridad_operativa.sql',
     '20261002175257_autoridad_login_entrada_publica.sql', '20261002182241_historial_operativo_consistente.sql',
-    '20261017175554_pedidos_anteriores_historial_lectura.sql']) {
+    '20261017181425_pedidos_anteriores_historial_lectura.sql']) {
     await db.exec('begin;' + read('supabase/migrations/' + file) + 'commit;');
   }
   const A = randomUUID(), B = randomUUID(), OWNER = randomUUID(), TERM = randomUUID(), BAKER = randomUUID(), MANAGER = randomUUID();
