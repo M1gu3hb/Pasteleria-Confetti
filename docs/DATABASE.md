@@ -1,10 +1,10 @@
 # DATABASE — contratos vigentes
 
-## Lecturas de horario y WhatsApp
+## Consulta de pedidos anteriores
 
-Se leen fecha_entrega (date), hora_entrega (text local 24 h), incluye_base (boolean) y precio_base (numeric) existentes. Los filtros/mensaje no requieren migración, policy, RPC ni columna de devolución. Una leyenda en WhatsApp no registra una devolución de caja.
+Nueva migración 20261017175554_pedidos_anteriores_historial_lectura.sql, creada con CLI. Sólo agrega listar_pedidos_pastel_pos(uuid,text,jsonb,integer,jsonb), STABLE SECURITY INVOKER, search_path vacío; execute sólo authenticated. Mantiene RLS. Rechaza sesión ausente/deshabilitada y sucursal ajena; el rol administrador no es dueño global. No agrega cron/TTL/DELETE, columnas ni escrituras. Fecha CDMX y clasificación derivada de saldo, entrega y fecha_pago_completo. JSON devuelve pedidos, total, hoy, conteos y cursor. Historial contiene todos los personalizados permitidos, incluidos cancelados y entregados antiguos.
 
-Revisado el 2026-10-11.
+Revisado el 2026-10-17.
 
 Bitácora: app_private.eventos_financieros_pos (RLS sin grants cliente), auditar_finanzas_pos y snapshot_financiero_pos; historial_evidencia_pos exige dueño y cursor. Las funciones base de operación/conciliación quedan privadas, llamadas sólo por envolturas controladas. Nuevas funciones: guard_venta_confirmada y conciliacion_operativa_pos (sólo dueño activo); crear_pedido_web_idempotente y wrapper legado; solicitar_transcripcion_pos (Auth POS), completar_transcripcion_pos (sólo servicio). Tablas privadas con RLS sin acceso cliente: intenciones_pedido_web, cuotas_pedido_web, transcripciones_voz y cuotas_voz. No tocar migraciones aplicadas; cambios futuros mediante nueva migración CLI. Comparar hash SQL desplegado con archivo versionado.
 

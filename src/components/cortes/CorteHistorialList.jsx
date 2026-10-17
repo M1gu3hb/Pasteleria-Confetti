@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useInfiniteQuery } from '@tanstack/react-query';
+import { useTerminal } from '@/lib/TerminalContext';
 import { base44 } from '@/api/base44Client';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -25,34 +26,38 @@ function getTipoCorte(c) {
  * Reusable list of cortes (used in Caja > Historial AND Dashboard).
  * Filtros opcionales por fecha. Botones Ver PDF / Ver resumen.
  */
-export default function CorteHistorialList({ limit = 50, maxVisible = null, showFilter = true, compact = false }) {
-  // limit: cuánto trae de BD (para tener variedad si hay turnos vs cierres).
-  // maxVisible: tope visual aplicado DESPUÉS del filtro (para Dashboard usar 7).
-  const { data: cortes = [] } = useQuery({
-    queryKey: ['cortes_historial'],
-    queryFn: () => base44.entities.CorteCaja.list('-created_date', Math.max(limit, maxVisible || 0) || 50),
-    initialData: [],
-  });
-
+export default function CorteHistorialList({ limit = 50, maxVisible = null, showFilter = true, compact = false, sucId: sucursalProp = undefined }) {
+  const { sucursalEfectiva } = useTerminal();
+  const sucId = sucursalProp === undefined ? sucursalEfectiva?.sucursal_id || null : sucursalProp;
   const [selected, setSelected] = useState(null);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
-
-  // Mostrar cierres diarios cerrados Y cortes de turno registrados
+  useEffect(() => { setSelected(null); }, [sucId]);
+  const rangoInvalido = !!from && !!to && from > to;
+  const { data, isPending, isError, refetch, hasNextPage, fetchNextPage, isFetchingNextPage } = useInfiniteQuery({
+    queryKey: ['cortes_historial', sucId, from, to],
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) => {
+      const filtro = { estado: { $in: ['cerrado', 'registrado'] } };
+      if (sucId) filtro['sucursal_id'] = sucId;
+      if (from || to) filtro['fecha_cierre'] = {
+        ...(from ? { $gte: `${from}T00:00:00-06:00` } : {}),
+        ...(to ? { $lte: `${to}T23:59:59.999-06:00` } : {}),
+      };
+      return base44.entities.CorteCaja.filter(filtro, '-fecha_cierre', Math.max(1, Math.min(limit, 100)), pageParam);
+    },
+    getNextPageParam: (ultima, paginas) => ultima.length ? paginas.reduce((n,p) => n+p.length, 0) : undefined,
+    enabled: !rangoInvalido, staleTime: 5000,
+  });
   const filtered = useMemo(() => {
-    const safe = Array.isArray(cortes) ? cortes : [];
-    return safe.filter(c => {
-      if (!c) return false;
-      const tipo = getTipoCorte(c);
-      const esCierreFinal = tipo === 'cierre_diario' && c.estado === 'cerrado';
-      const esTurno = tipo === 'turno' && c.estado === 'registrado';
-      if (!esCierreFinal && !esTurno) return false;
-      const t = c.fecha_cierre ? new Date(c.fecha_cierre).getTime() : 0;
-      if (from && t < new Date(from).getTime()) return false;
-      if (to && t > new Date(to).getTime() + 24 * 60 * 60 * 1000) return false;
-      return true;
+    const seen = new Set();
+    return (data?.pages || []).flat().filter(c => {
+      if (!c?.id || seen.has(c.id) || (sucId && c.sucursal_id !== sucId)) return false;
+      seen.add(c.id);
+      return (getTipoCorte(c) === 'cierre_diario' && c.estado === 'cerrado') || (getTipoCorte(c) === 'turno' && c.estado === 'registrado');
     });
-  }, [cortes, from, to]);
+  }, [data, sucId]);
+  const selectedVisible = selected && (!sucId || selected.sucursal_id === sucId) ? selected : null;
 
   return (
     <div className="space-y-3">
@@ -74,11 +79,13 @@ export default function CorteHistorialList({ limit = 50, maxVisible = null, show
         </div>
       )}
 
-      {filtered.length === 0 ? (
+      {rangoInvalido ? <p role="alert">La fecha inicial debe ser anterior a la final.</p> : isPending ? <p role="status">Cargando cortes…</p> : isError ? (
+        <div role="alert"><p>No se pudieron cargar todos los cortes.</p><Button onClick={() => refetch()}>Reintentar cortes</Button></div>
+      ) : filtered.length === 0 ? (
         <p className="text-center text-muted-foreground py-6 text-sm">Sin cortes en este rango</p>
       ) : (
         <div className="space-y-2">
-          {(maxVisible ? filtered.slice(0, maxVisible) : filtered).map(c => {
+          {filtered.map(c => {
             const tipo = getTipoCorte(c);
             const cfg = TIPO_CONFIG[tipo] || TIPO_CONFIG.cierre_diario;
             const Icon = cfg.Icon;
@@ -96,6 +103,7 @@ export default function CorteHistorialList({ limit = 50, maxVisible = null, show
                 <p className="text-xs text-muted-foreground">
                   {c.fecha_cierre ? format(new Date(c.fecha_cierre), "d MMM yyyy, HH:mm", { locale: es }) : ''}
                   {c.usuario_cajero_nombre ? ` · ${c.usuario_cajero_nombre}` : ''}
+                  {!sucId && c.sucursal_nombre ? ` · ${c.sucursal_nombre}` : ''}
                 </p>
               </div>
               {!compact && (
@@ -124,7 +132,13 @@ export default function CorteHistorialList({ limit = 50, maxVisible = null, show
         </div>
       )}
 
-      <CorteViewerDialog corte={selected} open={!!selected} onClose={() => setSelected(null)} />
+      {hasNextPage && !rangoInvalido && <div className="flex justify-center pt-2">
+        <Button variant="outline" className="h-12 px-6 font-bold" disabled={isFetchingNextPage}
+          onClick={() => { if (!isFetchingNextPage) void fetchNextPage(); }}>
+          {isFetchingNextPage ? 'Cargando más cortes…' : 'Cargar más cortes de caja'}
+        </Button>
+      </div>}
+      <CorteViewerDialog corte={selectedVisible} open={!!selectedVisible} onClose={() => setSelected(null)} />
     </div>
   );
 }

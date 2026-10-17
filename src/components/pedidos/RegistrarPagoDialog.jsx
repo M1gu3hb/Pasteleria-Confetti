@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
 import { mensajeOperacion } from '@/utils/errorOperacion';
-import { base44 } from '@/api/base44Client';
+import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +9,6 @@ import { construirPago } from '@/utils/metodoPago';
 import MetodoPagoSelector from '@/components/pos/MetodoPagoSelector';
 import { registrarPagoPedido, recuperarOperacionPedido } from '@/utils/registrarPagoPedido';
 import { tieneIntencionPendiente } from '@/utils/intencionPersistente';
-import { fechaCDMX } from '@/utils/pedidoPastelUtils';
 
 // Fase 4 — registra un abono con circuito financiero (Abono + PedidoPastel).
 // PARTE A — además crea una Venta paralela contable por cada pago (parcial o
@@ -28,16 +26,12 @@ export default function RegistrarPagoDialog({ pedido, cajaAbierta, posUser, sucu
   const [notas, setNotas] = useState('');
   const [loading, setLoading] = useState(false);
   const cobrandoRef = useRef(false);
-  // FASE 4 — cuando un pago liquida el pedido, mostramos la pregunta "¿ya se
-  // entrega?" antes de cerrar (en vez de cerrar directo).
-  const [liquidado, setLiquidado] = useState(false);
-
   const slotPago = `pago:${pedido?.sucursal_id}:${pedido?.id}`;
   const pendiente = tieneIntencionPendiente(slotPago);
   const { pago, valido: pagoValido } = construirPago(parseFloat(monto) || 0, metodo, montosMixto);
 
   useEffect(() => {
-    if (open) { setMonto(saldoActual > 0 ? String(saldoActual) : ''); setMetodo('efectivo'); setMontosMixto({ efectivo: '', tarjeta: '', transferencia: '' }); setNotas(''); setLiquidado(false); }
+    if (open) { setMonto(saldoActual > 0 ? String(saldoActual) : ''); setMetodo('efectivo'); setMontosMixto({ efectivo: '', tarjeta: '', transferencia: '' }); setNotas(''); }
      
   }, [open]);
 
@@ -68,72 +62,21 @@ export default function RegistrarPagoDialog({ pedido, cajaAbierta, posUser, sucu
       // La MISMA que usa el anticipo al crear el pedido → no divergen.
       const res = pendiente ? await recuperarOperacionPedido(slotPago) : await registrarPagoPedido({ pedido, monto: m, pago, cajaAbierta, posUser, sucursalEfectiva, notas });
       toast.success(`Pago de $${Number(res.montoRegistrado).toFixed(2)} registrado${res.intencionRecuperada ? ' (intento recuperado)' : ''}`);
-      // FASE 4 — si este pago LIQUIDA el pedido (saldo 0), preguntar si ya se
-      // entrega antes de cerrar. Si no liquida, cierra como siempre.
       onPagoRegistrado?.();
-      if (res.saldoPendiente <= 0 && pedido.estado !== 'entregado' && pedido.estado !== 'cancelado') {
-        setLiquidado(true);
-      } else {
-        onPagoRegistrado?.();
-        onClose?.();
-      }
+      onClose?.();
     } catch (err) {
       console.error('[RegistrarPago]', err);
-      toast.error(err?.message || 'No se pudo confirmar el pago. Reintenta para recuperar el mismo intento.');
+      toast.error(err?.message?.includes('CONCILIAR_PAGO_CANCELADO') ? mensajeOperacion(err) : err?.message || 'No se pudo confirmar el pago. Reintenta para recuperar el mismo intento.');
     } finally {
       cobrandoRef.current = false;
       setLoading(false);
     }
   };
 
-  // FASE 4 — cierre tras liquidar (refresca listas y cierra el diálogo/detalle).
-  const cerrarTrasLiquidar = () => { onPagoRegistrado?.(); onClose?.(); };
-  // "Sí, marcar entregado" — mismo efecto que el botón Entregado: saca el pedido
-  // de la lista de pendientes. Solo cambia estado; NO toca dinero.
-  const marcarEntregadoYCerrar = async () => {
-    if (loading) return;
-    setLoading(true);
-    try {
-      await base44.entities.PedidoPastel.update(pedido.id, {
-        estado: 'entregado',
-        fecha_entrega_real: new Date().toISOString(),
-      });
-      toast.success('Pedido marcado como entregado');
-    } catch (e) {
-      console.error('[RegistrarPago] marcar entregado:', e);
-      toast.error(e?.message?.includes('CONCILIAR_PAGO_CANCELADO') ? mensajeOperacion(e) : 'No se pudo marcar como entregado.');
-    } finally {
-      setLoading(false);
-      cerrarTrasLiquidar();
-    }
-  };
-
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o && !loading) { if (liquidado) cerrarTrasLiquidar(); else onClose?.(); } }}>
+    <Dialog open={open} onOpenChange={(o) => { if (!o && !loading) onClose?.(); }}>
       <DialogContent className="sm:max-w-sm bg-gradient-to-b from-[#fff8f4] to-white dark:from-[#2E1D0E] dark:to-[#241608]">
-        <DialogHeader><DialogTitle className="font-heading">{liquidado ? 'Pago completo' : 'Registrar pago'}</DialogTitle></DialogHeader>
-        {liquidado ? (
-          <div className="space-y-4">
-            <div className="text-center p-3 rounded-xl bg-emerald-50 border border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800/50">
-              <p className="text-sm font-bold text-emerald-800 dark:text-emerald-200">Este pago liquida el pedido.</p>
-              <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-1">¿El pastel ya se va a entregar?</p>
-              {pedido?.fecha_entrega && pedido.fecha_entrega > fechaCDMX() && (
-                <p className="text-xs font-semibold text-amber-800 dark:text-amber-200 mt-2">
-                  Está programado para el {pedido.fecha_entrega}. Si solo recibió el pago, elige “No, aún no”.
-                </p>
-              )}
-            </div>
-            <div className="flex flex-col gap-2">
-              <Button onClick={marcarEntregadoYCerrar} disabled={loading}
-                className="h-12 font-bold bg-emerald-600 hover:bg-emerald-700 text-white">
-                Sí, marcar entregado
-              </Button>
-              <Button variant="outline" onClick={cerrarTrasLiquidar} disabled={loading} className="h-11">
-                No, aún no
-              </Button>
-            </div>
-          </div>
-        ) : (
+        <DialogHeader><DialogTitle className="font-heading">Registrar pago</DialogTitle></DialogHeader>
         <div className="space-y-4">
           {pendiente && <p className="text-sm">Hay un intento sin confirmar. Consultaremos el cobro original antes de permitir otro pago.</p>}
           <div className="text-center p-3 rounded-xl bg-muted/40 border">
@@ -161,7 +104,6 @@ export default function RegistrarPagoDialog({ pedido, cajaAbierta, posUser, sucu
             {loading ? 'Confirmando…' : pendiente ? 'Recuperar pago pendiente' : 'Confirmar pago'}
           </Button>
         </div>
-        )}
       </DialogContent>
     </Dialog>
   );

@@ -27,6 +27,9 @@ try {
  }
  await db.exec('BEGIN;'+read('supabase/migrations/'+file)+'COMMIT;');
  }
+ const webFunctions=(await db.query("select n.nspname||'.'||p.proname name,md5(p.prosrc) hash from pg_proc p join pg_namespace n on n.oid=p.pronamespace where p.proname in ('crear_pedido_web_validado','crear_pedido_web_validado_base','crear_pedido_web_idempotente')")).rows;
+ const liveWebHashes={'public.crear_pedido_web_idempotente':'d1ead7162f0206da8f0a89859b17cf35','app_private.crear_pedido_web_validado':'47f0f41fdc86279fca62bbaebb8d2f4a','app_private.crear_pedido_web_validado_base':'aff6ff3b3e3d79ebde9bd03cf444a964'};
+ assert.equal(webFunctions.length,3);for(const f of webFunctions)assert.equal(f.hash,liveWebHashes[f.name],f.name+' differs from live audited 2026-10-17');
  const A=randomUUID(),B=randomUUID(),OWNER=randomUUID(),TERM=randomUUID(),OTHER=randomUUID();
  await db.query("insert into sucursales(id,nombre,folio_prefijo) values($1,'A','A'),($2,'B','B')",[A,B]);
  await db.query("insert into auth.users(id,email) values($1,'owner@fixture.local'),($2,'terminal@fixture.local'),($3,'other@fixture.local')",[OWNER,TERM,OTHER]);
@@ -118,4 +121,31 @@ try {
  await db.exec('SET ROLE authenticated');assert.equal((await db.query('select conciliacion_operativa_pos() as r')).rows[0].r.saldos_inconsistentes,1);
  await db.exec('RESET ROLE');await identity(TERM);await db.exec('SET ROLE authenticated');await assert.rejects(()=>db.query('select conciliacion_operativa_pos()'),/SOLO_DUENO/);
  console.log('PASS: voice object/role ownership; durable lease/cache; public JWT denied; foreign overwrite/delete denied; owner reconciliation detects injected isolated inconsistency');
+ // Contratos de ambos formularios públicos, en las tres sucursales de una
+ // base PGlite aislada: nunca enviar estos pedidos al negocio en producción.
+ await db.exec('RESET ROLE');await identity('');
+ const C=randomUUID();await db.query("insert into sucursales(id,nombre,folio_prefijo) values($1,'C','C')",[C]);
+ await db.exec("update app_private.cuotas_pedido_web set ventana=now()-interval '2 hours'");
+ for(const [index,branch] of [A,B,C].entries())for(const type of ['pastel_personalizado','productos_catalogo']){
+  const web={...payload,sucursal_id:branch,sucursal_nombre:['A','B','C'][index],tipo_pedido:type,
+   cliente_telefono:'554444444'+index,origen:'web',estado:'pendiente',creado_por_nombre:'Web Confetti',
+   cliente_email:null,fecha_entrega:'2099-10-01',hora_entrega:'15:00',devolver_base:true,
+   a_cuenta:0,total_abonado:0,saldo_pendiente:100,
+   ...(type==='pastel_personalizado'?{cliente_direccion:null,requiere_entrega:false,personas_estimadas:10,
+    concepto:'Fixture',decorado:null,rellenos:null,leyenda_pastel:null,incluye_base:false,precio_base:0,
+    incluye_oblea:false,precio_oblea:0,incluye_muneca:false,precio_muneca:0,incluye_velas:false,precio_velas:0,
+    extras_seleccionados:[],precio_kilo_usado:100,subtotal_pastel:100,subtotal_extras:0,total_calculado:100,
+    imagen_referencia_url:null,notas_generales:null}:{kilos:0,notas_generales:'1 × producto de ejemplo'})};
+  await db.exec('SET ROLE anon');const intent=randomUUID(),created=await call(intent,web);
+  assert.equal(await call(intent,web),created);
+  await assert.rejects(()=>db.query('select * from pedidos where folio=$1',[created]),/permission denied/);
+  await db.exec('RESET ROLE');
+  const saved=(await db.query('select * from pedidos where folio=$1',[created])).rows[0];
+  assert.equal(saved.sucursal_id,branch);assert.equal(saved.origen,'web');assert.equal(saved.estado,'pendiente');
+  assert.equal(saved.tipo_pedido,type);assert.equal(Number(saved.total_abonado),0);assert.equal(Number(saved.saldo_pendiente),100);
+  await identity(OWNER);await db.exec('SET ROLE authenticated');
+  assert.equal((await db.query('select id from pedidos where id=$1 and sucursal_id=$2',[saved.id,branch])).rows.length,1);
+  await db.exec('RESET ROLE');await identity('');
+ }
+ console.log('PASS: actual public RPC accepts complete cake/catalogue form payloads for three isolated branches, persists the correct branch, replays once, exposes orders to POS and denies anonymous order reads');
 } catch(e){console.error(e.message,e.where,e.detail);process.exitCode=1;}finally{await db.close();}

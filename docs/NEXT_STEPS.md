@@ -1,10 +1,10 @@
 # NEXT_STEPS — contratos vigentes
 
-## Validación en tablet
+## Validación de pedidos e historial
 
-Después de cerrar y reabrir la app, revisar la cuarta fila de Horario, el orden y la vista previa de WhatsApp con un pedido real ya guardado. No enviar mensajes ni crear cobros ficticios para verificar. Definir con Miguel base para kilos fraccionarios; no recalcular historial.
+Al reabrir la app en cada sucursal verificar Pedidos actuales/anteriores, un pedido real pendiente fuera de fecha y búsqueda de un folio antiguo; no crear operaciones ficticias. Ver que personalizados no muestra Entregado, y que Caja permite Cargar más cortes de caja. El alias APK y producción deben servir el mismo commit. Comprobar físicamente la recarga y continuidad de impresión sigue requiriendo el dispositivo; no se certifica por un build remoto. No borrar registros para despejar la pantalla.
 
-Revisado el 2026-10-11.
+Revisado el 2026-10-17.
 
 Orden operativo siguiente: conciliar internamente las cuatro cancelaciones con la evidencia conservada por el POS; verificar versión cargada/ticket/papel/cajón en cada sucursal sin generar cobros ficticios; instrumentar alertas externas y ensayar restauración integral; desplegar lectores firmados antes de privatizar Storage; abordar deuda de tipos y actualización mayor del router. Una nueva sesión debe repetir lecturas vivas de versiones/permisos. No recrear ingresos antiguos ni reabrir cortes sin conciliación.
 

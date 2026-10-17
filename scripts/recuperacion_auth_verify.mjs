@@ -20,8 +20,8 @@ console.log('PASS: terminal session survives owner switch; one-use Auth exchange
 // was lost. Balance is now zero and cut closed; recovery must bypass current
 // form validation and query the original intent, then refresh the parent.
 const dialog=read('src/components/pedidos/RegistrarPagoDialog.jsx');
-const start=dialog.indexOf('  const confirmar = async () => {');const end=dialog.indexOf('\n  // FASE 4 — cierre',start);
+const start=dialog.indexOf('  const confirmar = async () => {');const end=dialog.indexOf('\n  return (',start);assert(start>=0&&end>start,'Payment handler boundaries must be found');
 let confirmed=0,refreshed=0;let errorMessage='';
-const dc=vm.createContext({cobrandoRef:{current:false},loading:false,pedido:{id:'P',estado:'pagado'},navigator:{onLine:true},pendiente:true,cajaAbierta:null,hayCorteAtrasado:true,monto:'',saldoActual:0,pagoValido:false,slotPago:'pago:A:P',setLoading:()=>{},setLiquidado:()=>{},recuperarOperacionPedido:async slot=>{assert.equal(slot,'pago:A:P');confirmed++;return {montoRegistrado:100,intencionRecuperada:true,saldoPendiente:0};},registrarPagoPedido:()=>{throw Error('A second payment was attempted');},onPagoRegistrado:()=>refreshed++,onClose:()=>{},toast:{error:x=>errorMessage=x,success:()=>{}},console});
+const dc=vm.createContext({cobrandoRef:{current:false},loading:false,pedido:{id:'P',estado:'pagado'},navigator:{onLine:true},pendiente:true,cajaAbierta:null,hayCorteAtrasado:true,monto:'',saldoActual:0,pagoValido:false,slotPago:'pago:A:P',setLoading:()=>{},recuperarOperacionPedido:async slot=>{assert.equal(slot,'pago:A:P');confirmed++;return {montoRegistrado:100,intencionRecuperada:true,saldoPendiente:0};},registrarPagoPedido:()=>{throw Error('A second payment was attempted');},onPagoRegistrado:()=>refreshed++,onClose:()=>{},toast:{error:x=>errorMessage=x,success:()=>{}},console});
 vm.runInContext(dialog.slice(start,end)+'\nglobalThis.confirm=confirmar;',dc);await dc.confirm();assert.equal(confirmed,1);assert.equal(refreshed,1);assert.equal(errorMessage,'');
 console.log('PASS: actual payment dialog recovers at zero balance with closed/missing current cut');

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatCurrency } from '@/utils/financialUtils';
@@ -43,31 +43,33 @@ export default function Ventas() {
   const queryClient = useQueryClient();
   const puedeLimpiar = hasPermission(posUser?.rol, 'limpiar_ventas');
   const [search, setSearch] = useState('');
+  const [visibles, setVisibles] = useState(100);
   const [filterEstado, setFilterEstado] = useState('all');
   // PARTE H — Rango de fecha por defecto: últimos 2 días (protege rendimiento;
   // el usuario puede cambiar a 7/30/hoy/todo). Solo es el valor inicial del filtro.
   const [filterRango, setFilterRango] = useState('2d');
-  const [selectedVenta, setSelectedVenta] = useState(null);
+  const [selectedVentaRaw, setSelectedVenta] = useState(null);
+  const selectedVenta = selectedVentaRaw && (!sucId || selectedVentaRaw.sucursal_id === sucId) ? selectedVentaRaw : null;
   const [showLimpiar, setShowLimpiar] = useState(false);
   const [confirmText, setConfirmText] = useState('');
   const [limpiando, setLimpiando] = useState(false);
   const [revertirInventario, setRevertirInventario] = useState(true);
-  const [verTicket, setVerTicket] = useState(null);
+  const [verTicketRaw, setVerTicket] = useState(null);
+  const verTicket = verTicketRaw && (!sucId || verTicketRaw.sucursal_id === sucId) ? verTicketRaw : null;
   // Prompt 5a — cancelar/devolver venta desde el detalle.
   const [cancelarModo, setCancelarModo] = useState(null); // 'cancelacion' | 'devolucion' | null
 
   // No usar initialData:[] (genera "sin ventas" antes del primer fetch).
   // FASE 2C — Se filtra por sucursal efectiva. Sin sucursal (dueño global) trae
-  // todas las sucursales (.list). El límite 200 acota el volumen.
-  const { data: ventas, isPending: ventasLoading } = useQuery({
+  // todas las sucursales. filterAll/listAll recorren páginas completas.
+  const { data: ventas, isPending: ventasLoading, isError: ventasError, refetch: recargarVentas } = useQuery({
     queryKey: ['ventas_all', sucId],
     queryFn: () => sucId
       ? base44.entities.Venta.filterAll({ sucursal_id: sucId }, '-created_date')
       : base44.entities.Venta.listAll('-created_date'),
-    placeholderData: (prev) => prev,
     staleTime: 5000,
   });
-  const safeVentas = Array.isArray(ventas) ? ventas : [];
+  const safeVentas = (Array.isArray(ventas) ? ventas : []).filter(v => !sucId || v.sucursal_id === sucId);
   const cargandoVentas = ventasLoading && !ventas;
 
   const { data: detalles = [] } = useQuery({
@@ -78,7 +80,7 @@ export default function Ventas() {
   });
 
   // FASE 2C — Límite de fecha por defecto (30d / hoy / todo). En memoria sobre
-  // la lista ya acotada a 200. Protege rendimiento visual sin reescribir query.
+  // la lista completa; el botón incremental limita las tarjetas renderizadas.
   const desdeTs = useMemo(() => {
     if (filterRango === 'todo') return 0;
     const ahora = new Date();
@@ -102,6 +104,8 @@ export default function Ventas() {
       return matchSearch && matchEstado && matchFecha;
     });
   }, [safeVentas, search, filterEstado, desdeTs]);
+
+  useEffect(() => { setVisibles(100); setSelectedVenta(null); setVerTicket(null); setCancelarModo(null); }, [sucId, search, filterEstado, filterRango]);
 
   const totalVentas = filtered.filter(v => v.estado === 'pagada').reduce((s, v) => s + (v.total || 0), 0);
 
@@ -179,13 +183,14 @@ export default function Ventas() {
         </Select>
       </div>
 
+      {ventasError && <div role="alert"><p>No se pudo actualizar el historial de ventas.</p><Button onClick={() => recargarVentas()}>Reintentar ventas</Button></div>}
       {cargandoVentas ? (
         <LoadingState label="Cargando ventas…" />
       ) : filtered.length === 0 ? (
         <EmptyState icon={Receipt} title="Sin ventas" description="No hay transacciones registradas aún" />
       ) : (
         <div className="space-y-2">
-          {filtered.map(v => (
+          {filtered.slice(0, visibles).map(v => (
             <Card key={v.id} className="skeu-card rounded-2xl p-4 transition-shadow border-0">
               <div className="flex items-center gap-4 flex-wrap">
                 <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setSelectedVenta(v)}>
@@ -299,7 +304,7 @@ export default function Ventas() {
 
       {/* Prompt 5a — Cancelar / Devolver venta */}
       <CancelarVentaDialog
-        open={!!cancelarModo}
+        open={!!cancelarModo && !!selectedVenta}
         modo={cancelarModo || 'cancelacion'}
         venta={selectedVenta}
         posUser={posUser}
@@ -310,6 +315,10 @@ export default function Ventas() {
           queryClient.invalidateQueries({ queryKey: ['ventas_all'] });
         }}
       />
+
+      {filtered.length > visibles && <div className="flex justify-center">
+        <Button variant="outline" className="h-12 px-6 font-bold" onClick={() => setVisibles(n => n + 100)}>Cargar más ventas</Button>
+      </div>}
 
       <Dialog open={!!selectedVenta} onOpenChange={() => setSelectedVenta(null)}>
         <DialogContent className="sm:max-w-md">

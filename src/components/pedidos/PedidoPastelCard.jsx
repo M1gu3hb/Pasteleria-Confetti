@@ -1,6 +1,7 @@
 import React from 'react';
 import { Calendar, Phone, Cake } from 'lucide-react';
 import { ESTADOS_PEDIDO, fechaCDMX } from '@/utils/pedidoPastelUtils';
+import { situacionPedido } from '@/utils/situacionPedido';
 import { badgeSucursal } from '@/utils/coloresSucursal';
 
 const fmt = (n) => `$${(Number(n) || 0).toFixed(2)}`;
@@ -9,6 +10,8 @@ export default function PedidoPastelCard({ pedido, onVer, mostrarSucursal }) {
   if (!pedido) return null;
   const est = ESTADOS_PEDIDO[pedido.estado] || ESTADOS_PEDIDO.pendiente;
   const hoyStr = fechaCDMX();
+  const situacion = situacionPedido(pedido, hoyStr);
+  const tono = { alerta: 'border-red-300 bg-red-50 text-red-800', pendiente: 'border-amber-300 bg-amber-50 text-amber-900', pagado: 'border-emerald-300 bg-emerald-50 text-emerald-900', neutro: 'border-slate-300 bg-slate-50 text-slate-800' };
   const urgente = pedido.fecha_entrega && pedido.fecha_entrega <= hoyStr &&
     pedido.estado !== 'entregado' && pedido.estado !== 'cancelado';
   // FASE 3 — saldo VIVO: usa saldo_pendiente (se actualiza con cada pago); si es
@@ -24,7 +27,7 @@ export default function PedidoPastelCard({ pedido, onVer, mostrarSucursal }) {
     <button
       type="button"
       onClick={() => onVer?.(pedido)}
-      className="skeu-card w-full p-4 rounded-2xl text-left transition-all active:scale-[0.99]"
+      className="skeu-card w-full h-full p-4 rounded-2xl text-left transition-all active:scale-[0.99] border-l-4"
       style={{ touchAction: 'manipulation', minHeight: 44 }}
     >
       {/* Encabezado: folio + estado en una línea limpia; chips (web/sucursal)
@@ -52,6 +55,7 @@ export default function PedidoPastelCard({ pedido, onVer, mostrarSucursal }) {
           )}
         </div>
       )}
+      <p className={`mb-3 inline-flex rounded-lg border px-2.5 py-1.5 text-xs font-bold ${tono[situacion.tono]}`}>{situacion.texto}</p>
       <div className="flex gap-3">
         {pedido.imagen_referencia_url && (
           <img src={pedido.imagen_referencia_url} alt="ref"
@@ -78,7 +82,7 @@ export default function PedidoPastelCard({ pedido, onVer, mostrarSucursal }) {
       </div>
       <div className="flex justify-between items-center mt-2 pt-2 border-t border-dashed">
         <p className="font-heading font-black text-base">{fmt(pedido.total_final)}</p>
-        {Number(pedido.a_cuenta) > 0 && saldoVivo > 0 && (
+        {saldoVivo > 0 && (
           <p className="text-xs font-semibold text-amber-600 dark:text-amber-400">Resta: {fmt(saldoVivo)}</p>
         )}
       </div>

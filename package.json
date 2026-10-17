@@ -13,10 +13,11 @@
     "test:operacion": "node scripts/operacion_pedidos_verify.mjs && node scripts/operacion_consultas_verify.mjs",
     "test:autoridad": "node scripts/autoridad_verify.mjs && node scripts/recuperacion_auth_verify.mjs",
     "test:pendientes": "node scripts/pendientes_sql_verify.mjs && node scripts/pendientes_cliente_verify.mjs && node scripts/voz_edge_verify.mjs",
-    "quality": "npm run lint && node scripts/calidad_types_verify.mjs && npm run test:operacion && npm run test:autoridad && npm run test:pendientes && npm run test:evidencia && npm run test:pedidos",
+    "quality": "npm run lint && node scripts/calidad_types_verify.mjs && npm run test:operacion && npm run test:autoridad && npm run test:pendientes && npm run test:evidencia && npm run test:pedidos && npm run test:historial",
     "prebuild": "npm run quality",
     "test:evidencia": "node scripts/evidencia_financiera_verify.mjs && node scripts/evidencia_cliente_verify.mjs",
-    "test:pedidos": "node scripts/pedidos_horario_whatsapp_verify.mjs"
+    "test:pedidos": "node scripts/pedidos_horario_whatsapp_verify.mjs",
+    "test:historial": "node scripts/pedidos_anteriores_sql_verify.mjs && node scripts/pedidos_historial_cliente_verify.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.1",

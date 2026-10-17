@@ -1,10 +1,12 @@
 # ARCHITECTURE — contratos vigentes
 
-## Horarios de pedidos
+## Lectura paginada de pedidos
 
-Se ordena la respuesta completa por fecha/hora/ID en el cliente. No se pagina por la hora editable ni se reemplaza la RPC de snapshot. El filtro horario es local y se cruza con sucursal/estado/fecha. La fila nueva comparte AccesosRapidos y su desplazamiento horizontal interno.
+listar_pedidos_pastel_pos ejecuta clasificación, filtros y orden fecha/hora/ID en el servidor bajo RLS. useInfiniteQuery carga 50 pedidos por página, cursor ligado a sucursal/vista/filtros y límite de creación. No es el snapshot financiero: es una lista viva; editar fecha/hora/pago durante la navegación puede modificar la posición y el refresco vuelve a recorrer las páginas. Los informes financieros conservan historial_operativo_pos y sus garantías. Las lecturas fallidas se muestran, nunca se presentan como historial completo.
 
-Revisado el 2026-10-11.
+CorteHistorialList se comparte en Caja/Dashboard y pagina por offset hasta página vacía (el servidor puede reducir el tamaño). Registros conserva Cargar más al buscar sin coincidencias en las páginas cargadas. Un cambio de sucursal oculta inmediatamente listas y detalles previos. Ventas sigue leyendo todo por páginas para calcular totales completos; Cargar más sólo dosifica tarjetas. No afirmar que esto elimina todo coste de consultar muchos años.
+
+Revisado el 2026-10-17.
 
 El cliente usa adapters sobre tablas/RPC. Escrituras financieras son servidor/transacción; lecturas financieras completas son snapshots con RLS. Pedido web usa intención/hash/cuota en app_private; voces usan autorización de objeto y lease antes de IA. Impresión nativa comparte una cola completa con cajón y cortes. Storage público aún exige fase de lectores firmados antes de privatizar.
 

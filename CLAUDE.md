@@ -4,6 +4,12 @@
 
 # CLAUDE.md — Reglas permanentes del proyecto (POS Confetti)
 
+## Pedidos anteriores e historial (2026-10-17)
+
+Personalizados no ofrece Entregado ni la pregunta al liquidar. La fecha de entrega se conserva. La vista del servidor exige saldo conocido liquidado y dos días de margen desde la entrega (calendario CDMX); comienza Anteriores en la fecha mayor entre entrega + 2 y pago completo. Tras 30 días pasa al Historial completo. Son clasificaciones de lectura, nunca borrados ni cambios de estado/fecha real. Los antiguos Entregados también se clasifican por saldo/fecha. Cancelados siguen consultables en Historial.
+
+Sucursal en RPC, RLS, cache, respuesta y detalle. Dueño/pastelero conservan alcance global deliberado; terminal/administrador sólo su sucursal. Buscar abre Historial completo conservando sucursal. Pedidos/Caja/Dashboard/Registros ofrecen Cargar más con nombre explícito; Ventas limita tarjetas sin truncar totales. Ver docs/AUDITORIA_PEDIDOS_HISTORIAL_2026-10-17.md y npm run test:historial.
+
 ## Pedidos personalizados: horario y WhatsApp
 
 Fecha → hora local 24 h → ID; hora ausente al final del mismo día. Los accesos de horario nunca amplían la sucursal seleccionada. WhatsApp muestra precio_base guardado, incluido en total, sin recalcularlo. Ver docs/AUDITORIA_HORARIOS_WHATSAPP_2026-10-11.md y npm run test:pedidos.

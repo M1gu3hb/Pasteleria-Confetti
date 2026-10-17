@@ -73,9 +73,18 @@ let supplied=[]; let requested;
 const dataApi={ entities:{ Sucursal:{filter:async()=>branches}, PedidoPastel:{filterAll:async criteria=>{requested=criteria;return supplied.map(p=>({...p}));}} } };
 const useState=initial=>{const i=cursor++;if(!hooks[i])hooks[i]={value:initial};return [hooks[i].value,v=>{hooks[i].value=typeof v==='function'?v(hooks[i].value):v;}];};
 const useEffect=(fn,deps)=>{const i=cursor++;const old=hooks[i];if(!old||deps.some((v,k)=>v!==old.deps[k])){hooks[i]={deps};effects.push(fn);}};
+// La pantalla obtiene ahora páginas del servidor. Este doble conserva las
+// pruebas de interacción; clasificación y RLS se ejecutan en PostgreSQL aislado.
+const pageOf=(list,sucursal,filtros={})=>{
+ const pedidos=list.filter(p=>(!sucursal||p.sucursal_id===sucursal)&&coincideHorarioEntrega(p.hora_entrega,filtros.hora||'todos')&&
+  (!filtros.busqueda||`${p.folio} ${p.cliente_nombre}`.toLowerCase().includes(filtros.busqueda.toLowerCase()))).toSorted(compararEntregaPedidos);
+ return {pedidos,conteos:{actuales:pedidos.length,anteriores:0,historial:pedidos.length},total:pedidos.length,hay_mas:false,siguiente:null};
+};
 const context=vm.createContext({
   React, useState, useEffect, useMemo:fn=>fn(), useTerminal:()=>scope,
   useCajaAbierta:()=>({hayCaja:false}), useConfig:()=>({config:{}}), base44:dataApi,
+  cargarPaginaPedidos:async ({sucursal,filtros})=>{requested=sucursal?{sucursal_id:sucursal}:{};return pageOf(supplied,sucursal,filtros);},
+  useInfiniteQuery:o=>{options=o;return {data:{pages:[pageOf(supplied,o.queryKey[2],o.queryKey[4])]},isPending:false,isError:false,refetch:()=>{},hasNextPage:false};},
   useQuery:o=>{if(o.queryKey[0]==='sucursales_activas_pedidos_pastel')return {data:branches};options=o;return {data:supplied,isLoading:false,isError:false,refetch:()=>{}};},
   ESTADOS_PEDIDO:utilities.api.ESTADOS_PEDIDO, fechaCDMX:utilities.api.fechaCDMX,
   compararEntregaPedidos, coincideHorarioEntrega, paletaSucursal:()=>({activo:'',badge:''}),
@@ -92,11 +101,11 @@ const a3={...fixture,id:'z',folio:'A-15',sucursal_id:'A',estado:'confirmado'};
 const a5={...a3,id:'a',folio:'A-17',hora_entrega:'17:00'};
 const foreign={...a3,id:'b',folio:'B-15',sucursal_id:'B'};
 supplied=[a5,a3,foreign]; let tree=render();
-supplied=await options.queryFn(); tree=render();
+supplied=(await options.queryFn({pageParam:null})).pedidos; tree=render();
 assert.deepEqual(ids(tree),['b','z','a']); // mismos días: 15:00 antes que 17:00 aunque UUID diga lo contrario
 tree=click(tree,'Xochimilco');
 assert.equal(requested.sucursal_id,undefined);
-supplied=await options.queryFn();tree=render();assert.equal(requested.sucursal_id,'A');assert.deepEqual(ids(tree),['z','a']);
+supplied=(await options.queryFn({pageParam:null})).pedidos;tree=render();assert.equal(requested.sucursal_id,'A');assert.deepEqual(ids(tree),['z','a']);
 assert.equal(all(tree,n=>n.type==='SucursalBadge')[0].props.sucursalEfectiva.sucursal_id,'A');
 // Una respuesta/caché con otras sucursales nunca pasa el segundo filtro local.
 assert(!ids(tree).includes('b'));
@@ -108,10 +117,10 @@ search.props.onChange({target:{value:'B-15'}});tree=render();assert.deepEqual(id
 search.props.onChange({target:{value:''}});tree=render();
 all(tree,n=>n.type==='PedidoPastelCard')[0].props.onVer(a3);tree=render();
 assert.equal(all(tree,n=>n.type==='PedidoPastelDetalleDialog')[0].props.pedido.id,'z');
-tree=click(tree,'Topilejo');assert.equal(all(tree,n=>n.type==='PedidoPastelDetalleDialog')[0].props.pedido,null);
-supplied=await options.queryFn();tree=render();assert.equal(requested.sucursal_id,'B');assert.deepEqual(ids(tree),['b']);
+supplied=[a5,a3,foreign];tree=click(tree,'Topilejo');assert.equal(all(tree,n=>n.type==='PedidoPastelDetalleDialog')[0].props.pedido,null);
+supplied=(await options.queryFn({pageParam:null})).pedidos;tree=render();assert.equal(requested.sucursal_id,'B');assert.deepEqual(ids(tree),['b']);
 scope={sucursalEfectiva:{sucursal_id:'C',sucursal_nombre:'San Gregorio'},adminRole:null};tree=render();
 assert.deepEqual(ids(tree),[]);assert.equal(all(tree,n=>n.type==='PedidoPastelDetalleDialog')[0].props.pedido,null);
-supplied=await options.queryFn();assert.equal(requested.sucursal_id,'C');
+supplied=(await options.queryFn({pageParam:null})).pedidos;assert.equal(requested.sucursal_id,'C');
 console.log('PASS: página real ordena 15 antes de 17; tabs, consulta/cache, búsqueda, horario y detalle conservan sucursal; terminal usa su sucursal propia.');
 console.log('\nEJEMPLO WHATSAPP (fixture, no enviado):\n'+text);

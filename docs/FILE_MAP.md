@@ -1,10 +1,10 @@
 # FILE_MAP — contratos vigentes
 
-## Horario y WhatsApp
+## Pedidos anteriores y paginación
 
-src/pages/PedidosPastel.jsx: cuatro filas de accesos, consulta y filtro por sucursal. src/utils/horarioPedidos.js: hora 24 h, orden y franjas. src/utils/pedidoPastelUtils.js: WhatsApp con base guardada. src/pages/NuevoPedidoPastel.jsx: ayuda de captura 15:00/17:00. scripts/pedidos_horario_whatsapp_verify.mjs integra npm run test:pedidos y build.
+src/pages/PedidosPastel.jsx: vistas y navegación obvia; src/lib/pedidosAnteriores.js: lector validado; src/utils/situacionPedido.js: etiquetas; PedidoPastelCard/DetalleDialog/RegistrarPagoDialog: tarjetas y retiro de entrega manual de personalizados. CorteHistorialList/CortesRecientesDashboard: historial compartido; Registros/useListaPaginada/Ventas: cargar más y alcance. Nueva migración listar_pedidos_pastel_pos. scripts/pedidos_anteriores_sql_verify.mjs y pedidos_historial_cliente_verify.mjs integran quality/build. historial_browser_fixture.mjs genera sólo una prueba aislada con datos sintéticos y sin conexión al negocio; no se incorpora al build.
 
-Revisado el 2026-10-11.
+Revisado el 2026-10-17.
 
 Evidencia: evidenciaFinanciera.js, EvidenciaPagoDialog.jsx, migración evidencia_financiera_pos y suites evidencia_financiera/evidencia_cliente. Dinero: operacion_pedido_tx y migraciones operativas; historial: historial_operativo_pos; reimpresión: cargarTicketVenta/TicketViewerDialog; impresión: colaImpresion/printTicket; importación: importacionesDisponibles/importExecutors; conciliación: EstadoConciliacion; web: envioPedidoWeb y ambos formularios. Suites: operacion_*, autoridad_*, recuperacion_auth, pendientes_sql, pendientes_cliente, voz_edge; puerta de build: calidad_types_verify con fixtures/typecheck_deuda_conocida.json.
 

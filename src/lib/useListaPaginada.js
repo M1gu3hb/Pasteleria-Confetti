@@ -13,6 +13,10 @@ import { useState, useEffect, useCallback, useRef } from 'react';
  * deps: cuando cambian (p. ej. sucursal activa), se reinicia desde la página 0.
  */
 export function useListaPaginada(fetchPage, pageSize, deps = []) {
+  const scopeKey = JSON.stringify(deps);
+  const scopeActualRef = useRef(scopeKey);
+  const scopeCargadoRef = useRef(scopeKey);
+  scopeActualRef.current = scopeKey;
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -26,22 +30,23 @@ export function useListaPaginada(fetchPage, pageSize, deps = []) {
 
   const cargar = useCallback(async (reset) => {
     if (!reset && enCursoRef.current) return;
-    if (reset) { generacionRef.current++; setItems([]); }
+    if (reset) { generacionRef.current++; setItems([]); scopeCargadoRef.current = scopeActualRef.current; }
     const generacion = generacionRef.current;
+    const scopeSolicitud = scopeActualRef.current;
     enCursoRef.current = true;
     setError(null);
     const skip = reset ? 0 : skipRef.current;
     if (reset) { setLoading(true); } else { setLoadingMore(true); }
     try {
       const page = await fetchRef.current(skip, pageSize);
-      if (generacion !== generacionRef.current) return;
+      if (generacion !== generacionRef.current || scopeSolicitud !== scopeActualRef.current) return;
       if (!Array.isArray(page)) throw new Error('Lista incompleta; reintenta la consulta.');
       const arr = page;
       setItems(prev => { const seen = new Set(); return (reset ? arr : [...prev, ...arr]).filter(row => { if (seen.has(row.id)) return false; seen.add(row.id); return true; }); });
       skipRef.current = skip + arr.length;
       setHayMas(arr.length > 0);
     } catch (e) {
-      if (generacion !== generacionRef.current) return;
+      if (generacion !== generacionRef.current || scopeSolicitud !== scopeActualRef.current) return;
       console.warn('[useListaPaginada] error:', e);
       setError(e);
       if (reset) setItems([]);
@@ -69,5 +74,5 @@ export function useListaPaginada(fetchPage, pageSize, deps = []) {
 
   const recargar = useCallback(() => { skipRef.current = 0; cargar(true); }, [cargar]);
 
-  return { items, loading, loadingMore, hayMas, cargarMas, recargar, error };
+  return { items: scopeCargadoRef.current === scopeKey ? items : [], loading: loading || scopeCargadoRef.current !== scopeKey, loadingMore, hayMas, cargarMas, recargar, error };
 }

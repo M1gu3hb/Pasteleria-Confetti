@@ -7,3 +7,5 @@ Instala con `npm ci`. Para desarrollo usa VITE_SUPABASE_URL y VITE_SUPABASE_ANON
 La rama de producción es migracion/supabase; apk/capacitor debe avanzar al mismo commit porque los APK instalados cargan su alias Vercel. No repuntar ni recompilar APK sin verificar compatibilidad. Código/migraciones y estados se consultan en GitHub/Supabase/Vercel; un deploy no demuestra que la tablet recargó.
 
 Pruebas usan fixtures aislados. No generar cobros, pedidos o cortes ficticios en producción. La fórmula de efectivo y los tres candados de Caja están en CLAUDE.md.
+
+Personalizados tiene Actuales, Anteriores e Historial completo sin borrar registros. Dos condiciones para Anteriores: liquidado y dos días desde entrega; treinta días después sólo Historial. Caja/Dashboard/Registros tienen carga incremental. `npm run test:historial` verifica SQL real, cursores, permisos, sucursales y diálogo de pago. Ver docs/AUDITORIA_PEDIDOS_HISTORIAL_2026-10-17.md.

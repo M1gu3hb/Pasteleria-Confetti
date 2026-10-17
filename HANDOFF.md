@@ -1,10 +1,16 @@
 # HANDOFF — contratos vigentes
 
+## Pedidos anteriores e historial (2026-10-17)
+
+Personalizados no ofrece Entregado ni la pregunta al liquidar. La fecha de entrega se conserva. La vista del servidor exige saldo conocido liquidado y dos días de margen desde la entrega (calendario CDMX); comienza Anteriores en la fecha mayor entre entrega + 2 y pago completo. Tras 30 días pasa al Historial completo. Son clasificaciones de lectura, nunca borrados ni cambios de estado/fecha real. Los antiguos Entregados también se clasifican por saldo/fecha. Cancelados siguen consultables en Historial.
+
+Sucursal en RPC, RLS, cache, respuesta y detalle. Dueño/pastelero conservan alcance global deliberado; terminal/administrador sólo su sucursal. Buscar abre Historial completo conservando sucursal. Pedidos/Caja/Dashboard/Registros ofrecen Cargar más con nombre explícito; Ventas limita tarjetas sin truncar totales. Ver docs/AUDITORIA_PEDIDOS_HISTORIAL_2026-10-17.md y npm run test:historial.
+
 ## Horario y WhatsApp
 
-compararEntregaPedidos y coincideHorarioEntrega viven en src/utils/horarioPedidos.js. La pantalla mantiene consulta/cache/filtro local por sucursal. WhatsApp usa precio_base histórico, no los rangos actuales. No corregir horas AM/PM ni bases históricas por suposición. Ejecutar npm run test:pedidos y build; verificar el alias de la APK, no sólo producción. Ver docs/AUDITORIA_HORARIOS_WHATSAPP_2026-10-11.md.
+compararEntregaPedidos y coincideHorarioEntrega viven en src/utils/horarioPedidos.js. La pantalla mantiene consulta/cache por sucursal; ahora filtra y pagina en el servidor. WhatsApp usa precio_base histórico, no los rangos actuales. No corregir horas AM/PM ni bases históricas por suposición. Ejecutar npm run test:pedidos y build; verificar el alias de la APK, no sólo producción. Ver docs/AUDITORIA_HORARIOS_WHATSAPP_2026-10-11.md.
 
-Revisado el 2026-10-11.
+Revisado el 2026-10-17.
 
 Antes de continuar: leer CLAUDE.md y el informe de reauditoría. Mantener los tres candados de Caja (selección venta/corte, medianoche CDMX y buscador web por sucursal) y efectivoEsperado. Las limpiezas de importaciones no modifican esas reglas. Verificar base y canales antes de actuar, nunca inferir despliegue por documentación.
 

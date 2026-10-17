@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { useTerminal } from '@/lib/TerminalContext';
 import { useCajaAbierta } from '@/lib/useCajaAbierta';
@@ -15,13 +15,8 @@ import PedidoPastelDetalleDialog from '@/components/pedidos/PedidoPastelDetalleD
 import { useConfig } from '@/lib/ConfigContext';
 import { ESTADOS_PEDIDO, fechaCDMX } from '@/utils/pedidoPastelUtils';
 import { paletaSucursal } from '@/utils/coloresSucursal';
-import { compararEntregaPedidos, coincideHorarioEntrega } from '@/utils/horarioPedidos';
+import { cargarPaginaPedidos } from '@/lib/pedidosAnteriores';
 
-const ACCESOS_ESTADO = [
-  { value: 'activos', label: 'Por entregar' },
-  { value: 'entregado', label: 'Entregados' },
-  { value: 'todos', label: 'Todos' },
-];
 const ACCESOS_PAGO = [
   { value: 'con_abono', label: 'Con abono' },
   { value: 'sin_abono', label: 'Sin abono' },
@@ -91,7 +86,8 @@ export default function PedidosPastel() {
   const { config } = useConfig();
   const sucId = sucursalEfectiva?.sucursal_id || null;
   const [busqueda, setBusqueda] = useState('');
-  const [filtroEstado, setFiltroEstado] = useState('activos');
+  const [filtroEstado, setFiltroEstado] = useState('todos');
+  const [vista, setVista] = useState('actuales');
   const [filtroFecha, setFiltroFecha] = useState('todos');
   const [filtroHora, setFiltroHora] = useState('todos');
   const [filtroPago, setFiltroPago] = useState('todos');
@@ -129,70 +125,41 @@ export default function PedidosPastel() {
   // El detalle no debe volver a abrirse al cambiar entre sucursales.
   useEffect(() => { setPedidoVer(null); }, [sucIdQuery]);
 
-  // El estado se filtra en el servidor, pero se recorren TODAS las páginas.
-  // El viejo límite de 500 estaba a punto de ocultar los pedidos más recientes
-  // del historial. id es único: mantiene el orden estable entre páginas.
-  const estadoCriteria =
-    filtroEstado === 'activos' ? { estado: { $nin: ['entregado', 'cancelado'] } }
-    : (filtroEstado !== 'todos' ? { estado: filtroEstado } : {});
-
-  const { data: pedidosRaw, isLoading, isError, refetch } = useQuery({
-    queryKey: ['pedidos_pastel', sucIdQuery, filtroEstado],
-    queryFn: async () => {
-      const criteria = { ...(sucIdQuery ? { sucursal_id: sucIdQuery } : {}), ...estadoCriteria };
-      const rows = await base44.entities.PedidoPastel.filterAll(criteria, 'id');
-      return rows.sort(compararEntregaPedidos);
-    },
-    // Al cambiar de sucursal o estado no mostrar pedidos de la consulta anterior.
-    staleTime: 5000,
-    // MINI-FIX notificaciones — refresca cada 15s para que un pedido web nuevo
-    // aparezca en <20s sin recargar la app ni cambiar de sección.
-    refetchInterval: 15000,
+  // Páginas reales por sucursal y vista: nunca descargar años de pedidos cada 15 s.
+  const filtros = useMemo(() => {
+    const hoy = fechaCDMX();
+    const rangos = {
+      hoy: [hoy, hoy], manana: [fechaCDMX(1), fechaCDMX(1)],
+      pasado_manana: [fechaCDMX(2), fechaCDMX(2)], semana: [hoy, fechaCDMX(7)],
+      mes: [hoy, fechaCDMX(30)],
+    };
+    const rango = rangos[filtroFecha] || ['', ''];
+    return { estado: filtroEstado, pago: filtroPago, origen: filtroOrigen,
+      desde: rango[0], hasta: rango[1], hora: filtroHora, busqueda: busqueda.trim() };
+  }, [filtroEstado, filtroPago, filtroOrigen, filtroFecha, filtroHora, busqueda, fechaCDMX()]);
+  const { data, isPending: isLoading, isError, refetch, hasNextPage, fetchNextPage, isFetchingNextPage } = useInfiniteQuery({
+    queryKey: ['pedidos_pastel', 'lista', sucIdQuery, vista, filtros],
+    initialPageParam: null,
+    queryFn: ({ pageParam }) => cargarPaginaPedidos({ sucursal: sucIdQuery, vista, filtros, cursor: pageParam }),
+    getNextPageParam: pagina => pagina.hay_mas ? pagina.siguiente : undefined,
+    staleTime: 5000, refetchInterval: 15000,
   });
-  const pedidos = Array.isArray(pedidosRaw) ? pedidosRaw : [];
-
+  const resumen = data?.pages?.[0];
+  // Segunda barrera: ni una respuesta antigua de otra sucursal llega a una tarjeta.
   const filtrados = useMemo(() => {
-    const q = busqueda.trim().toLowerCase();
-    const hoyStr = fechaCDMX();
-    const manana = fechaCDMX(1);
-    const pasadoManana = fechaCDMX(2);
-    const en7 = fechaCDMX(7);
-    const en30 = fechaCDMX(30);
-    return pedidos.filter(p => {
-      if (!p) return false;
-      // CAMBIO 4c — Los pedidos de catálogo web NO aparecen aquí (van a Caja).
-      // Solo pastel_personalizado. Pedidos legacy sin tipo_pedido se tratan
-      // como personalizados (default histórico).
-      if (p.tipo_pedido === 'productos_catalogo') return false;
-      // También valida la sucursal sobre filas del caché, sin importar el rol.
-      if (sucIdQuery && p.sucursal_id !== sucIdQuery) return false;
-      // Estado: por defecto solo activos (sin entregado/cancelado)
-      if (filtroEstado === 'activos') {
-        if (p.estado === 'entregado' || p.estado === 'cancelado') return false;
-      } else if (filtroEstado !== 'todos' && p.estado !== filtroEstado) {
-        return false;
-      }
-      const abonado = Number(p.total_abonado ?? p.a_cuenta ?? 0);
-      if (filtroPago === 'con_abono' && !(abonado > 0)) return false;
-      if (filtroPago === 'sin_abono' && abonado > 0) return false;
-      // Origen (POS interno vs Web)
-      if (filtroOrigen !== 'todos' && p.origen !== filtroOrigen) return false;
-      // Fecha de entrega
-      const fe = p.fecha_entrega || '';
-      if (filtroFecha === 'hoy' && fe !== hoyStr) return false;
-      if (filtroFecha === 'manana' && fe !== manana) return false;
-      if (filtroFecha === 'pasado_manana' && fe !== pasadoManana) return false;
-      if (filtroFecha === 'semana' && (fe < hoyStr || fe > en7)) return false;
-      if (filtroFecha === 'mes' && (fe < hoyStr || fe > en30)) return false;
-      if (!coincideHorarioEntrega(p.hora_entrega, filtroHora)) return false;
-      // Búsqueda de texto
-      if (q) {
-        const blob = `${p.folio || ''} ${p.cliente_nombre || ''} ${p.cliente_telefono || ''} ${p.nota_interna || ''}`.toLowerCase();
-        if (!blob.includes(q)) return false;
-      }
-      return true;
+    const vistos = new Set();
+    return (data?.pages || []).flatMap(p => p.pedidos).filter(p => {
+      if (!p?.id || vistos.has(p.id) || p.tipo_pedido === 'productos_catalogo' ||
+          (sucIdQuery && p.sucursal_id !== sucIdQuery)) return false;
+      vistos.add(p.id); return true;
     });
-  }, [pedidos, busqueda, filtroEstado, filtroFecha, filtroHora, filtroPago, filtroOrigen, sucIdQuery]);
+  }, [data, sucIdQuery]);
+  const pedidos = filtrados;
+  const cambiarVista = siguiente => {
+    setVista(siguiente); setBusqueda(''); setFiltroEstado('todos');
+    setFiltroFecha('todos'); setFiltroHora('todos'); setFiltroPago('todos'); setFiltroOrigen('todos');
+    setPedidoVer(null);
+  };
 
   // Si se cambia de sucursal mientras un detalle está abierto, no conservar
   // una acción sobre un pedido de otra sucursal.
@@ -262,6 +229,29 @@ export default function PedidosPastel() {
         </div>
       )}
 
+      <div className="grid grid-cols-2 gap-2" role="group" aria-label="Vistas de pedidos">
+        <Button type="button" className="h-14 text-base font-bold" variant={vista === 'actuales' ? 'default' : 'outline'}
+          aria-pressed={vista === 'actuales'} onClick={() => cambiarVista('actuales')}>
+          Pedidos actuales {resumen ? `(${resumen.conteos.actuales})` : ''}
+        </Button>
+        <Button type="button" className="h-14 text-base font-bold" variant={vista === 'anteriores' ? 'default' : 'outline'}
+          aria-pressed={vista === 'anteriores'} onClick={() => cambiarVista(vista === 'anteriores' ? 'actuales' : 'anteriores')}>
+          {vista === 'anteriores' ? 'Volver a pedidos actuales' : `Pedidos anteriores${resumen ? ` (${resumen.conteos.anteriores})` : ''}`}
+        </Button>
+      </div>
+      {resumen && vista === 'actuales' && resumen.conteos.anteriores > 0 && (
+        <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-blue-900 dark:bg-blue-950 dark:text-blue-100" role="status">
+          <p className="text-sm font-semibold">{resumen.conteos.anteriores} pedidos pagados con fecha pasada están en Pedidos anteriores.</p>
+          <Button type="button" variant="outline" className="mt-2 h-11" onClick={() => cambiarVista('anteriores')}>Ver pedidos anteriores</Button>
+        </div>
+      )}
+      {vista !== 'actuales' && <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border p-3">
+        <div><h2 className="font-bold">{vista === 'anteriores' ? 'Pedidos anteriores' : 'Historial completo'}</h2>
+          <p className="text-xs text-muted-foreground">{vista === 'anteriores'
+            ? 'Pagados y con dos días de margen. Tras 30 días aquí, siguen en el historial completo.'
+            : 'Todos los pedidos guardados de la sucursal seleccionada. Ningún pedido se borra.'}</p></div>
+        <Button type="button" variant="outline" className="h-11" onClick={() => cambiarVista('actuales')}>Volver a pedidos actuales</Button>
+      </div>}
       {/* Filtros detallados, independientes de los accesos rápidos. */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-2">
         <div className="relative sm:col-span-1">
@@ -273,6 +263,7 @@ export default function PedidosPastel() {
               // El cliente puede volver meses después: al buscar, abrir el
               // historial completo y quitar un filtro de fecha olvidado.
               if (e.target.value.trim()) {
+                setVista('historial');
                 if (filtroEstado !== 'todos') setFiltroEstado('todos');
                 if (filtroFecha !== 'todos') setFiltroFecha('todos');
                 if (filtroHora !== 'todos') setFiltroHora('todos');
@@ -280,14 +271,14 @@ export default function PedidosPastel() {
                 if (filtroOrigen !== 'todos') setFiltroOrigen('todos');
               }
             }}
-            placeholder="Buscar por folio, cliente, teléfono o nota interna..."
+            aria-label="Buscar en todos los pedidos de esta sucursal"
+            placeholder="Buscar en todo el historial: folio, cliente o teléfono..."
             className="pl-9 h-11"
           />
         </div>
         <Select value={filtroEstado} onValueChange={setFiltroEstado}>
           <SelectTrigger className="h-11"><SelectValue placeholder="Estado" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="activos">Activos (sin entregados/cancelados)</SelectItem>
             <SelectItem value="todos">Todos</SelectItem>
             {Object.entries(ESTADOS_PEDIDO).map(([k, v]) => (
               <SelectItem key={k} value={k}>{v.label}</SelectItem>
@@ -316,8 +307,6 @@ export default function PedidosPastel() {
       </div>
 
       <div className="space-y-1.5" aria-label="Accesos rápidos a filtros">
-        <AccesosRapidos titulo="Pedidos" tono="pedidos" opciones={ACCESOS_ESTADO}
-          valor={filtroEstado} onChange={setFiltroEstado} />
         <AccesosRapidos titulo="Pagos" tono="pagos" opciones={ACCESOS_PAGO}
           valor={filtroPago} onChange={setFiltroPago} />
         <AccesosRapidos titulo="Entrega" tono="fecha" opciones={ACCESOS_FECHA}
@@ -328,7 +317,7 @@ export default function PedidosPastel() {
 
       {!isLoading && !isError && (
         <p className="text-sm text-muted-foreground" aria-live="polite">
-          {filtrados.length} {filtrados.length === 1 ? 'pedido encontrado' : 'pedidos encontrados'}
+          {filtrados.length} de {resumen?.total ?? filtrados.length} {resumen?.total === 1 ? 'pedido encontrado' : 'pedidos encontrados'}
           {sucIdQuery ? ` · ${sucursalEfectiva?.sucursal_nombre || sucursales.find(s => s.id === sucIdQuery)?.nombre || 'Sucursal seleccionada'}` : ' · Todas las sucursales'}
           {' · Por fecha y hora'}
         </p>
@@ -354,7 +343,7 @@ export default function PedidosPastel() {
           {!isError && <p className="text-xs mt-1">
             {busqueda.trim()
               ? 'Comprueba el folio y la sucursal antes de capturar otro pedido.'
-              : 'Crea uno con "+ Nuevo pedido de pastel"'}
+              : 'Prueba otra vista o cambia los filtros.'}
           </p>}
         </div>
       ) : (
@@ -364,6 +353,18 @@ export default function PedidosPastel() {
           ))}
         </div>
       )}
+
+      {hasNextPage && <div className="flex justify-center">
+        <Button type="button" variant="outline" className="h-12 px-6 font-bold" disabled={isFetchingNextPage}
+          onClick={() => { if (!isFetchingNextPage) void fetchNextPage(); }}>
+          {isFetchingNextPage ? 'Cargando más pedidos…' : 'Cargar más pedidos'}
+        </Button>
+      </div>}
+      <details className="rounded-xl border p-3">
+        <summary className="cursor-pointer py-2 text-sm font-semibold">Más opciones e historial</summary>
+        <Button type="button" variant="outline" className="mt-2 h-11" onClick={() => cambiarVista('historial')}>Consultar historial completo de pedidos</Button>
+        <p className="mt-2 text-xs text-muted-foreground">Los pedidos con saldo pendiente permanecen en Actuales aunque su fecha haya pasado.</p>
+      </details>
 
       {/* Unificado: todo pastel personalizado (web o POS interno) abre el mismo
           modal — ticket Confetti arriba + botones de acción abajo. */}

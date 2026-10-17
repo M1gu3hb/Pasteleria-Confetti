@@ -1,10 +1,16 @@
 # PROJECT_CONTEXT — contratos vigentes
 
+## Pedidos anteriores e historial (2026-10-17)
+
+Personalizados no ofrece Entregado ni la pregunta al liquidar. La fecha de entrega se conserva. La vista del servidor exige saldo conocido liquidado y dos días de margen desde la entrega (calendario CDMX); comienza Anteriores en la fecha mayor entre entrega + 2 y pago completo. Tras 30 días pasa al Historial completo. Son clasificaciones de lectura, nunca borrados ni cambios de estado/fecha real. Los antiguos Entregados también se clasifican por saldo/fecha. Cancelados siguen consultables en Historial.
+
+Sucursal en RPC, RLS, cache, respuesta y detalle. Dueño/pastelero conservan alcance global deliberado; terminal/administrador sólo su sucursal. Buscar abre Historial completo conservando sucursal. Pedidos/Caja/Dashboard/Registros ofrecen Cargar más con nombre explícito; Ventas limita tarjetas sin truncar totales. Ver docs/AUDITORIA_PEDIDOS_HISTORIAL_2026-10-17.md y npm run test:historial.
+
 ## Pedidos personalizados
 
 Orden por fecha y hora local, con hora ausente al final de su día y desempate por ID. La cuarta fila de accesos rápidos filtra horarios; búsqueda limpia filtros, pero conserva sucursal. WhatsApp incluye la base guardada y su devolución con base limpia, sin sumarla otra vez al total. El ticket visual/impresión conserva su componente. Pruebas: npm run test:pedidos.
 
-Revisado el 2026-10-11.
+Revisado el 2026-10-17.
 
 POS Confetti opera dinero real en tres sucursales, con React/Vite, Supabase y Vercel. El APK carga el alias de apk/capacitor. Prioridad: cobros, abonos, comprobantes y aislamiento por sucursal. Este archivo registra mecanismos; las versiones vivas se consultan en los servicios.
 

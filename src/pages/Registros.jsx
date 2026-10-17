@@ -48,9 +48,14 @@ export default function Registros() {
   const queryClient = useQueryClient();
   const location = useLocation();
   const [search, setSearch] = useState('');
-  const [verCorte, setVerCorte] = useState(null);
-  const [verVenta, setVerVenta] = useState(null);
-  const [pdfData, setPdfData] = useState(null);
+  const [verCorteRaw, setVerCorte] = useState(null);
+  const [verVentaRaw, setVerVenta] = useState(null);
+  const verCorte = verCorteRaw && (!sucId || verCorteRaw.sucursal_id === sucId) ? verCorteRaw : null;
+  const verVenta = verVentaRaw && (!sucId || verVentaRaw.sucursal_id === sucId) ? verVentaRaw : null;
+  const [pdfScope, setPdfScope] = useState(null);
+  const pdfData = pdfScope?.sucId === sucId ? pdfScope.data : null;
+  const setPdfData = data => setPdfScope(data ? { sucId, data } : null);
+  useEffect(() => { setVerCorte(null); setVerVenta(null); setPdfScope(null); }, [sucId]);
 
   // Tab inicial desde ?tab=propinas (deep link desde Dashboard)
   const initialTab = (() => {
@@ -87,10 +92,6 @@ export default function Registros() {
   // Sin initialData:[] — distinguimos "primer fetch" (loading) de "vacío real".
   // Antes mostraba "Sin registros" mientras cargaba la primera vez.
   // placeholderData mantiene los datos previos durante invalidaciones sin parpadeo.
-  // FASE 2C — CorteCaja NO tiene sucursal_id en su schema todavía, por lo que
-  // NO se filtra por sucursal aquí (filtrar por un campo inexistente devolvería
-  // 0 resultados). Queda global hasta la Fase 2C-caja, que añadirá el campo.
-  // Solo Ventas (que sí tiene sucursal_id desde Fase 2B) se filtra.
   // CAMBIO 3 — Cortes y Ventas con PAGINACIÓN INCREMENTAL (cargar más), en vez
   // de cargar un tope grande y cortar en el navegador. Cada página se trae de la
   // base por created_date, filtrando por sucursal activa (o todas en vista
@@ -281,6 +282,7 @@ export default function Registros() {
             <ExportarSeccionButton
               rows={(q ? cortesFiltrados : cortes).filter(c => c.estado === 'cerrado')}
               columns={COLUMNS_CORTES}
+              label={hayMasCortes ? "Exportar cortes cargados" : "Exportar cortes"}
               filename="cortes-caja"
             />
             <LimpiarSeccionButton seccion="cortes" />
@@ -294,14 +296,14 @@ export default function Registros() {
               return (tipo === 'cierre_diario' && c?.estado === 'cerrado')
                   || (tipo === 'turno' && c?.estado === 'registrado');
             });
-            if (items.length === 0) return <Empty />;
+            if (items.length === 0 && !hayMasCortes) return <Empty />;
             return (
               <div className="space-y-2">
                 {items.map(c => (
                   <CorteRow key={c.id} corte={c} onView={setVerCorte} onDelete={isAdmin ? eliminarCorte : null} />
                 ))}
-                {!q && hayMasCortes && (
-                  <CargarMasRow onClick={cargarMasCortes} loading={cortesMore} />
+                {hayMasCortes && (
+                  <CargarMasRow onClick={cargarMasCortes} loading={cortesMore} label="Cargar más cortes de caja" />
                 )}
               </div>
             );
@@ -365,8 +367,8 @@ export default function Registros() {
                 </Button>
               </Card>
             ))}
-            {!ventasFirstLoad && !q && hayMasVentas && (
-              <CargarMasRow onClick={cargarMasVentas} loading={ventasMore} />
+            {!ventasFirstLoad && hayMasVentas && (
+              <CargarMasRow onClick={cargarMasVentas} loading={ventasMore} label="Cargar más ventas" />
             )}
           </div>
         </TabsContent>
@@ -477,12 +479,12 @@ function Empty() {
 }
 
 /** Botón "Cargar más" para las listas paginadas (ventas/cortes). */
-function CargarMasRow({ onClick, loading }) {
+function CargarMasRow({ onClick, loading, label = 'Cargar más registros' }) {
   return (
     <div className="flex justify-center pt-2">
       <Button variant="outline" size="sm" onClick={onClick} disabled={loading} className="gap-2">
         {loading && <span className="w-3.5 h-3.5 border-2 border-muted-foreground/30 border-t-primary rounded-full animate-spin" />}
-        {loading ? 'Cargando…' : 'Cargar más'}
+        {loading ? 'Cargando…' : label}
       </Button>
     </div>
   );

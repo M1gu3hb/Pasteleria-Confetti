@@ -127,15 +127,14 @@ export default function PedidoPastelDetalleDialog({ pedido: pedidoProp, open, on
   const { posUser } = usePOSAuth();
   const [showPago, setShowPago] = useState(false);
   const [showCancelar, setShowCancelar] = useState(false);
+  const [confirmarEntrega, setConfirmarEntrega] = useState(false);
   // El pastelero ya NO es solo lectura (migración 0060, autorizada por Miguel):
-  // puede editar la nota y avanzar el estado (confirmar / entregar). Lo que su RLS
+  // puede editar la nota y confirmar; la entrega manual se retiró. Lo que su RLS
   // sigue rechazando —cobrar, editar el pedido completo (precios) y cancelar— se
   // mantiene oculto para no ofrecerle botones que van a fallar. Su alcance real lo
   // impone el trigger trg_guard_pastelero_alcance en la base, no esta bandera.
   // Otros roles: idéntico a antes.
   const esPastelero = adminRole === 'pastelero';
-  // FASE 4 — aviso antes de marcar "Entregado" (sale de la lista de pendientes).
-  const [confirmarEntrega, setConfirmarEntrega] = useState(false);
   // FASE 2: estado de impresión para dar feedback (spinner) mientras imprime.
   const [imprimiendo, setImprimiendo] = useState(false);
 
@@ -203,9 +202,6 @@ export default function PedidoPastelDetalleDialog({ pedido: pedidoProp, open, on
     const v = (pedido.atendido_por || '').trim();
     return v && v !== 'Empleado' ? v : '';
   })();
-  // PARTE E — no permitir "Entregado" si hay saldo pendiente. Usamos
-  // saldo_pendiente; si es null/undefined (pedidos viejos) caemos en `resta`.
-  // El estado 'pagado' implica saldo 0, así que nunca bloquea un pedido pagado.
   const saldoPend = pedido.saldo_pendiente != null
     ? Number(pedido.saldo_pendiente)
     : Number(pedido.resta) || 0;
@@ -353,7 +349,7 @@ export default function PedidoPastelDetalleDialog({ pedido: pedidoProp, open, on
 
         {/* Acciones */}
         <div className="grid grid-cols-2 gap-2 no-print">
-          {/* 0060 — el pastelero ya puede AVANZAR el estado (confirmar / entregar):
+          {/* 0060 — el pastelero puede confirmar:
               su RLS lo permite y el trigger trg_guard_pastelero_alcance acota qué
               columnas y qué transiciones. Sigue OCULTO lo que su RLS rechaza:
               cobrar, editar el pedido completo (precios) y cancelar. */}
@@ -374,7 +370,7 @@ export default function PedidoPastelDetalleDialog({ pedido: pedidoProp, open, on
               {pagoPendiente ? "Recuperar pago pendiente" : !cajaAbierta ? "Pago (caja cerrada)" : "Registrar pago"}
             </Button>
           )}
-          {!finalizado && (
+          {!finalizado && esCatalogo && (
             <div className="flex flex-col">
               <Button disabled={accion || tieneSaldo}
                 onClick={() => setConfirmarEntrega(true)}
@@ -451,9 +447,8 @@ export default function PedidoPastelDetalleDialog({ pedido: pedidoProp, open, on
           }}
         />
 
-        {/* FASE 4 — aviso antes de marcar Entregado. Solo avisa; el efecto (sacar
-            de la lista de pendientes) es el mismo del botón. */}
-        <Dialog open={confirmarEntrega} onOpenChange={(o) => { if (!o) setConfirmarEntrega(false); }}>
+        {/* La entrega manual se conserva sólo para productos de catálogo en Caja. */}
+        <Dialog open={esCatalogo && confirmarEntrega} onOpenChange={(o) => { if (!o) setConfirmarEntrega(false); }}>
           <DialogContent className="sm:max-w-sm">
             <DialogHeader><DialogTitle className="font-heading">Marcar como entregado</DialogTitle></DialogHeader>
             <p className="text-sm text-muted-foreground">

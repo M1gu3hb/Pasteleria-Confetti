@@ -1,3 +1,9 @@
+## 2026-10-17 — Pedidos anteriores e historial conservado
+
+Se retiran Entregado y su pregunta posterior al pago en personalizados. Actuales/Anteriores/Historial se calculan por saldo y entrega, con margen CDMX de dos días y treinta días en Anteriores, sin borrar ni marcar entregas físicas. Búsqueda histórica conserva sucursal, tarjetas distinguen deuda fuera de fecha y pago futuro. Nueva RPC sólo lectura con RLS y cursor; regresión aislada con 1,212 pedidos. Caja/Dashboard paginan cortes; Registros deja cargar más durante búsquedas; Ventas dosifica tarjetas conservando totales completos. Se refuerza el descarte inmediato de datos/detalles de otra sucursal. Catálogo conserva su entrega manual.
+
+Pruebas SQL/cliente nuevas integradas en quality/build; pruebas anteriores de recuperación/horario adaptadas al flujo. Ambos formularios web probados con payload completo, servidor idéntico al SQL vivo y tres sucursales aisladas. Ver AUDITORIA_PEDIDOS_HISTORIAL_2026-10-17.md para límites y verificación de publicación.
+
 ## 2026-10-11 — Horario de pedidos y base en WhatsApp
 
 Pedidos personalizados ordena fecha → hora local 24 h → ID; antes desempató

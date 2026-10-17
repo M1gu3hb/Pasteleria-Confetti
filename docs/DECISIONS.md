@@ -1,10 +1,10 @@
 # DECISIONS — contratos vigentes
 
-## Horario y base compartida
+## Historial operativo sin entrega manual
 
-Fecha es la clave principal; hora local 24 h sin Date/zona del dispositivo. Ausente/inválida va al final de su día y queda visible con «Sin hora»; no se modifica el dato. La sucursal sigue en queryKey, filtro de servidor, filtro local y guardia del detalle. Compartir base usa precio_base guardado con cargo positivo e incluye_base; no consulta configuración ni registra cobros/devoluciones de dinero.
+Por instrucción de Miguel/Abel se retira Entregado en personalizados. No se inventa entrega física: pagado + fecha pasada sólo organiza la lista. Se eligen dos días de margen y treinta días en Anteriores, contados desde que se cumplen las dos condiciones (pago tardío no desaparece directamente). Sin fecha o saldo conocido no se archiva automáticamente. El archivo definitivo es consultable y buscable, sin borrar pedidos. Catálogo conserva su acción manual en Caja para no romper ese flujo distinto.
 
-Revisado el 2026-10-11.
+Revisado el 2026-10-17.
 
 La evidencia de las cuatro cancelaciones se reconstruye desde el POS; no se exige un comprobante externo como requisito. Los cortes ya excluyen esas ventas: no se duplica la salida en caja. Los motivos de San Gregorio describen duplicación, por lo que no se asume una devolución física. No se revocan todas las sesiones técnicas para resolver sesiones humanas. No se privatizan audios/imágenes antes de desplegar lectores compatibles. Importaciones sin respaldo real se ocultan/rechazan. Cuotas de abuso limitan nuevas intenciones por ventana, no almacenamiento/historial. No se usa audit fix --force para saltar de router ni se declara deuda de tipos resuelta.
 
