@@ -21,7 +21,13 @@ try{
  // Collision rejected visibly; existing identifier retained.
  await vanilla.getByRole('button',{name:'Cambiar código',exact:true}).click();await vanilla.getByRole('textbox',{name:'Código existente'}).fill('CF00000001');await vanilla.getByRole('button',{name:'Guardar código',exact:true}).click();await vanilla.getByText(/etiquetas anteriores dejarán/).waitFor();await vanilla.getByRole('button',{name:'Confirmar cambio e imprimir después'}).click();await vanilla.getByRole('alert').waitFor();assert.equal(await page.evaluate(()=>fixture.products[1].codigo_barras),'0012345');
  await chocolate.getByRole('button',{name:'Ver',exact:true}).click();await page.getByRole('dialog').getByText('Código asignado al producto').waitFor();await page.keyboard.press('Escape');
+ const writesBeforeExport=await page.evaluate(()=>fixture.calls.filter(c=>c.name==='asignar_codigo_producto_pos').length);
  const [png]=await Promise.all([page.waitForEvent('download'),chocolate.getByRole('button',{name:'Descargar PNG'}).click()]);await png.saveAs('/tmp/confetti-label.png');
+ assert.equal(await page.evaluate(()=>fixture.calls.filter(c=>c.name==='asignar_codigo_producto_pos').length),writesBeforeExport);
+ await page.evaluate(()=>fixture.products[0].codigo_barras=null);
+ await chocolate.getByRole('button',{name:'Imprimir',exact:true}).click();await chocolate.getByRole('alert').filter({hasText:'ya no tiene código'}).waitFor();
+ assert.equal(await page.evaluate(()=>fixture.products[0].codigo_barras),null,'export must never generate a replacement code');
+ await page.evaluate(()=>fixture.products[0].codigo_barras='CF00000001');
  await page.getByRole('button',{name:'PDF de códigos de barras',exact:true}).click();let dialog=page.getByRole('dialog');await dialog.getByRole('checkbox',{name:'Incluir Pastel de chocolate',exact:true}).check();await dialog.getByRole('checkbox',{name:'Incluir Pastel de vainilla',exact:true}).check();await dialog.getByRole('spinbutton',{name:'Copias de Pastel de chocolate'}).fill('13');await dialog.getByRole('button',{name:'Generar PDF',exact:true}).click();await dialog.getByTitle('Vista previa de etiquetas').waitFor();
  const [pdf]=await Promise.all([page.waitForEvent('download'),dialog.getByRole('button',{name:'Descargar PDF'}).click()]);await pdf.saveAs('/tmp/confetti-labels.pdf');await page.screenshot({path:'/tmp/confetti-pdf-ui.png'});await page.keyboard.press('Escape');
  // Edit name/price retains web-hidden status and existing barcode; bottom includes PDF.

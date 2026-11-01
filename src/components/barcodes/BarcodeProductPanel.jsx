@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import BarcodeImage from './BarcodeImage';
+import { base44 } from '@/api/base44Client';
 import { assignBarcode } from '@/lib/barcodes';
 import { createLabelPNG } from '@/lib/barcodeLabels';
 import { exportBarcodeFile, printBarcodeLabel } from '@/lib/barcodeExport';
@@ -19,7 +20,8 @@ export default function BarcodeProductPanel({product,onPDF}) {
     await Promise.all([queryClient.invalidateQueries({queryKey:['productos_all']}),queryClient.invalidateQueries({queryKey:['productos_pos']})]);
   });
   const exportCurrent = async action => {
-    const updated=await assignBarcode(product.id,'',true);
+    const updated=await base44.entities.ProductoTerminado.get(product.id);
+    if (!updated?.codigo_barras || updated.id!==product.id) throw new Error('El producto ya no tiene código disponible. Actualiza el catálogo antes de imprimir.');
     setSaved(updated);
     if(updated.codigo_barras!==saved.codigo_barras) throw new Error('El código cambió desde otro dispositivo. Ya se actualizó la vista; revisa la etiqueta antes de imprimir o descargar.');
     await action(updated);

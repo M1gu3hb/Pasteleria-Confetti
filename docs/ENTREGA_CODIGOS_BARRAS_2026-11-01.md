@@ -25,6 +25,10 @@ Instalar Playwright/Chromium en un entorno de pruebas y ejecutar `node scripts/b
 
 La versión de prueba `1ac727fc146df2484aee42bcf9c6ccdea88cb216` terminó READY en Vercel (`dpl_3hoe8oGWQhb8jkQXSfFjREgJduBR`). La migración se aplicó después de versionar y probar su SQL; Supabase la registró como `20261101195452_codigos_barras_producto`. Se alinea el nombre local con esa versión, sin cambiar el SQL. Comprobación posterior: 43 productos, ninguno modificado con códigos de prueba, 0 reservas; índice único y RLS privado activos; RPCs permitidas a authenticated y denegadas a anon. El cliente usa el formato singular o de una fila de PostgREST y verifica el ID devuelto antes de imprimir.
 
+El primer despliegue operacional del mismo código en ambas ramas terminó READY: producción `dpl_AMwVNVsB5GKtk1dgXtnY4FXrjEz3` y canal de tablets `dpl_9JrDdzyVcfu9BJKckmZSJSQmY6Us`, revisión `d9531df77e1b51181bf95d2e1430bd3a8f1e5cf3`. La revisión final cambia la consulta previa a PNG/impresión a sólo lectura: exportar nunca genera un código si otro dispositivo lo retiró; avisa para actualizar el catálogo. Lint, control de tipos y QA completa de navegador vuelven a pasar.
+
+Advisor posterior: la reserva privada produce el aviso informativo esperado de [RLS sin políticas](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy), porque los clientes no deben leer/escribir esa tabla; acceso sólo por funciones controladas. No se amplían permisos para silenciarlo. Los avisos existentes de otras áreas no se presentan como resueltos por esta entrega.
+
 ## Publicación y reversión
 
 La migración es aditiva y las versiones anteriores siguen funcionando; no necesita rellenar códigos ni tocar catálogo existente. Publicar en rama de preview, comprobar build, aplicar SQL versionado y sólo después avanzar ambos canales al mismo commit sin force. Consultar refs y despliegues en vivo para la versión actual.
