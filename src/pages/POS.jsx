@@ -128,6 +128,7 @@ export default function POS() {
 
   const scanner = useBarcodeScanner({
     branch: sucEfId,
+    contextKey: `${posUser?.id || ''}:${cajaAbierta?.id || ''}`,
     enabled: !!sucEfId && hayCaja && !processing && !showPayment && !showTicket && !showPropina && !showVentaLibre && !productoVariable && !showCartMobile,
     onProduct: product => {
       if (esProductoVariable(product)) { toast.error('Este producto requiere capturar su cantidad desde el catálogo.'); return; }
@@ -240,12 +241,10 @@ export default function POS() {
       return;
     }
     if (qty <= 0) { removeItem(idx); return; }
-    const updated = [...cart];
-    updated[idx].cantidad = qty;
-    setCart(updated);
+    setCart(prev => prev.map((item,i)=>i===idx ? {...item,cantidad:qty} : item));
   };
 
-  const removeItem = (idx) => setCart(cart.filter((_, i) => i !== idx));
+  const removeItem = (idx) => setCart(prev => prev.filter((_, i) => i !== idx));
 
   const handleCheckout = async (paymentData) => {
     if (!scanner.canCheckout()) {toast.info('Espera a que termine el lector.');return;}
@@ -725,7 +724,7 @@ export default function POS() {
 
         {/* Mobile cart button */}
         <div className="lg:hidden pt-3">
-          <Button onClick={() => setShowCartMobile(true)} className="w-full h-12 text-base gap-2" disabled={cart.length === 0 || scanner.pending > 0}>
+          <Button onClick={() => {if(scanner.canCheckout())setShowCartMobile(true);}} className="w-full h-12 text-base gap-2" disabled={cart.length === 0 || scanner.pending > 0}>
             <ShoppingCart className="w-5 h-5" />
             Ver orden ({cart.length}) · {formatCurrency(total)}
           </Button>

@@ -27,3 +27,5 @@ Consultar [reauditoría](REAUDITORIA_CIERRE_PENDIENTES_2026-10-02.md) para prueb
 ## Verificación física de códigos de barras
 
 Probar lector HID con Enter y una trama por disparo, reconexión USB/Bluetooth y impresión 58/80 mm en Higole. Compilar, firmar con la clave existente e instalar APK 1.2.0 para guardado nativo; plugin fuente presente, binario no certificado en este entorno. Las versiones anteriores descargan PNG/PDF desde Chrome/computadora y muestran un error explícito al intentar guardarlos dentro del APK. No confundir que el escaneo agiliza registrar con impedir físicamente una venta fuera del sistema.
+
+Reauditoría de códigos: interbloqueo de impresión por cola anidada, formato térmico, precio antiguo, truncación de códigos y alcance SQL corregidos; ver REAUDITORIA_CODIGOS_BARRAS_2026-11-01.md. Validar lector físico F9+Enter y tickets/etiquetas en la misma impresora. Guardado Java sigue pendiente de compilación/firma/instalación; no marcarlo certificado por deploy web.

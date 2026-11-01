@@ -15,6 +15,8 @@ import java.io.OutputStream;
 /** Export only PNG/PDF through Android's user-selected document destination. */
 @CapacitorPlugin(name = "ConfettiFiles")
 public class ConfettiFilesPlugin extends Plugin {
+    private boolean guardando = false;
+    private synchronized void liberar() { guardando = false; }
     @PluginMethod
     public void guardarArchivo(PluginCall call) {
         String mime = call.getString("mime", "");
@@ -27,14 +29,19 @@ public class ConfettiFilesPlugin extends Plugin {
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         intent.setType(mime);
         intent.putExtra(Intent.EXTRA_TITLE, name.replaceAll("[^A-Za-z0-9._-]", "_"));
-        startActivityForResult(call, intent, "archivoElegido");
+        synchronized (this) {
+            if (guardando) { call.reject("Hay otro archivo en proceso de guardado."); return; }
+            guardando = true;
+        }
+        try { startActivityForResult(call, intent, "archivoElegido"); }
+        catch (Exception error) { liberar(); call.reject("No se pudo abrir el selector de archivos.", error); }
     }
 
     @ActivityCallback
     private void archivoElegido(PluginCall call, ActivityResult result) {
-        if (call == null) return;
+        if (call == null) { liberar(); return; }
         if (result.getResultCode() != Activity.RESULT_OK || result.getData() == null || result.getData().getData() == null) {
-            call.reject("Guardado cancelado."); return;
+            liberar(); call.reject("Guardado cancelado."); return;
         }
         final android.net.Uri uri = result.getData().getData();
         getBridge().execute(() -> {
@@ -42,8 +49,11 @@ public class ConfettiFilesPlugin extends Plugin {
                 if (output == null) throw new java.io.IOException("Destino no disponible.");
                 byte[] bytes = Base64.decode(call.getString("datos", ""), Base64.DEFAULT);
                 output.write(bytes);
-                call.resolve(new JSObject().put("guardado", true));
-            } catch (Exception error) { call.reject("No se pudo guardar el archivo.", error); }
+            } catch (Exception error) {
+                liberar(); call.reject("No se pudo guardar el archivo.", error); return;
+            }
+            // Only confirm success after flush/close; closing a destination can fail.
+            liberar(); call.resolve(new JSObject().put("guardado", true));
         });
     }
 }

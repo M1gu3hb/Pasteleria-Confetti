@@ -37,3 +37,9 @@ El cliente web también llega al alias de apk/capacitor al recargar. Guardado An
 - src/lib/barcodeLabels.js / barcodeExport.js: Code128 vectorial, PNG, PDF carta e impresión/exportación.
 - src/components/barcodes/: panel, imagen, PDF y hook de teclado.
 - android/app/src/main/java/com/mhastral/confettipos/ConfettiFilesPlugin.java: ACTION_CREATE_DOCUMENT sólo PNG/PDF.
+
+## Reauditoría de etiquetas y escáner
+
+Las etiquetas térmicas reutilizan el dispatcher de tickets de venta: una sola entrada en cola y el mismo ciclo de conexión, avance, corte y desconexión. Nunca anidar encolarImpresion con conImpresora (que ya encola): interbloquea toda impresión. En navegador usan printDocument térmico 58/80; el PDF por lotes conserva carta. Un código requiere gráfico aunque los tickets estén en modo texto.
+
+Escaneo conserva precios por snapshot: un precio nuevo crea otra línea; contexto de consultas incluye sucursal, cajero y corte. Asignación valida el código completo (sin recortarlo). Para aislar el lector de campos monetarios/búsqueda configurar F9 como prefijo y Enter como terminador; sin prefijo, HID se comporta como un teclado común. El soporte se prueba con el formulario de pago real, la configuración física se verifica en sitio. Endurecimiento SQL verifica alcance anterior/destino y NULL en arreglos. Registro de hallazgos y pruebas: docs/REAUDITORIA_CODIGOS_BARRAS_2026-11-01.md.

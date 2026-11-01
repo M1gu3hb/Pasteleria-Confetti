@@ -1267,3 +1267,7 @@ Validación de FLUJO CRUZADO sobre el Supabase compartido (solo lectura + datos 
 ## 2026-11-01 — Códigos de barras
 
 Generación/asignación única con reserva permanente, controles al final de productos/editar, PNG y PDF carta por lotes, impresión gráfica y captura HID sin confirmación por producto. Cola de escaneos y protección de Enter/pago/sucursal. Puente Android de guardado mediante selector del sistema; requiere APK actualizado. Corrección al editar: conservar visibilidad POS/web en lugar de volver a publicar productos ocultos. Plan y pruebas en documentos de códigos de barras.
+
+## 2026-11-01 — Reauditoría correctiva de códigos de barras
+
+Correcciones B01–B14 en REAUDITORIA_CODIGOS_BARRAS_2026-11-01.md. Hallazgo crítico: cola de impresión anidada bloqueaba etiquetas y tickets posteriores. Etiquetas ahora comparten lifecycle y formato térmico de ventas. Precio vigente por snapshot, código sin truncación, validación de PDF/RPC, descarte por identidad/corte y límite de tramas. Migración adicional protege alcance original/destino y NULL. Prefijo HID F9 probado en cobro real; configuración en sitio y binario firmado pendientes. Regresiones comparadas con el código previo, sin pruebas financieras ficticias en producción.

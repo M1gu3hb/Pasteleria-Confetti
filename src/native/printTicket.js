@@ -91,6 +91,16 @@ export async function imprimirTicketNativo({ title, node: nodoDado, anchoImpreso
   }
 }
 
+/** Barcode raster uses exactly the receipt queue, connection, feed/cut and cleanup. */
+export async function imprimirRasterTermico(crearImagen, signal) {
+  if (!Capacitor.isNativePlatform()) throw new Error('La impresión nativa requiere la app Confetti.');
+  const cfg = getPrinterConfig();
+  return encolarImpresion(async () => {
+    const png = await crearImagen();
+    await usarConexion(cfg, () => ejecutarYcortarSiempre(() => imprimirImagenRaster(png), cfg));
+  }, signal);
+}
+
 // Mismo criterio que print.js: [data-thermal-ticket] → .ticket-printable, el último.
 function localizarTicket() {
   let nodes = document.querySelectorAll(TICKET_SELECTOR);

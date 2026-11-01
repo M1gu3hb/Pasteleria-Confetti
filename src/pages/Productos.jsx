@@ -270,7 +270,7 @@ export default function Productos() {
         </div>
       )}
 
-      <BarcodePDFDialog open={pdfProductId !== null} onClose={()=>setPdfProductId(null)} products={porSucursal} initialId={pdfProductId || ''} />
+      <BarcodePDFDialog scopeKey={sucursalEfectiva?.sucursal_id || ''} open={pdfProductId !== null} onClose={()=>setPdfProductId(null)} products={porSucursal} initialId={pdfProductId || ''} />
       {/* SIMPLE PRODUCT DIALOG (solo Esencial) */}
       <ProductoSimpleDialog
         open={showSimple}

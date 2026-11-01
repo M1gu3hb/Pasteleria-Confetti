@@ -25,6 +25,12 @@ async function lookupCurrentBarcode(code, branch) {
   const { data, error } = await supabase.rpc('buscar_producto_codigo_pos', { p_codigo: normalizeBarcode(code), p_sucursal: branch });
   if (error) throw barcodeError(error);
   if (!Array.isArray(data)) throw new Error('Respuesta de catálogo incompleta. Reintenta.');
+  const expected=normalizeBarcode(code);
+  for (const row of data) {
+    if (!row?.id || typeof row.nombre !== 'string' || row.codigo_barras !== expected || row.activo !== true || row.visible_en_pos !== true ||
+        row.precio_venta == null || !Number.isFinite(Number(row.precio_venta)) || Number(row.precio_venta)<0 ||
+        (row.sucursal_ids?.length && !row.sucursal_ids.includes(branch))) throw new Error('El catálogo devolvió un producto inválido. Actualiza y vuelve a escanear.');
+  }
   return data;
 }
 

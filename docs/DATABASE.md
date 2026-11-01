@@ -33,3 +33,7 @@ Nueva venta agrega una pieza por trama completa del lector HID + Enter; repetir 
 El cliente web también llega al alias de apk/capacitor al recargar. Guardado Android de PNG/PDF necesita ConfettiFiles del APK nuevo; versiones antiguas indican el límite y permiten descargar desde Chrome/computadora. El código nativo 1.2.0 requiere compilar, firmar e instalar con la firma del propietario; un deploy web no instala plugins. Pruebas: npm run test:barcodes y scripts/barcodes_browser_verify.mjs; plan y evidencia en docs/PLAN_CODIGOS_BARRAS_2026-11-01.md y docs/ENTREGA_CODIGOS_BARRAS_2026-11-01.md.
 
 Implementación: productos.codigo_barras/codigo_origen, índice único parcial y trigger de reservas privadas app_private.codigos_producto_reservados (sin FK que borre la reserva). Secuencia interna + bloqueo transaccional en asignar_codigo_producto_pos. buscar_producto_codigo_pos es invoker y valida sesión/sucursal/activo/visible; sólo authenticated. Sin writes en tablas financieras. Las APIs de catálogo ordinarias no admiten escribir estos campos: asignación por RPC.
+
+## Endurecimiento de asignación de códigos
+
+La migración adicional endurecer_codigos_barras reemplaza trigger/RPC conservando grants: verifica sucursal anterior y nueva, y trata NULL en sucursal_ids como ausencia de autorización. No reescribe códigos ni registros financieros. No editar la migración original ya aplicada. Ver REAUDITORIA_CODIGOS_BARRAS_2026-11-01.md.

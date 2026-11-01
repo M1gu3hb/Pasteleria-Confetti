@@ -258,7 +258,7 @@ export default function ProductoSimpleDialog({ open, onClose, producto = null })
         </DialogFooter>
       </DialogContent>
     </Dialog>
-    <BarcodePDFDialog open={open&&showBarcodePDF} onClose={()=>setShowBarcodePDF(false)} products={barcodeProducts.filter(p=>!sucursalEfectiva?.sucursal_id||!p.sucursal_ids?.length||p.sucursal_ids.includes(sucursalEfectiva.sucursal_id))} initialId={producto?.id||''} />
+    <BarcodePDFDialog scopeKey={sucursalEfectiva?.sucursal_id || ''} open={open&&showBarcodePDF} onClose={()=>setShowBarcodePDF(false)} products={barcodeProducts.filter(p=>!sucursalEfectiva?.sucursal_id||!p.sucursal_ids?.length||p.sucursal_ids.includes(sucursalEfectiva.sucursal_id))} initialId={producto?.id||''} />
     </>
   );
 }

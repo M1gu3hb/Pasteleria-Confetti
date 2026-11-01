@@ -8,7 +8,7 @@ export function validBarcode(value) {
 }
 /** Immutable update: burst scans must always use the latest cart. */
 export function addBarcodeProduct(items, product) {
-  const index = items.findIndex(i => i.producto_id === product.id && !i.tipo_venta);
+  const index = items.findIndex(i => i.producto_id === product.id && !i.tipo_venta && Number(i.precio_venta) === Number(product.precio_venta));
   if (index >= 0) return items.map((item, i) => i === index ? { ...item, cantidad: item.cantidad + 1 } : item);
   return [...items, { producto_id: product.id, nombre: product.nombre, precio_venta: product.precio_venta,
     costo: product.costo_calculado_actual || 0, area_preparacion: product.area_preparacion, cantidad: 1, notas: '' }];
@@ -19,6 +19,7 @@ export function createBarcodeReader(onScan, { maxGap = 250 } = {}) {
   const reset = () => { buffer = ''; last = 0; rejected = false; };
   return {
     reset,
+    discard() { buffer = ''; last = 0; rejected = true; },
     get buffer() { return buffer; },
     feed(key, now, repeat = false) {
       if (repeat) return null;
@@ -33,7 +34,7 @@ export function createBarcodeReader(onScan, { maxGap = 250 } = {}) {
       if (key.length !== 1) return null;
       if (last && now - last > maxGap) rejected = true; // discard whole frame, never its suffix
       last = now;
-      buffer += key;
+      if (buffer.length < 65) buffer += key;
       if (buffer.length > 64) rejected = true;
       return null;
     },

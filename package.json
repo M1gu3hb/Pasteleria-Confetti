@@ -18,7 +18,7 @@
     "test:evidencia": "node scripts/evidencia_financiera_verify.mjs && node scripts/evidencia_cliente_verify.mjs",
     "test:pedidos": "node scripts/pedidos_horario_whatsapp_verify.mjs",
     "test:historial": "node scripts/pedidos_anteriores_sql_verify.mjs && node scripts/pedidos_historial_cliente_verify.mjs && node scripts/historial_integracion_verify.mjs",
-    "test:barcodes": "node scripts/barcodes_sql_verify.mjs && node scripts/barcodes_cliente_verify.mjs"
+    "test:barcodes": "node scripts/barcodes_sql_verify.mjs && node scripts/barcodes_cliente_verify.mjs && node scripts/barcodes_reauditoria_verify.mjs && node scripts/barcodes_impresion_verify.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.1",

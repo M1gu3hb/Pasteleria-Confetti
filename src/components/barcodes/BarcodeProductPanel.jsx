@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -11,17 +11,22 @@ import { exportBarcodeFile, printBarcodeLabel } from '@/lib/barcodeExport';
 /** @param {{product?:any,onPDF?:(id:string)=>void}} props */
 export default function BarcodeProductPanel({product,onPDF}) {
   const [saved,setSaved] = useState(product), [code,setCode] = useState(''), [assigning,setAssigning] = useState(false), [confirming,setConfirming] = useState(false), [large,setLarge] = useState(false), [busy,setBusy] = useState(false), [error,setError] = useState('');
+  const liveId=useRef(product?.id),running=useRef(false),epoch=useRef(0);
+  liveId.current=product?.id;
   const queryClient = useQueryClient();
-  useEffect(()=>{setSaved(product);setCode('');setError('');setAssigning(false);setConfirming(false);},[product?.id,product?.codigo_barras]);
-  const run = async action => {setBusy(true);setError('');try {await action();}catch(e){setError(e.message || 'No se pudo completar.');}finally{setBusy(false);}};
+  useEffect(()=>{setSaved(product);setCode('');setError('');setAssigning(false);setConfirming(false);},[product?.id,product?.codigo_barras,product?.nombre]);
+  useEffect(()=>{epoch.current++;running.current=false;setBusy(false);},[product?.id]);
+  const run = async action => {if(running.current)return;running.current=true;const id=product.id,operation=++epoch.current;setBusy(true);setError('');try {await action();}catch(e){if(liveId.current===id&&epoch.current===operation)setError(e.message || 'No se pudo completar.');}finally{if(epoch.current===operation){running.current=false;if(liveId.current===id)setBusy(false);}}};
   const save = generate => run(async()=>{
     const updated=await assignBarcode(product.id,code,generate);
+    if(liveId.current!==updated.id)return;
     setSaved(updated);setAssigning(false);setConfirming(false);setCode('');
     await Promise.all([queryClient.invalidateQueries({queryKey:['productos_all']}),queryClient.invalidateQueries({queryKey:['productos_pos']})]);
   });
   const exportCurrent = async action => {
     const updated=await base44.entities.ProductoTerminado.get(product.id);
     if (!updated?.codigo_barras || updated.id!==product.id) throw new Error('El producto ya no tiene código disponible. Actualiza el catálogo antes de imprimir.');
+    if(liveId.current!==updated.id)return;
     setSaved(updated);
     if(updated.codigo_barras!==saved.codigo_barras) throw new Error('El código cambió desde otro dispositivo. Ya se actualizó la vista; revisa la etiqueta antes de imprimir o descargar.');
     await action(updated);
@@ -42,7 +47,7 @@ export default function BarcodeProductPanel({product,onPDF}) {
       {onPDF&&<Button type="button" size="sm" variant="outline" disabled={busy} onClick={()=>onPDF(product.id)}>Generar PDF</Button>}
     </div>
     {assigning&&<div className="space-y-2">
-      <label className="text-xs block">Escanea o escribe el código existente<input autoFocus value={code} maxLength={64} disabled={busy} aria-label="Código existente" className="skeu-input w-full p-2 mt-1" onChange={e=>{setCode(e.target.value);setConfirming(false);}} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();e.stopPropagation();if(code.trim()) saved?.codigo_barras?setConfirming(true):save(false);}}} /></label>
+      <label className="text-xs block">Escanea o escribe el código existente<input autoFocus value={code} disabled={busy} aria-label="Código existente" className="skeu-input w-full p-2 mt-1" onChange={e=>{setCode(e.target.value);setConfirming(false);}} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();e.stopPropagation();if(code.trim()) saved?.codigo_barras?setConfirming(true):save(false);}}} /></label>
       {confirming&&<p className="text-xs text-amber-700">Al cambiarlo, las etiquetas anteriores dejarán de servir. Tendrás que imprimir las nuevas.</p>}
       <Button type="button" size="sm" disabled={busy||!code.trim()} onClick={()=>saved?.codigo_barras&&!confirming?setConfirming(true):save(false)}>{confirming?'Confirmar cambio e imprimir después':'Guardar código'}</Button>
     </div>}

@@ -27,6 +27,7 @@ try {
  create policy pos_read_productos on productos for select to authenticated using(public.pos_tiene_sesion());
  create policy pos_write_productos on productos for all to authenticated using(public.pos_is_manager()) with check(public.pos_is_manager());`);
  await db.exec('BEGIN;'+fs.readFileSync('supabase/migrations/'+migration[0],'utf8')+'COMMIT;');
+ if(!process.argv.includes('--baseline')) for(const p of fs.readdirSync('supabase/migrations').filter(p=>p.endsWith('_endurecer_codigos_barras.sql'))) await db.exec('BEGIN;'+fs.readFileSync('supabase/migrations/'+p,'utf8')+'COMMIT;');
  const a=(await db.query("insert into productos(nombre) values('A') returning id")).rows[0].id;
  const b=(await db.query("insert into productos(nombre) values('B') returning id")).rows[0].id;
  const assign=async(id,code=null,gen=false)=>(await db.query('select (asignar_codigo_producto_pos($1,$2,$3)).*',[id,code,gen])).rows[0];
@@ -44,6 +45,13 @@ try {
  const foreign=(await db.query("insert into productos(nombre,sucursal_ids) values('Foreign',array['00000000-0000-4000-8000-000000000002'::uuid]) returning id")).rows[0].id;
  await db.exec("select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000011',false)");
  await assert.rejects(()=>assign(foreign,null,true),/SUCURSAL_AJENA/);
+ await db.exec("select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000010',false)");
+ const nullScope=(await db.query("insert into productos(nombre,sucursal_ids) values('Foreign null',array['00000000-0000-4000-8000-000000000002'::uuid,null]) returning id")).rows[0].id;
+ await db.exec("select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000011',false)");
+ await assert.rejects(()=>assign(nullScope,null,true),/SUCURSAL_AJENA/,'NULL array members cannot bypass branch checks');
+ await assert.rejects(()=>db.query("update productos set codigo_barras='NULLSCOPE' where id=$1",[nullScope]),/SUCURSAL_AJENA/);
+
+ await assert.rejects(()=>db.query("update productos set sucursal_ids=array['00000000-0000-4000-8000-000000000001'::uuid],codigo_barras='FOREIGN123' where id=$1",[foreign]),/SUCURSAL_AJENA/,'manager cannot steal a foreign barcode by moving its branch in the same update');
  await assign(b,'0045678');
  await db.exec('BEGIN');await assign(b,'TEMP123');await db.exec('ROLLBACK');assert.equal((await assign(b,null,true)).codigo_barras,'0045678','rollback retains previous code');
  await db.exec("select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000012',false)");

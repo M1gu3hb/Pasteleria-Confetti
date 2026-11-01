@@ -1,5 +1,7 @@
 # Implementación de códigos de barras — 2026-11-01
 
+> Este informe inicial queda complementado y corregido por REAUDITORIA_CODIGOS_BARRAS_2026-11-01.md: se reprodujeron fallos reales de impresión/alcance/precio que las pruebas iniciales no cubrían. No usar el PASS inicial como certificación de la ruta nativa de etiquetas.
+
 ## Alcance entregable
 
 Generación CF + ocho cifras y asignación de códigos existentes al final de tarjetas/editar producto. Unicidad y reserva permanente incluso tras desactivar, reemplazar o borrar. Los códigos se conservan al editar precio/nombre, imprimir o descargar. Una reasignación advierte que invalida etiquetas; caja no reasigna automáticamente ni cobra al escanear.

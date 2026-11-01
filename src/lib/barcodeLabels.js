@@ -18,7 +18,20 @@ export function barcodeRuns(code) {
   }
   return { width: pattern.length, runs };
 }
+export function validateLabelQuantities(entries) {
+  if(!Array.isArray(entries)||!entries.length) throw new Error('Selecciona al menos un producto.');
+  let total=0;
+  for(const {copies} of entries) {
+    if(typeof copies!=='number'&&typeof copies!=='string')throw new Error('Elige de 1 a 100 copias por producto.');
+    const n=Number(copies);
+    if(!Number.isInteger(n)||n<1||n>100) throw new Error('Elige de 1 a 100 copias por producto.');
+    total+=n;
+  }
+  if(total>1200) throw new Error('Selecciona entre 1 y 1200 etiquetas.');
+  return total;
+}
 export function createLabelsPDF(entries) {
+  validateLabelQuantities(entries);
   const labels = [];
   for (const { product, copies } of entries) {
     const n = Number(copies);
