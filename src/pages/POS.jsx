@@ -686,8 +686,8 @@ export default function POS() {
           {/* FASE 3 — Venta libre: monto sin producto de catálogo (se agrega al carrito). */}
           <Button
             variant="outline"
-            disabled={scanner.pending > 0}
-            onClick={() => setShowVentaLibre(true)}
+            disabled={scanner.busy}
+            onClick={() => {if(scanner.canCheckout())setShowVentaLibre(true);}}
             className="w-full h-10 gap-2 border-dashed transition-transform active:scale-95"
           >
             <Coins className="w-4 h-4" /> Venta libre (monto)
@@ -724,7 +724,7 @@ export default function POS() {
 
         {/* Mobile cart button */}
         <div className="lg:hidden pt-3">
-          <Button onClick={() => {if(scanner.canCheckout())setShowCartMobile(true);}} className="w-full h-12 text-base gap-2" disabled={cart.length === 0 || scanner.pending > 0}>
+          <Button onClick={() => {if(scanner.canCheckout())setShowCartMobile(true);}} className="w-full h-12 text-base gap-2" disabled={cart.length === 0 || scanner.busy}>
             <ShoppingCart className="w-5 h-5" />
             Ver orden ({cart.length}) · {formatCurrency(total)}
           </Button>
@@ -734,7 +734,7 @@ export default function POS() {
       {/* Desktop cart */}
       <div className="hidden lg:flex w-80 xl:w-96 border-l border-border bg-card flex-col">
         <CartPanel items={cart} onUpdateQty={updateQty} onRemove={removeItem}
-          total={total} checkoutDisabled={scanner.pending > 0} onCheckout={abrirCobro} onClear={() => { scanner.clear();setCart([]); }} />
+          total={total} checkoutDisabled={scanner.busy} onCheckout={abrirCobro} onClear={() => { scanner.clear();setCart([]); }} />
       </div>
 
       {/* Mobile cart drawer */}
@@ -743,7 +743,7 @@ export default function POS() {
           <div className="absolute inset-0 bg-black/50" onClick={() => setShowCartMobile(false)} />
           <div className="absolute right-0 top-0 bottom-0 w-full max-w-sm bg-card shadow-xl flex flex-col">
             <CartPanel items={cart} onUpdateQty={updateQty} onRemove={removeItem}
-              total={total} checkoutDisabled={scanner.pending > 0} onCheckout={() => {
+              total={total} checkoutDisabled={scanner.busy} onCheckout={() => {
                 if (!scanner.canCheckout()) return;
                 setShowCartMobile(false);abrirCobro();
               }}

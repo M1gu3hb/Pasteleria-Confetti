@@ -1271,3 +1271,7 @@ Generación/asignación única con reserva permanente, controles al final de pro
 ## 2026-11-01 — Reauditoría correctiva de códigos de barras
 
 Correcciones B01–B14 en REAUDITORIA_CODIGOS_BARRAS_2026-11-01.md. Hallazgo crítico: cola de impresión anidada bloqueaba etiquetas y tickets posteriores. Etiquetas ahora comparten lifecycle y formato térmico de ventas. Precio vigente por snapshot, código sin truncación, validación de PDF/RPC, descarte por identidad/corte y límite de tramas. Migración adicional protege alcance original/destino y NULL. Prefijo HID F9 probado en cobro real; configuración en sitio y binario firmado pendientes. Regresiones comparadas con el código previo, sin pruebas financieras ficticias en producción.
+
+## 2026-11-01 — Segunda reauditoría de códigos
+
+C01–C05: esperar trama parcial antes del cobro; conservar origen y descartar sufijos al cambiar contexto; verificar vigencia del PDF antes de exportar; reemplazar texto anterior con F9 al asignar; endurecer datos de respuesta. Cuatro regresiones de interfaz y una de servicio fallan con el cliente anterior y pasan con las correcciones. Motor de tramas real añadido a la puerta del build. Sin cambios de esquema ni pruebas financieras ficticias en producción.

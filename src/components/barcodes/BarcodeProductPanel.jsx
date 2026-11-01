@@ -47,7 +47,7 @@ export default function BarcodeProductPanel({product,onPDF}) {
       {onPDF&&<Button type="button" size="sm" variant="outline" disabled={busy} onClick={()=>onPDF(product.id)}>Generar PDF</Button>}
     </div>
     {assigning&&<div className="space-y-2">
-      <label className="text-xs block">Escanea o escribe el código existente<input autoFocus value={code} disabled={busy} aria-label="Código existente" className="skeu-input w-full p-2 mt-1" onChange={e=>{setCode(e.target.value);setConfirming(false);}} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();e.stopPropagation();if(code.trim()) saved?.codigo_barras?setConfirming(true):save(false);}}} /></label>
+      <label className="text-xs block">Escanea o escribe el código existente<input autoFocus value={code} disabled={busy} aria-label="Código existente" className="skeu-input w-full p-2 mt-1" onChange={e=>{setCode(e.target.value);setConfirming(false);}} onKeyDown={e=>{if(e.key==='F9'){e.preventDefault();e.stopPropagation();setCode('');setConfirming(false);return;}if(e.key==='Enter'){e.preventDefault();e.stopPropagation();if(code.trim()) saved?.codigo_barras?setConfirming(true):save(false);}}} /></label>
       {confirming&&<p className="text-xs text-amber-700">Al cambiarlo, las etiquetas anteriores dejarán de servir. Tendrás que imprimir las nuevas.</p>}
       <Button type="button" size="sm" disabled={busy||!code.trim()} onClick={()=>saved?.codigo_barras&&!confirming?setConfirming(true):save(false)}>{confirming?'Confirmar cambio e imprimir después':'Guardar código'}</Button>
     </div>}

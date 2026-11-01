@@ -16,7 +16,10 @@ export async function assignBarcode(productId, code = '', generate = false) {
   const { data, error } = await supabase.rpc('asignar_codigo_producto_pos', { p_producto: productId, p_codigo: normalized || null, p_generar: generate });
   if (error) throw barcodeError(error);
   const row = Array.isArray(data) && data.length === 1 ? data[0] : data;
-  if (!row?.id || row.id !== productId) throw new Error('No se pudo verificar el código guardado. Actualiza el catálogo antes de imprimir.');
+  const returnedCode=row?.codigo_barras;
+  const coherentCode=generate ? typeof returnedCode==='string'&&validBarcode(returnedCode)&&returnedCode===normalizeBarcode(returnedCode) : returnedCode===(normalized||null);
+  const coherentOrigin=returnedCode==null ? row?.codigo_origen==null : ['generado','asignado'].includes(row?.codigo_origen);
+  if (!coherentCode||!coherentOrigin||!row?.id || row.id !== productId) throw new Error('No se pudo verificar el código guardado. Actualiza el catálogo antes de imprimir.');
   return row;
 }
 async function lookupCurrentBarcode(code, branch) {
@@ -28,6 +31,8 @@ async function lookupCurrentBarcode(code, branch) {
   const expected=normalizeBarcode(code);
   for (const row of data) {
     if (!row?.id || typeof row.nombre !== 'string' || row.codigo_barras !== expected || row.activo !== true || row.visible_en_pos !== true ||
+        (typeof row.precio_venta!=='number'&&(typeof row.precio_venta!=='string'||!row.precio_venta.trim())) ||
+        (row.sucursal_ids!=null&&!Array.isArray(row.sucursal_ids)) ||
         row.precio_venta == null || !Number.isFinite(Number(row.precio_venta)) || Number(row.precio_venta)<0 ||
         (row.sucursal_ids?.length && !row.sucursal_ids.includes(branch))) throw new Error('El catálogo devolvió un producto inválido. Actualiza y vuelve a escanear.');
   }

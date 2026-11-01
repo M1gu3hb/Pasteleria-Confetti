@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import { createLabelsPDF, validateLabelQuantities } from '@/lib/barcodeLabels';
 import { exportBarcodeFile } from '@/lib/barcodeExport';
+import { base44 } from '@/api/base44Client';
 import { assignBarcode } from '@/lib/barcodes';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -39,7 +40,16 @@ export default function BarcodePDFDialog({open,onClose,products,initialId='',sco
   const download = async () => {
     if(running.current)return;running.current=true;
     const operation=++epoch.current;setBusy(true);setError('');
-    try {const blob=await (await fetch(preview)).blob();if(operation!==epoch.current)return;await exportBarcodeFile(blob,'Etiquetas-Confetti.pdf');}
+    try {
+      for(const {product} of included){
+        const current=await base44.entities.ProductoTerminado.get(product.id);
+        if(operation!==epoch.current)return;
+        if(!current||current.id!==product.id||current.codigo_barras!==product.codigo_barras||current.nombre!==product.nombre){
+          setPreview('');throw new Error('El catálogo cambió. Vuelve a generar el PDF antes de descargarlo.');
+        }
+      }
+      const blob=await(await fetch(preview)).blob();if(operation!==epoch.current)return;await exportBarcodeFile(blob,'Etiquetas-Confetti.pdf');
+    }
     catch(e) {if(operation===epoch.current)setError(e.message || 'No se pudo guardar el PDF.');}
     finally {if(operation===epoch.current){running.current=false;setBusy(false);}}
   };
