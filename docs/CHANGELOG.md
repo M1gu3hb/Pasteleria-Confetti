@@ -1263,3 +1263,7 @@ Validación de FLUJO CRUZADO sobre el Supabase compartido (solo lectura + datos 
 - **Regresión:** ningún cambio de esquema/código POS. Limpieza: transaccional=0, folio_contador=0; maestros intactos (productos 20, sucursales 3). Residual: 2 imágenes de prueba en `web-uploads/pedidos/` (ver BUGS_PENDING (h)).
 - **Sin diffs vs Base44** en el flujo cruzado. POS+Web listos para la auditoría de Miguel antes del bot de pruebas agresivas.
 
+
+## 2026-11-01 — Códigos de barras
+
+Generación/asignación única con reserva permanente, controles al final de productos/editar, PNG y PDF carta por lotes, impresión gráfica y captura HID sin confirmación por producto. Cola de escaneos y protección de Enter/pago/sucursal. Puente Android de guardado mediante selector del sistema; requiere APK actualizado. Corrección al editar: conservar visibilidad POS/web en lugar de volver a publicar productos ocultos. Plan y pruebas en documentos de códigos de barras.

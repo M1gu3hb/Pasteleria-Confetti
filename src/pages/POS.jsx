@@ -1,4 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { addBarcodeProduct } from '@/lib/barcodeCore';
+import { useBarcodeScanner } from '@/components/barcodes/useBarcodeScanner';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePOSAuth } from '@/lib/POSAuthContext';
@@ -124,6 +126,19 @@ export default function POS() {
   // Producto visible si: sucursal_ids vacío/null (global) O incluye la sucursal activa.
   const sucEfId = sucursalEfectiva?.sucursal_id || null;
 
+  const scanner = useBarcodeScanner({
+    branch: sucEfId,
+    enabled: !!sucEfId && hayCaja && !processing && !showPayment && !showTicket && !showPropina && !showVentaLibre && !productoVariable && !showCartMobile,
+    onProduct: product => {
+      if (esProductoVariable(product)) { toast.error('Este producto requiere capturar su cantidad desde el catálogo.'); return; }
+      setCart(prev => addBarcodeProduct(prev,product));
+    },
+  });
+  const abrirCobro = () => {
+    if (!scanner.canCheckout()) {toast.info('Espera a que terminen de agregarse los productos escaneados.');return;}
+    if (tipsEnabled(config)) setShowPropina(true); else setShowPayment(true);
+  };
+
   // Set de ids de categorías activas (para detectar productos "huérfanos":
   // sin categoria_id o con un categoria_id que ya no corresponde a ninguna
   // categoría activa). Esos productos van al bucket "Otros".
@@ -166,19 +181,11 @@ export default function POS() {
     // 6B / 1.K — Si es variable, abrir modal de captura. NO se agrupa con
     // líneas anteriores (cada línea variable es independiente).
     if (esProductoVariable(product)) {
+      if (!scanner.canCheckout()) {toast.info('Espera a que termine el lector.');return;}
       setProductoVariable(product);
       return;
     }
-    // ---- precio_fijo (flujo histórico, intacto) ----
-    const idx = cart.findIndex(i => i.producto_id === product.id && !i.tipo_venta);
-    if (idx >= 0) {
-      const updated = [...cart];
-      updated[idx].cantidad += 1;
-      setCart(updated);
-    } else {
-      setCart([...cart, { producto_id: product.id, nombre: product.nombre, precio_venta: product.precio_venta,
-        costo: product.costo_calculado_actual || 0, area_preparacion: product.area_preparacion, cantidad: 1, notas: '' }]);
-    }
+    setCart(prev => addBarcodeProduct(prev, product));
   };
 
   // 6B / 1.K — Recibe snapshot del CantidadVariableDialog y crea línea variable.
@@ -241,6 +248,7 @@ export default function POS() {
   const removeItem = (idx) => setCart(cart.filter((_, i) => i !== idx));
 
   const handleCheckout = async (paymentData) => {
+    if (!scanner.canCheckout()) {toast.info('Espera a que termine el lector.');return;}
     // FASE 2B — Ninguna venta puede nacer sin sucursal. Fuente única:
     // sucursalEfectiva del TerminalContext. Si es null (dueño en modo global
     // sin sucursal seleccionada), se bloquea el cobro antes de crear nada.
@@ -671,9 +679,15 @@ export default function POS() {
             <Input placeholder="Buscar producto..." value={search} onChange={e => setSearch(e.target.value)}
               className="pl-10 h-10" />
           </div>
+          <div className="space-y-1">
+            <label htmlFor="pos-barcode" className="text-xs font-medium">Lector de códigos de barras</label>
+            <input id="pos-barcode" ref={scanner.inputRef} readOnly inputMode="none" value={scanner.draft} placeholder="Escanea el producto y se agrega a la orden" className="skeu-input w-full h-10 px-3" />
+            <p role="status" aria-live="polite" className="text-xs text-muted-foreground">{scanner.pending ? `Agregando ${scanner.pending} lectura(s)…` : scanner.status}</p>
+          </div>
           {/* FASE 3 — Venta libre: monto sin producto de catálogo (se agrega al carrito). */}
           <Button
             variant="outline"
+            disabled={scanner.pending > 0}
             onClick={() => setShowVentaLibre(true)}
             className="w-full h-10 gap-2 border-dashed transition-transform active:scale-95"
           >
@@ -711,7 +725,7 @@ export default function POS() {
 
         {/* Mobile cart button */}
         <div className="lg:hidden pt-3">
-          <Button onClick={() => setShowCartMobile(true)} className="w-full h-12 text-base gap-2" disabled={cart.length === 0}>
+          <Button onClick={() => setShowCartMobile(true)} className="w-full h-12 text-base gap-2" disabled={cart.length === 0 || scanner.pending > 0}>
             <ShoppingCart className="w-5 h-5" />
             Ver orden ({cart.length}) · {formatCurrency(total)}
           </Button>
@@ -721,10 +735,7 @@ export default function POS() {
       {/* Desktop cart */}
       <div className="hidden lg:flex w-80 xl:w-96 border-l border-border bg-card flex-col">
         <CartPanel items={cart} onUpdateQty={updateQty} onRemove={removeItem}
-          total={total} onCheckout={() => {
-            if (tipsEnabled(config)) setShowPropina(true);
-            else setShowPayment(true);
-          }} onClear={() => setCart([])} />
+          total={total} checkoutDisabled={scanner.pending > 0} onCheckout={abrirCobro} onClear={() => { scanner.clear();setCart([]); }} />
       </div>
 
       {/* Mobile cart drawer */}
@@ -733,12 +744,11 @@ export default function POS() {
           <div className="absolute inset-0 bg-black/50" onClick={() => setShowCartMobile(false)} />
           <div className="absolute right-0 top-0 bottom-0 w-full max-w-sm bg-card shadow-xl flex flex-col">
             <CartPanel items={cart} onUpdateQty={updateQty} onRemove={removeItem}
-              total={total} onCheckout={() => {
-                setShowCartMobile(false);
-                if (tipsEnabled(config)) setShowPropina(true);
-                else setShowPayment(true);
+              total={total} checkoutDisabled={scanner.pending > 0} onCheckout={() => {
+                if (!scanner.canCheckout()) return;
+                setShowCartMobile(false);abrirCobro();
               }}
-              onClear={() => setCart([])} />
+              onClear={() => { scanner.clear();setCart([]); }} />
           </div>
         </div>
       )}

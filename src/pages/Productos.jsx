@@ -21,6 +21,8 @@ import FichaResumenVariable from '@/components/productos/FichaResumenVariable';
 import { esProductoVariable, TIPO_VENTA } from '@/utils/tipoVentaUtils';
 import { useIsDark } from '@/lib/ThemeContext';
 import { PRODUCT_PLACEHOLDER_BG } from '@/lib/darkPalettes';
+import BarcodeProductPanel from '@/components/barcodes/BarcodeProductPanel';
+import BarcodePDFDialog from '@/components/barcodes/BarcodePDFDialog';
 import { printDocument } from '@/lib/print';
 
 export default function Productos() {
@@ -30,6 +32,7 @@ export default function Productos() {
   const placeholderBg = isDark ? PRODUCT_PLACEHOLDER_BG.dark : PRODUCT_PLACEHOLDER_BG.light;
   const isEsencial = paquete_modo === 'esencial';
   const showCostos = !isEsencial; // costos/utilidad/margen solo en Operativo y Pro
+  const [pdfProductId,setPdfProductId] = useState(null);
   const [search, setSearch] = useState('');
   const [showFicha, setShowFicha] = useState(false);
   const [fichaProducto, setFichaProducto] = useState(null);
@@ -99,7 +102,7 @@ export default function Productos() {
   }, [enriched, sucEfId]);
 
   const filtered = porSucursal.filter(p =>
-    !search || p.nombre.toLowerCase().includes(search.toLowerCase())
+    !search || p.nombre.toLowerCase().includes(search.toLowerCase()) || (p.codigo_barras || '').includes(search)
   );
 
   const verFicha = (p) => {
@@ -128,6 +131,7 @@ export default function Productos() {
         }
       />
 
+      <Button variant="outline" onClick={()=>setPdfProductId('')}>PDF de códigos de barras</Button>
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input placeholder="Buscar producto..." value={search} onChange={e => setSearch(e.target.value)} className="skeu-input pl-10" />
@@ -258,6 +262,7 @@ export default function Productos() {
                       </Button>
                     </div>
                   </div>
+                  <BarcodeProductPanel product={p} onPDF={setPdfProductId} />
                 </div>
               </Card>
             );
@@ -265,6 +270,7 @@ export default function Productos() {
         </div>
       )}
 
+      <BarcodePDFDialog open={pdfProductId !== null} onClose={()=>setPdfProductId(null)} products={porSucursal} initialId={pdfProductId || ''} />
       {/* SIMPLE PRODUCT DIALOG (solo Esencial) */}
       <ProductoSimpleDialog
         open={showSimple}
@@ -279,6 +285,7 @@ export default function Productos() {
         producto={productoAEliminar}
         onDeleted={() => {
           queryClient.invalidateQueries({ queryKey: ['productos_all'] });
+          queryClient.invalidateQueries({ queryKey: ['productos_pos'] });
           setProductoAEliminar(null);
         }}
       />

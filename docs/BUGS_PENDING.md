@@ -23,3 +23,7 @@ Bitácora automática privada de las seis tablas financieras, guardada en la mis
 ## Evidencia y riesgos abiertos
 
 Consultar [reauditoría](REAUDITORIA_CIERRE_PENDIENTES_2026-10-02.md) para pruebas y límites, y [contexto histórico](BUGS_PENDING_HISTORICO_2026-10-02.md) para decisiones anteriores. Las afirmaciones antiguas de auth pendiente, rama congelada o importaciones disponibles no definen el contrato actual.
+
+## Verificación física de códigos de barras
+
+Probar lector HID con Enter y una trama por disparo, reconexión USB/Bluetooth y impresión 58/80 mm en Higole. Compilar, firmar con la clave existente e instalar APK 1.2.0 para guardado nativo; plugin fuente presente, binario no certificado en este entorno. Las versiones anteriores descargan PNG/PDF desde Chrome/computadora y muestran un error explícito al intentar guardarlos dentro del APK. No confundir que el escaneo agiliza registrar con impedir físicamente una venta fuera del sistema.

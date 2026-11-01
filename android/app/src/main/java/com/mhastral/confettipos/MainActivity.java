@@ -14,6 +14,7 @@ public class MainActivity extends BridgeActivity {
         // (requisito de Capacitor). Solo expone el "tubo"; NO cambia el flujo
         // de impresión actual (eso es Fase 4).
         registerPlugin(ConfettiPrinterPlugin.class);
+        registerPlugin(ConfettiFilesPlugin.class);
         super.onCreate(savedInstanceState);
         // POS: mantener la pantalla SIEMPRE encendida mientras la app está en
         // primer plano (la tablet del mostrador no debe apagarse sola).

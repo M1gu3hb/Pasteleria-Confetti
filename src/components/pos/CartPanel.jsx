@@ -5,7 +5,7 @@ import { formatCurrency } from '@/utils/financialUtils';
 import { Plus, Minus, Trash2, ShoppingCart, Scale, Beaker } from 'lucide-react';
 import { useConfig } from '@/lib/ConfigContext';
 
-export default function CartPanel({ items, onUpdateQty, onRemove, total, onCheckout, onClear }) {
+export default function CartPanel({ items, onUpdateQty, onRemove, total, onCheckout, onClear, checkoutDisabled = false }) {
   const { config } = useConfig();
   const totalClass = config?.colorear_importes_monetarios !== false ? 'text-primary' : 'text-foreground';
   if (items.length === 0) {
@@ -95,7 +95,7 @@ export default function CartPanel({ items, onUpdateQty, onRemove, total, onCheck
           <span className="text-lg">Total</span>
           <span className={`font-display text-3xl ${totalClass}`}>{formatCurrency(total)}</span>
         </div>
-        <Button onClick={onCheckout} className="btn-cobrar w-full rounded-2xl text-lg font-semibold min-h-[56px]" size="lg">
+        <Button onClick={onCheckout} disabled={checkoutDisabled} className="btn-cobrar w-full rounded-2xl text-lg font-semibold min-h-[56px]" size="lg">
           Cobrar {formatCurrency(total)}
         </Button>
       </div>

@@ -13,6 +13,8 @@ import ImageUploader from '@/components/common/ImageUploader';
 import { ensureCategoriaExists } from '@/utils/categoriaUtils';
 import { TIPO_VENTA, validarProductoVariable, esProductoVariable } from '@/utils/tipoVentaUtils';
 import { useTerminal } from '@/lib/TerminalContext';
+import BarcodePDFDialog from '@/components/barcodes/BarcodePDFDialog';
+import BarcodeProductPanel from '@/components/barcodes/BarcodeProductPanel';
 import SelectorSucursalesProducto from './SelectorSucursalesProducto';
 
 /**
@@ -22,6 +24,8 @@ import SelectorSucursalesProducto from './SelectorSucursalesProducto';
  */
 export default function ProductoSimpleDialog({ open, onClose, producto = null }) {
   const queryClient = useQueryClient();
+  const [showBarcodePDF,setShowBarcodePDF] = useState(false);
+  const {data:barcodeProducts=[]} = useQuery({queryKey:['productos_all'],queryFn:()=>base44.entities.ProductoTerminado.filter({activo:true}),enabled:open});
   const { adminRole, sucursalEfectiva } = useTerminal();
   // Administrador (con sucursal asignada y no dueño) → producto atado a SU sucursal.
   const esAdmin = adminRole === 'administrador';
@@ -56,6 +60,7 @@ export default function ProductoSimpleDialog({ open, onClose, producto = null })
 
   useEffect(() => {
     if (open) {
+      setShowBarcodePDF(false);
       setNombre(producto?.nombre || '');
       setPrecio(producto?.precio_venta != null ? String(producto.precio_venta) : '');
       setImagenUrl(producto?.imagen_url || '');
@@ -157,10 +162,10 @@ export default function ProductoSimpleDialog({ open, onClose, producto = null })
         imagen_url: imagenUrl.trim() || undefined,
         descripcion: descripcion.trim() || undefined,
         activo,
-        visible_en_pos: true,
+        visible_en_pos: producto?.id ? producto.visible_en_pos !== false : true,
         // TODO producto nuevo del POS es visible en la web por default.
         // El dueño puede ocultarlo luego con el toggle en Web Pública.
-        visible_en_web: true,
+        visible_en_web: producto?.id ? producto.visible_en_web !== false : true,
         area_preparacion: 'ninguno',
         categoria_id: catId,
         categoria_nombre: catNombre || '',
@@ -185,6 +190,7 @@ export default function ProductoSimpleDialog({ open, onClose, producto = null })
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="sm:max-w-md max-h-[92vh] overflow-y-auto">
         <DialogHeader>
@@ -242,6 +248,7 @@ export default function ProductoSimpleDialog({ open, onClose, producto = null })
             <Label className="text-xs">Activo</Label>
             <Switch checked={activo} onCheckedChange={setActivo} />
           </div>
+          <BarcodeProductPanel product={producto} onPDF={()=>setShowBarcodePDF(true)} />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
@@ -251,5 +258,7 @@ export default function ProductoSimpleDialog({ open, onClose, producto = null })
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <BarcodePDFDialog open={open&&showBarcodePDF} onClose={()=>setShowBarcodePDF(false)} products={barcodeProducts.filter(p=>!sucursalEfectiva?.sucursal_id||!p.sucursal_ids?.length||p.sucursal_ids.includes(sucursalEfectiva.sucursal_id))} initialId={producto?.id||''} />
+    </>
   );
 }
