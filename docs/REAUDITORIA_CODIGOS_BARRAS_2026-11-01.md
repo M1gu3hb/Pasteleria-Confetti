@@ -45,3 +45,11 @@ Los scripts de navegador aceptan `CONFETTI_QA_MODULES` y `CONFETTI_QA_EXECUTABLE
 Versionar SQL probado antes de aplicarlo, comprobar MD5 del cuerpo aplicado, y avanzar producción y apk/capacitor al mismo commit sin force. Verificar READY, alias y bundles servidos. No repuntar `server.url`. Una tablet abierta necesita recargar; si quedó bloqueada en la cola anterior, reiniciar la app descarga ese estado de memoria.
 
 Falta la comprobación física de lector, prefijo, USB/Bluetooth, impresora/papel/avance/corte. Para guardar dentro del APK falta compilar, firmar con la firma existente e instalar el binario; las descargas web funcionan sin ese plugin. No se promete “cero errores” ni “perfecto”: se documenta qué se reprodujo, corrigió y probó, y qué no pudo ejecutarse físicamente.
+
+## Evidencia de cierre de software
+
+Build local completo finalizó con salida 0; las dos pruebas de navegador (regresión inicial y reauditoría con PaymentModal real) pasaron sin errores JS; ZXing volvió a leer todos los PNG y las 14 etiquetas de las dos páginas carta. Pruebas previas negativas documentadas: interbloqueo, precio viejo, permiso con NULL y truncación del campo fallan al cargar la revisión anterior.
+
+La migración probada se versionó antes de aplicar; Supabase la registró como `20261101204019_endurecer_codigos_barras`. Su cuerpo MD5 `dbab7155cf620d8cc5d66548a39272a6` coincide con el archivo renombrado a esa versión sin cambiar SQL. Comprobación viva: guardia de alcance original y de NULL presentes; anon no ejecuta asignación, authenticated conserva el permiso con autorización dentro de la función.
+
+Advisor conserva los avisos preexistentes (incluidas tres vistas SECURITY DEFINER); no se declaran resueltos por esta reauditoría. El único aviso asociado al registro de códigos es informativo: [RLS sin políticas](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy), deliberado para impedir acceso directo al registro privado. No ampliar permisos para silenciarlo. La deuda de tipos del POS sigue en 597 diagnósticos históricos; la puerta impide añadir otros.
