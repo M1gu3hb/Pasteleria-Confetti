@@ -21,6 +21,10 @@ En nueva venta, HID + Enter agrega directamente al carrito. Consultas actuales p
 
 Instalar Playwright/Chromium en un entorno de pruebas y ejecutar `node scripts/barcodes_browser_verify.mjs`. Para dependencias externas al repo: `CONFETTI_QA_MODULES` apunta al paquete que contiene Playwright y `CONFETTI_QA_EXECUTABLE` al Chromium disponible. La prueba levanta su propio servidor sintético y no recibe credenciales. Genera archivos temporales `/tmp/confetti-label*.png/pdf`. Después: `pdftoppm -r 300 -png /tmp/confetti-labels.pdf /tmp/confetti-sheet` y `python scripts/barcodes_decode_verify.py` con zxing-cpp/Pillow/pypdf instalados.
 
+## Evidencia de migración y preview
+
+La versión de prueba `1ac727fc146df2484aee42bcf9c6ccdea88cb216` terminó READY en Vercel (`dpl_3hoe8oGWQhb8jkQXSfFjREgJduBR`). La migración se aplicó después de versionar y probar su SQL; Supabase la registró como `20261101195452_codigos_barras_producto`. Se alinea el nombre local con esa versión, sin cambiar el SQL. Comprobación posterior: 43 productos, ninguno modificado con códigos de prueba, 0 reservas; índice único y RLS privado activos; RPCs permitidas a authenticated y denegadas a anon. El cliente usa el formato singular o de una fila de PostgREST y verifica el ID devuelto antes de imprimir.
+
 ## Publicación y reversión
 
 La migración es aditiva y las versiones anteriores siguen funcionando; no necesita rellenar códigos ni tocar catálogo existente. Publicar en rama de preview, comprobar build, aplicar SQL versionado y sólo después avanzar ambos canales al mismo commit sin force. Consultar refs y despliegues en vivo para la versión actual.

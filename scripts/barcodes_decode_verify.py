@@ -17,7 +17,9 @@ for name in ['confetti-label.png', 'confetti-label-384.png', 'confetti-label-576
     assert [r.text for r in zxingcpp.read_barcodes(image)] == ['CF00000001'], name
     print('Decoded', name, image.size)
 # Decode each slot: whole-page decoders can merge repeated identical barcodes.
-for page_index, file in enumerate(sorted(root.glob('confetti-sheet-*.png'))):
+sheets = sorted(root.glob('confetti-sheet-*.png'))
+assert len(sheets) == 2, 'Rasterize both PDF pages first'
+for page_index, file in enumerate(sheets):
     image = Image.open(file)
     sx, sy = image.width / 215.9, image.height / 279.4
     for slot in range(12 if page_index == 0 else 2):

@@ -6,7 +6,7 @@ import { conImpresora } from '@/native/printTicket';
 import { imprimirImagenRaster, enviarBytes, cortar } from '@/native/confettiPrinter';
 import { bytesAvancePapel } from '@/native/avancePapel';
 import { getPaperWidth } from './print';
-import { createLabelPNG } from './barcodeLabels';
+import { barcodeRuns, createLabelPNG } from './barcodeLabels';
 const Native = registerPlugin('ConfettiFiles');
 function blobBase64(blob) {
   return new Promise((resolve,reject)=>{
@@ -23,6 +23,7 @@ export async function exportBarcodeFile(blob, filename) {
 }
 /** Labels must always print as graphics even when receipt mode is text. */
 export async function printBarcodeLabel(product) {
+  if (!Capacitor.isNativePlatform() && (barcodeRuns(product.codigo_barras).width + 24) * 0.2 > 90) throw new Error('El código es demasiado largo para esta etiqueta. Usa una etiqueta más ancha al imprimir la imagen PNG.');
   const blob = await createLabelPNG(product, Capacitor.isNativePlatform() ? (getPaperWidth() === 58 ? 384 : 576) : 0);
   const data = await blobBase64(blob);
   if (Capacitor.isNativePlatform()) {
