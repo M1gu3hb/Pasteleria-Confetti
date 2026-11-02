@@ -46,3 +46,11 @@ Recuperar usa `crear_venta_directa_tx` y la intención persistente existentes; n
 El lector físico necesita F9 + Enter para aislarlo de campos de pago. Sin prefijo sigue siendo un teclado indistinguible del humano. Probar en sitio lector, reconexión, impresora, papel, corte y recarga en cada tablet. El puente Java ConfettiFiles para guardar archivos continúa pendiente de compilar, firmar e instalar; desplegar la web no instala ese plugin en APK antiguos. Pueden descargar desde Chrome/computadora. Las fuentes Unicode dependen de las fuentes disponibles en el navegador/dispositivo.
 
 La deuda histórica de tipos y los riesgos generales documentados en BUGS_PENDING no se declaran reparados por esta entrega. Escanear agiliza registrar; no impide físicamente que una empleada venda fuera del sistema.
+
+## Registro de publicación y trazabilidad
+
+La vista previa de la reparación `9bbf52ebf1049a61f17a898733512a8e17598263` terminó READY y respondió HTTP 200. Sus 26 archivos publicados se compararon exactamente contra el workspace probado. Después se aplicó la migración con el SQL ya persistido en GitHub. Supabase registró `20261102062408_codigo_canonico.sql`: cuerpo de 584 bytes, MD5 `dccd674e7530fe7677519bf54a34bf32`, idéntico al archivo. Se ajustó sólo el nombre del archivo a la versión real, sin cambiar el SQL. Consulta viva devolvió `00 12345` intacto y recortó sólo el relleno externo del ejemplo de control; el catálogo conservó sus 43 productos y cero códigos asignados, sin altas de prueba.
+
+La verificación de versión operativa exige consultar ambos refs y deployments (producción y alias apk/capacitor) y descargar sus bundles. Los hashes vivos no se fijan en documentos de traspaso. La respuesta de cierre informa la comprobación posterior a publicación.
+
+La revisión visual se contrastó con Poppler y MuPDF. Una sustitución de fuente local de Poppler distorsionaba espaciados de Helvetica estándar; MuPDF mostró los nombres latinos correctos. Se distinguió esa limitación del renderizador del problema real de codificación Unicode R08 para evitar atribuir otro fallo inexistente a la aplicación.
