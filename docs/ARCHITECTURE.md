@@ -51,3 +51,8 @@ POS guarda items y scope de sucursal/cajero juntos. Un scope distinto bloquea ed
 ## Motor de escáner local compartido
 
 scannerCapture mantiene el parser por documento desde App y arbitra consumidores de venta, asignación y diagnóstico. Cambiar propietario, foco/modal, visibilidad o ajustes invalida tramas sin convertir su cola en otra lectura. useBarcodeScanner conserva la cola de consultas de venta y la limpia al invalidar. scannerConfig versiona ajustes por localStorage/origen, sin base compartida; fallo de lectura desactiva, fallo de escritura se informa. Diagnóstico importa sólo render/impresión y motor, sin servicios financieros/catálogo. No se reclaman interfaces de teclado ni se añaden plugins Android.
+
+
+## Integración de configuración del lector
+
+scannerCapture resuelve el propietario entre consumidores activos por inputRef === document.activeElement; sin un campo enfocado conserva el propietario activo. El cambio de foco sincroniza propietario e invalida tramas, sin convertir su cola en otra asignación. Ver AUDITORIA_CONFIG_ESCANER_2026-11-02.md.

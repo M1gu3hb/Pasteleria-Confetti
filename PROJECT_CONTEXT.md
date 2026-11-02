@@ -57,3 +57,8 @@ Carrito ligado a sucursal/cajero; cambiar contexto conserva la orden pero bloque
 ## Escáner por dispositivo
 
 Configuración → Operación ofrece ajustes locales, F9 + Enter recomendado, guardado/restauración, tutorial y diagnóstico sin ventas/asignaciones. Se preserva explícitamente el modo existente al no haber configuración guardada. scannerCapture mantiene un parser por documento entre pantallas y descarta colas anteriores al cambiar contexto/ajustes. Lectura correcta no significa dispositivo conectado; prueba física sólo declarada por persona y no persistida. No hay plugin nuevo de detección. Evidencia/límites: docs/AUDITORIA_CONFIG_ESCANER_2026-11-02.md.
+
+
+## Integración de configuración del lector
+
+La captura compartida elige el producto de asignación por el campo enfocado. Abrir más de una tarjeta no debe enviar el código a otra; un cambio de foco descarta la trama parcial. Ver docs/AUDITORIA_CONFIG_ESCANER_2026-11-02.md.

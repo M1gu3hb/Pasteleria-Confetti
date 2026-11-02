@@ -49,3 +49,8 @@ No usar otro carrito para provocar recuperación implícita de un intento anteri
 ## Diagnóstico de lector sin falsas conexiones
 
 Conservar el comportamiento de lectores existentes hasta cambio explícito; recomendar F9 + Enter por su aislamiento de importes. Sólo Enter está implementado como terminador; no ofrecer opciones ficticias. Un parser por documento preserva cuarentena al navegar y evita listeners de asignación divergentes. No deduplicar tramas completas por código/tiempo: tres disparos deliberados deben contar tres. Detección física no disponible sin API fiable; WebHID/WebUSB presentes no demuestran conexión. No añadir plugin nativo no verificable ni tocar el transporte de impresora. Informe: AUDITORIA_CONFIG_ESCANER_2026-11-02.md.
+
+
+## Integración de configuración del lector
+
+La asignación de códigos utiliza el campo enfocado como propietario explícito; el orden de montaje no representa intención del operador. Sin foco nuevo conservar el propietario activo para evitar cambios espurios. Ver AUDITORIA_CONFIG_ESCANER_2026-11-02.md.

@@ -37,3 +37,8 @@ Tras las correcciones R01–R08, validar en la tablet de Topilejo F9+Enter con v
 ## Validación y entrega de configuración del escáner
 
 Comprobar el registro de AUDITORIA_CONFIG_ESCANER_2026-11-02.md, habilitar acceso del entorno a los servicios pendientes y verificar esquema/canales en vivo antes de publicar la entrega. Después verificar READY, mismo commit y bundles de producción/APK sin force ni repuntar server.url. En cada tablet: recargar, configurar F9 + Enter según manual del lector, guardar recomendada y hacer tres lecturas de prueba sin ventas; comprobar reconexión y etiqueta/ticket en papel. No declarar escáner conectado por una lectura anterior.
+
+
+## Integración de configuración del lector
+
+Tras recargar el canal de la tablet, abrir Configuración → Operación → Escáner de códigos de barras y realizar la prueba guiada con el lector real. Los bloqueos de publicación del informe original son históricos; comprobar entrega por refs y aliases Vercel actuales. Ver AUDITORIA_CONFIG_ESCANER_2026-11-02.md.

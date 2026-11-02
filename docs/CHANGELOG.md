@@ -1,3 +1,7 @@
+# 2026-11-02 — Integración de configuración del lector
+
+Revisada la entrega a223cc0 antes de mover canales operativos. Se reprodujo y corrigió S05: dos tarjetas de asignación abiertas enviaban el código al último consumidor por montaje, aunque otro campo estuviera enfocado. Selección por foco y cuarentena al cambiar de campo; once regresiones de configuración en navegador. Sin cambios SQL, dinero ni transporte de impresora. Ver [informe](AUDITORIA_CONFIG_ESCANER_2026-11-02.md).
+
 # 2026-11-02 — Configuración y diagnóstico local del escáner
 
 Auditoría independiente sobre la rama operativa: S01 F9 sostenido aceptaba un sufijo; S02 navegar sustituía el parser y perdía la cuarentena; S03 asignación guardaba una lectura interrumpida. Reproducidos en motores/formularios anteriores antes de reparar. Se comparte un motor único por documento para venta, asignación y diagnóstico. Ajustes locales por instalación, recomendación explícita F9 + Enter sin cambiar silenciosamente lectores existentes, guardado/restauración, tutorial y prueba aislada sin catálogo ni dinero. Detección física honestamente no disponible, sin reclamos USB ni plugin nuevo.

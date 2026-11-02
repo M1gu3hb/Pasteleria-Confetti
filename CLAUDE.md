@@ -342,3 +342,8 @@ La orden POS queda ligada a sucursal/cajero. No borrar borradores al cambiar con
 ## Configuración y diagnóstico local del escáner
 
 Motor único por documento (scannerCapture + barcodeFrame) compartido por venta, asignación F9 y diagnóstico. No sustituirlo al navegar: conservar cuarentena del sufijo. Ajustes versionados locales, no Supabase; conservar modo existente sin cambiarlo silenciosamente y recomendar F9 + Enter explícitamente. Configuración inválida falla cerrada; cambio de ajustes cancela lecturas y consultas anteriores. Diagnóstico sin catálogo/cobros y sin afirmar conexión física a partir de eventos. Ver docs/AUDITORIA_CONFIG_ESCANER_2026-11-02.md; scanner_config_verify entra en test:barcodes.
+
+
+## Integración de configuración del lector
+
+Con varias asignaciones abiertas, el consumidor del lector debe seguir al campo enfocado, nunca al orden de montaje de las tarjetas. Cambiar foco durante una trama la invalida sin asignar su cola. Ver docs/AUDITORIA_CONFIG_ESCANER_2026-11-02.md.

@@ -57,3 +57,8 @@ Antes de otro cobro, resolver la intención local pendiente mediante Recuperar c
 ## Configuración local del escáner
 
 Usar scannerConfig/scannerCapture y useBarcodeCapture, no listeners nuevos por pantalla. El motor vive desde App, conserva cuarentena al navegar y tiene un único propietario entre venta, asignación y diagnóstico. No cambiar ajustes de otras tablets: clave local versionada y origen independiente para Chrome/APK. Perfil recomendado F9 + Enter; modo compatible anterior explícitamente conservado. Los cambios de ajustes invalidan también consultas pendientes. Diagnóstico nunca escribe catálogo ni dinero, no detecta hardware y no certifica una prueba física por eventos isTrusted. Ver docs/AUDITORIA_CONFIG_ESCANER_2026-11-02.md para regresiones y cómo comprobar publicación pendiente/viva.
+
+
+## Integración de configuración del lector
+
+Revisión de integración: conservar selección de propietario por input enfocado en scannerCapture y cuarentena al cambiar foco. Regresiones assignment_focus y assignment_focus_tail en scanner_config_browser. Consultar los refs y Vercel en vivo para el estado de entrega, no el bloqueo histórico del entorno anterior. Ver docs/AUDITORIA_CONFIG_ESCANER_2026-11-02.md.

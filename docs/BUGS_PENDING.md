@@ -37,3 +37,8 @@ Auditoría profunda: R01–R08 reparados (identidad con espacios, borrador perdi
 ## Alcance de configuración del escáner
 
 S01–S03 (F9 sostenido, sufijo tras navegar y asignación interrumpida) tienen corrección y regresiones negativas/positivas; S04 agrega ajustes/diagnóstico antes ausentes. No se presenta como certificación de hardware: siguen pendientes lector/modelo, OTG/Bluetooth, tablet instalada y papel/impresora. El entorno de esta auditoría no tenía acceso autorizado a APIs de Supabase/Vercel; no inferir publicación ni esquema vivo de los informes anteriores. Consultar registro fechado AUDITORIA_CONFIG_ESCANER_2026-11-02.md y comprobar servicios/canales antes de desplegar.
+
+
+## Integración de configuración del lector
+
+S05 corregido: varias asignaciones abiertas podían enviar el código al producto de otra tarjeta. Pruebas de foco y fragmento cruzado en scanner_config_browser; prueba física sigue pendiente. Ver AUDITORIA_CONFIG_ESCANER_2026-11-02.md.

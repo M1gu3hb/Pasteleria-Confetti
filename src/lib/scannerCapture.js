@@ -25,7 +25,10 @@ export function createScannerCapture(env) {
   });
   const sync=()=>{
     const available=[...clients.values()].filter(c=>c.options.active!==false);
-    const next=available.at(-1)||null;
+    // Several product cards may have assignment open. The focused input owns
+    // the scanner; mount order must never assign a code to another product.
+    const focused=available.find(c=>c.options.inputRef?.current&&c.options.inputRef.current===doc.activeElement);
+    const next=focused||(available.includes(owner)?owner:null)||available.at(-1)||null;
     const opts=next?.options||{};
     const sig=JSON.stringify([next?.id,opts.branch,opts.contextKey,opts.enabled,settings]);
     if(sig!==signature){owner=next;signature=sig;frame.invalidate('Cambió la pantalla, sesión o configuración.');state.status=frame.active?state.status:settings.enabled?'Esperando una lectura.':'Lector desactivado en este dispositivo.';for(const c of clients.values())c.options.onInvalidate?.();notify();}
@@ -40,7 +43,7 @@ export function createScannerCapture(env) {
     if(frame.active)timer=win.setTimeout(()=>{frame.expire();notify();},settings.maxGap+5);
   };
   const blur=()=>{frame.invalidate('La aplicación perdió el foco.');notify();};
-  const focus=()=>{if(frame.active){frame.invalidate('Cambió el campo durante la lectura.');notify();}};
+  const focus=()=>{sync();if(frame.active){frame.invalidate('Cambió el campo durante la lectura.');notify();}};
   const visibility=()=>{if(doc.hidden)blur();};
   const unsubscribe=subscribeSettings(()=>{settings=readSettings().config;sync();});
   doc.addEventListener('keydown',handle,true);doc.addEventListener('focusin',focus,true);

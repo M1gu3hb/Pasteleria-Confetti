@@ -70,3 +70,8 @@ El lector conserva su parser al cambiar de modo/sucursal/cajero/corte. Una trama
 - scripts/scanner_config_verify.mjs: persistencia/motor/cambios/negativa con versión anterior; integrado en test:barcodes.
 - scripts/scanner_config_browser.mjs: pantallas y teclado Chromium reales, servicios sintéticos; comparación S01–S03 anterior.
 - docs/AUDITORIA_CONFIG_ESCANER_2026-11-02.md: hallazgos, evidencia, matriz y límites.
+
+
+## Integración de configuración del lector
+
+scripts/scanner_config_browser.mjs incluye assignment_focus y assignment_focus_tail para selección de producto y cancelación de tramas entre campos. Ver AUDITORIA_CONFIG_ESCANER_2026-11-02.md.
