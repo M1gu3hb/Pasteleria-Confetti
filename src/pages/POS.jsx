@@ -1,4 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { claveIntencion } from '@/lib/intencionOperacion';
+import { recuperarVentaPendiente } from '@/lib/recuperarVentaPendiente';
+import { tieneIntencionPendiente } from '@/utils/intencionPersistente';
 import { addBarcodeProduct } from '@/lib/barcodeCore';
 import { useBarcodeScanner } from '@/components/barcodes/useBarcodeScanner';
 import { base44 } from '@/api/base44Client';
@@ -34,7 +37,10 @@ import { validarStockParaCobro, mensajeFaltanteStock } from '@/utils/inventarioV
 import { crearVentaDirecta } from '@/utils/crearVentaDirecta';
 
 export default function POS() {
-  const [cart, setCart] = useState([]);
+  const [order,setOrder] = useState({items:[],scope:null});
+  const cart=order.items;
+  const attemptCart=useRef(null),checkoutRunning=useRef(false);
+  const [,refreshPending]=useState(0);
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
   const [showPayment, setShowPayment] = useState(false);
@@ -64,16 +70,6 @@ export default function POS() {
   // (no hay doble venta). El folio ya NO se genera en el cliente: lo da la RPC (atómico).
   const ventaIdemKeyRef = useRef(null);
 
-  useEffect(() => {
-    if (ventaLibreSembrada.current) return;
-    const vl = location.state?.ventaLibre;
-    if (!vl) return;
-    ventaLibreSembrada.current = true;
-    // Sembrar la venta libre en el carrito y limpiar el state (evita re-sembrar
-    // al refrescar/volver). El cajero cobra con el botón normal "Cobrar".
-    setCart((prev) => [...(Array.isArray(prev) ? prev : []), vl]);
-    navigate(location.pathname, { replace: true, state: null });
-  }, [location.state, location.pathname, navigate]);
 
   const { posUser } = usePOSAuth();
   const { sucursalEfectiva } = useTerminal();
@@ -125,17 +121,65 @@ export default function POS() {
   // Sucursal activa (fuente única). Si es null → dueño en vista general → sin filtro.
   // Producto visible si: sucursal_ids vacío/null (global) O incluye la sucursal activa.
   const sucEfId = sucursalEfectiva?.sucursal_id || null;
+  const operationScope=claveIntencion('venta',sucEfId,posUser?.id);
+  const pendingScope=order.scope&&tieneIntencionPendiente(order.scope)?order.scope:operationScope;
+  const pendingSale=tieneIntencionPendiente(pendingScope);
+  const wrongScope=!!cart.length&&order.scope!==operationScope;
+  const cartLocked=processing||pendingSale||wrongScope||!hayCaja;
+  const setCart = update => setOrder(previous=>{
+    const next=typeof update==='function'?update(previous.items):update;
+    if(next.length && previous.items.length && previous.scope!==operationScope)return previous;
+    return {items:next,scope:next.length?(previous.items.length?previous.scope:operationScope):null};
+  });
+  const canEditOrder=()=>!checkoutRunning.current&&!processing&&!wrongScope&&hayCaja&&!tieneIntencionPendiente(pendingScope);
+  const clearOrder=()=>{
+    if(processing||checkoutRunning.current||tieneIntencionPendiente(pendingScope))return;
+    scanner.clear();setCart([]);
+  };
+  useEffect(()=>{
+    const sync=()=>refreshPending(v=>v+1);
+    window.addEventListener('storage',sync);return()=>window.removeEventListener('storage',sync);
+  },[]);
+  useEffect(()=>{
+    setShowPayment(false);setShowPropina(false);setShowVentaLibre(false);setProductoVariable(null);
+  },[operationScope]);
+  useEffect(() => {
+    if (ventaLibreSembrada.current || cartLocked || showTicket || !sucEfId || !posUser?.id) return;
+    const vl = location.state?.ventaLibre;
+    if (!vl) return;
+    ventaLibreSembrada.current = true;
+    setCart(prev=>[...prev,vl]);
+    navigate(location.pathname, { replace:true,state:null });
+  }, [location.state,location.pathname,navigate,cartLocked,showTicket,sucEfId,posUser?.id]);
+  const recoverPending = async () => {
+    if(checkoutRunning.current||processing||pendingScope!==operationScope)return;
+    checkoutRunning.current=true;setProcessing(true);setShowPayment(false);
+    try {
+      const ticket=await recuperarVentaPendiente(sucEfId,posUser?.id);
+      setTicketFinal(ticket);setShowTicket(true);
+      // Only discard the frozen draft that initiated this exact attempt here.
+      // After reload/another tab, an unrelated draft remains available to review.
+      if(attemptCart.current===cart)setCart([]);
+      attemptCart.current=null;
+      queryClient.invalidateQueries({queryKey:['ventas_hoy']});
+      toast.info('Cobro pendiente recuperado. Revisa el ticket antes de continuar.');
+    } catch(error) {toast.error(error.message||'No se pudo recuperar el cobro. Vuelve a intentarlo.');}
+    finally {checkoutRunning.current=false;setProcessing(false);refreshPending(v=>v+1);}
+  };
+
 
   const scanner = useBarcodeScanner({
     branch: sucEfId,
     contextKey: `${posUser?.id || ''}:${cajaAbierta?.id || ''}`,
-    enabled: !!sucEfId && hayCaja && !processing && !showPayment && !showTicket && !showPropina && !showVentaLibre && !productoVariable && !showCartMobile,
+    enabled: !!sucEfId && !cartLocked && !showPayment && !showTicket && !showPropina && !showVentaLibre && !productoVariable && !showCartMobile,
     onProduct: product => {
+      if(!canEditOrder())return;
       if (esProductoVariable(product)) { toast.error('Este producto requiere capturar su cantidad desde el catálogo.'); return; }
       setCart(prev => addBarcodeProduct(prev,product));
     },
   });
   const abrirCobro = () => {
+    if(!canEditOrder())return;
     if (!scanner.canCheckout()) {toast.info('Espera a que terminen de agregarse los productos escaneados.');return;}
     if (tipsEnabled(config)) setShowPropina(true); else setShowPayment(true);
   };
@@ -179,6 +223,7 @@ export default function POS() {
   }, [cart]);
 
   const addToCart = (product) => {
+    if(!canEditOrder())return;
     // 6B / 1.K — Si es variable, abrir modal de captura. NO se agrupa con
     // líneas anteriores (cada línea variable es independiente).
     if (esProductoVariable(product)) {
@@ -191,6 +236,7 @@ export default function POS() {
 
   // 6B / 1.K — Recibe snapshot del CantidadVariableDialog y crea línea variable.
   const handleConfirmVariable = (snap) => {
+    if(!canEditOrder()){setProductoVariable(null);return;}
     if (!productoVariable || !snap) { setProductoVariable(null); return; }
     const producto = productoVariable;
     // Costo unitario base: tomado del ingrediente_base si está en la lista cargada.
@@ -235,6 +281,7 @@ export default function POS() {
   };
 
   const updateQty = (idx, qty) => {
+    if(!canEditOrder())return;
     // En líneas variables no permitimos +/- (la cantidad real es la "variable").
     const item = cart?.[idx];
     if (item && (item.tipo_venta === TIPO_VENTA.VARIABLE_MEDIDA || item.tipo_venta === TIPO_VENTA.PORCION_CONTENEDOR)) {
@@ -244,9 +291,12 @@ export default function POS() {
     setCart(prev => prev.map((item,i)=>i===idx ? {...item,cantidad:qty} : item));
   };
 
-  const removeItem = (idx) => setCart(prev => prev.filter((_, i) => i !== idx));
+  const removeItem = (idx) => {if(canEditOrder())setCart(prev => prev.filter((_, i) => i !== idx));};
 
   const handleCheckout = async (paymentData) => {
+    if(checkoutRunning.current||processing)return;
+    if(wrongScope){toast.error("Regresa a la sucursal y al cajero de esta orden, o limpia el carrito.");return;}
+    if(tieneIntencionPendiente(operationScope)){setShowPayment(false);refreshPending(v=>v+1);return;}
     if (!scanner.canCheckout()) {toast.info('Espera a que termine el lector.');return;}
     // FASE 2B — Ninguna venta puede nacer sin sucursal. Fuente única:
     // sucursalEfectiva del TerminalContext. Si es null (dueño en modo global
@@ -265,6 +315,7 @@ export default function POS() {
       toast.error('El carrito está vacío.');
       return;
     }
+    checkoutRunning.current=true;
     setProcessing(true);
 
     try {
@@ -405,6 +456,7 @@ export default function POS() {
       }
 
       // Crear venta + detalle en UNA transacción (folio atómico + idempotencia DENTRO).
+      attemptCart.current=cart;
       const _resVenta = await crearVentaDirecta({
         cabecera: { subtotal: total, total, tipo_venta: 'mostrador' },
         detalle: detallePayloads,
@@ -421,7 +473,7 @@ export default function POS() {
 
       // PASS 2 — descuento de inventario + Cocina. SALTAR en un HIT idempotente (la venta y su
       // inventario YA se registraron en el intento previo → no re-descontar stock ni duplicar).
-      if (!_resVenta.idempotentHit) {
+      if (!_resVenta.idempotentHit && !_resVenta.recuperada) {
       for (let _i = 0; _i < cart.length; _i++) {
         const item = cart[_i];
         const detalle = { id: detalleIds[_i] };
@@ -612,7 +664,8 @@ export default function POS() {
         toast.error('La venta se cobró, pero no se pudo mostrar el ticket. Puedes verlo en Ventas/Registros.');
       }
 
-      setCart([]);
+      if(!_resVenta.recuperada)setCart([]);
+      attemptCart.current=null;
       setShowPayment(false);
       // Éxito: la próxima venta genera una clave de idempotencia nueva. (En un fallo NO se
       // limpia → un reintento reusa la misma clave y la RPC deduplica, sin doble venta.)
@@ -623,9 +676,10 @@ export default function POS() {
       if (_resVenta.recuperada) toast.info("Se recuperó la operación pendiente. Revisa el ticket antes de otro cobro.");
     } catch (err) {
       console.error('[POS] Error al cobrar:', err);
-      toast.error(err?.message || 'No se pudo confirmar la venta. Reintenta para recuperar el mismo intento.');
+      toast.error(err?.message || 'No se pudo confirmar la venta. Recupera el cobro pendiente antes de continuar.');
+      if(tieneIntencionPendiente(operationScope))setShowPayment(false);
     } finally {
-      setProcessing(false);
+      checkoutRunning.current=false;setProcessing(false);refreshPending(v=>v+1);
     }
   };
 
@@ -646,8 +700,8 @@ export default function POS() {
     }
   };
 
-  // Pantalla bloqueada si no hay caja abierta
-  if (!hayCaja) {
+  // Recovery of an existing attempt remains accessible after a cut closes.
+  if (!hayCaja && !pendingSale && !showTicket) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center p-6">
         <div className="max-w-md w-full bg-amber-50 border-2 border-amber-200 rounded-2xl p-6 text-center space-y-3">
@@ -671,6 +725,11 @@ export default function POS() {
     <div className="flex h-[calc(100vh-8rem)] lg:h-[calc(100vh-4rem)] gap-4 -m-4 md:-m-6 lg:-m-8">
       {/* Products panel */}
       <div className="flex-1 flex flex-col p-4 overflow-hidden">
+        {wrongScope&&<p role="alert" className="p-3 bg-amber-50 text-amber-900">Esta orden pertenece a otra sucursal o cajero. Regresa a su origen para continuar, o limpia el carrito.</p>}
+        {pendingSale&&<div role="alert" className="p-3 bg-amber-50 text-amber-900 space-y-2">
+          <p>Hay un cobro sin confirmar. Recupera su resultado antes de agregar productos o cobrar otra venta.</p>
+          {pendingScope===operationScope?<Button disabled={processing} onClick={recoverPending}>Recuperar cobro pendiente</Button>:<p>Regresa a la sucursal y al cajero que iniciaron el cobro.</p>}
+        </div>}
         {/* Search + categories */}
         <div className="space-y-3 mb-4">
           <div className="relative">
@@ -686,8 +745,8 @@ export default function POS() {
           {/* FASE 3 — Venta libre: monto sin producto de catálogo (se agrega al carrito). */}
           <Button
             variant="outline"
-            disabled={scanner.busy}
-            onClick={() => {if(scanner.canCheckout())setShowVentaLibre(true);}}
+            disabled={scanner.busy||cartLocked}
+            onClick={() => {if(canEditOrder()&&scanner.canCheckout())setShowVentaLibre(true);}}
             className="w-full h-10 gap-2 border-dashed transition-transform active:scale-95"
           >
             <Coins className="w-4 h-4" /> Venta libre (monto)
@@ -734,7 +793,7 @@ export default function POS() {
       {/* Desktop cart */}
       <div className="hidden lg:flex w-80 xl:w-96 border-l border-border bg-card flex-col">
         <CartPanel items={cart} onUpdateQty={updateQty} onRemove={removeItem}
-          total={total} checkoutDisabled={scanner.busy} onCheckout={abrirCobro} onClear={() => { scanner.clear();setCart([]); }} />
+          total={total} checkoutDisabled={scanner.busy||cartLocked} editingDisabled={cartLocked} clearDisabled={processing||pendingSale} onCheckout={abrirCobro} onClear={clearOrder} />
       </div>
 
       {/* Mobile cart drawer */}
@@ -743,11 +802,11 @@ export default function POS() {
           <div className="absolute inset-0 bg-black/50" onClick={() => setShowCartMobile(false)} />
           <div className="absolute right-0 top-0 bottom-0 w-full max-w-sm bg-card shadow-xl flex flex-col">
             <CartPanel items={cart} onUpdateQty={updateQty} onRemove={removeItem}
-              total={total} checkoutDisabled={scanner.busy} onCheckout={() => {
+              total={total} checkoutDisabled={scanner.busy||cartLocked} editingDisabled={cartLocked} clearDisabled={processing||pendingSale} onCheckout={() => {
                 if (!scanner.canCheckout()) return;
                 setShowCartMobile(false);abrirCobro();
               }}
-              onClear={() => { scanner.clear();setCart([]); }} />
+              onClear={clearOrder} />
           </div>
         </div>
       )}
@@ -766,6 +825,7 @@ export default function POS() {
         open={showVentaLibre}
         onClose={() => setShowVentaLibre(false)}
         onConfirm={(item) => {
+          if(!canEditOrder())return;
           setCart((prev) => [...(Array.isArray(prev) ? prev : []), item]);
           setShowVentaLibre(false);
           toast.success(`Venta libre agregada: ${formatCurrency(item.precio_venta)}`);
@@ -773,7 +833,7 @@ export default function POS() {
       />
 
       <PaymentModal
-        open={showPayment}
+        open={showPayment&&!cartLocked}
         onClose={() => setShowPayment(false)}
         total={total}
         propinaMonto={Number(propina?.propina_monto) || 0}

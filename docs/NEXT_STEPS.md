@@ -31,3 +31,5 @@ Probar lector HID con Enter y una trama por disparo, reconexión USB/Bluetooth y
 Reauditoría de códigos: interbloqueo de impresión por cola anidada, formato térmico, precio antiguo, truncación de códigos y alcance SQL corregidos; ver REAUDITORIA_CODIGOS_BARRAS_2026-11-01.md. Validar lector físico F9+Enter y tickets/etiquetas en la misma impresora. Guardado Java sigue pendiente de compilación/firma/instalación; no marcarlo certificado por deploy web.
 
 Segunda reauditoría: corregidos C01–C05 (lectura parcial durante cobro/cambio de contexto, PDF antiguo, asignación concatenada y respuesta RPC incoherente). Ver SEGUNDA_REAUDITORIA_BARRAS_2026-11-01.md. La prueba física con F9+Enter y el binario nativo de guardado siguen siendo pendientes, no una promesa de “cero errores”.
+
+Tras las correcciones R01–R08, validar en la tablet de Topilejo F9+Enter con varias piezas y una etiqueta en la misma impresora de tickets. Recargar cada dispositivo para tomar el cliente. Comprobar ambos canales y la migración codigo_canonico en vivo; no crear ventas ficticias para comprobar producción. Evidencia: AUDITORIA_PROFUNDA_BARRAS_2026-11-02.md.

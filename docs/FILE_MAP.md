@@ -51,3 +51,12 @@ El lector conserva su parser al cambiar de modo/sucursal/cajero/corte. Una trama
 - src/lib/barcodeFrame.js: estado de trama compartido con el hook, origen estable y descarte por transición.
 - scripts/barcodes_frames_verify.mjs: motor real; forma parte del build.
 - scripts/barcodes_segunda_auditoria_browser.mjs: cuatro regresiones de esta ronda y comparación con la revisión anterior.
+
+## Auditoría profunda de barras
+
+- src/lib/recuperarVentaPendiente.js: recuperar sólo la solicitud durable válida del cajero/sucursal.
+- scripts/barcodes_auditoria_profunda_browser.mjs: regresiones acumulativas, comparación con versión anterior y cobro simulado antes/después de commit/recarga.
+- scripts/barcodes_profunda_modelo_verify.mjs: casos negativos de identidad, controles y reloj; admite --baseline.
+- scripts/barcodes_profunda_matriz_verify.mjs: modelo independiente con semilla configurable SEED.
+- supabase/migrations/*_codigo_canonico.sql: normalización sin alterar identidad interna.
+- docs/AUDITORIA_PROFUNDA_BARRAS_2026-11-02.md: ocho hallazgos, reparaciones, rondas, pruebas y límites.

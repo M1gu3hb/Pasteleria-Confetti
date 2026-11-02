@@ -1,3 +1,7 @@
+# 2026-11-02 — Auditoría profunda de escáner y etiquetas
+
+Corregidos R01–R08: identidad sin eliminar espacios internos, borrador de asignación, respuesta antigua, carrito ligado a sucursal/cajero, recuperación explícita de cobro durable, controles de trama, reloj monótono y nombre Unicode en PDF. Diagnóstico acumulativo antes de reparar, comparación negativa contra versión anterior y reauditoría de reparación. Ver [informe completo](AUDITORIA_PROFUNDA_BARRAS_2026-11-02.md). Se conserva impresión compartida con tickets; pendientes físicos/APK firmado explícitos.
+
 ## 2026-10-17 — Revisión de integración del historial
 
 Corregidos dos efectos del cambio: el badge Sidebar seguía contando por estado e incluía antiguos pagados; ahora usa total Actuales de la misma RPC con una sola fila y se invalida al cobrar/editar. Consultar mucho historial repetía todas sus páginas cada 15 s; se desactiva sólo ese polling histórico, conservando Actuales/Anteriores vivos. También se corrige una condición preexistente de Registros: gastos de la sucursal anterior podían viajar en caché a informes durante el cambio de alcance; se filtran antes de informes/exportación y se retira placeholderData en esa consulta. Sin DDL, escrituras operativas ni cambios de dinero/impresión.

@@ -43,3 +43,7 @@ Escaneo conserva precios por snapshot: un precio nuevo crea otra línea; context
 ## Tramas completas y etiquetas vigentes
 
 El lector conserva su parser al cambiar de modo/sucursal/cajero/corte. Una trama parcial mantiene su contexto original y su final se descarta si éste cambió; Escape cancela y F9 abre una trama nueva. Cobro/orden móvil/venta libre esperan también la trama en curso, además de RPC pendientes. F9 limpia el campo de asignación para impedir concatenar otra etiqueta con texto anterior. PDF verifica códigos y nombres vigentes antes de descargar; una modificación exige regenerar, sin reasignar desde exportación. Respuestas RPC rechazan precios vacíos/booleanos y alcances de tipo incorrecto. Evidencia y reproducción: docs/SEGUNDA_REAUDITORIA_BARRAS_2026-11-01.md.
+
+## Alcance de orden e intención durable
+
+POS guarda items y scope de sucursal/cajero juntos. Un scope distinto bloquea editar/agregar/cobrar sin descartar la orden. Recuperación explícita valida RPC/contexto y reutiliza intencionOperacion/intencionPersistente: pago/detalle/clave originales, ticket canónico y conservación de borradores ajenos. No ejecuta efectos del legado restaurante usando el carrito nuevo. BarcodeProductPanel relee después de invalidar consultas; sincronizar nombre no reinicia asignación. Tramas tienen reloj monótono y cuarentena de controles conocidos. Detalle: AUDITORIA_PROFUNDA_BARRAS_2026-11-02.md.

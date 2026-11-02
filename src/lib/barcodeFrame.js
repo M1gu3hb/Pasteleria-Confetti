@@ -2,7 +2,7 @@ import { createBarcodeReader } from './barcodeCore';
 
 /** Keep a frame's origin across focus, modal and branch transitions. */
 export function createBarcodeFrame({getContext,isModalOpen,onScan,onDraft,onReading,onStatus}) {
-  let origin=null,active=false,prefixed=false,discarding=false,lastTerminator=0;
+  let origin=null,active=false,prefixed=false,discarding=false,lastTerminator=null;
   const contextMatches=(a,b)=>a && a.branch===b.branch && a.contextKey===b.contextKey && a.enabled===b.enabled;
   const reader=createBarcodeReader(code=>{
     const ctx=getContext();
@@ -26,13 +26,15 @@ export function createBarcodeFrame({getContext,isModalOpen,onScan,onDraft,onRead
       else reset();
     },
     reset,
-    handle(event,{editing=false,dedicated=false}={},now=Date.now()) {
+    handle(event,{editing=false,dedicated=false}={},now=globalThis.performance.now()) {
       const key=event.key;
       if(key==='F9'){consume(event);start(true);return;}
-      if(key==='Escape'||key==='Tab'){reset();return;}
-      if(event.ctrlKey||event.altKey||event.metaKey||event.isComposing){if(active)this.invalidate();return;}
-      if(key==='Enter'&&event.repeat&&lastTerminator){consume(event);return;}
-      if(key==='Enter'&&!active&&now-lastTerminator<250){consume(event);return;}
+      if(key==='Escape'){reset();return;}
+      if(key==='Tab'){if(active&&prefixed){consume(event);this.invalidate();}else reset();return;}
+      if(event.ctrlKey||event.altKey||event.metaKey||event.isComposing){if(active){if(prefixed)consume(event);this.invalidate();}return;}
+      if(active&&prefixed&&key.length!==1&&key!=='Enter'&&key!=='Shift'){consume(event);this.invalidate();return;}
+      if(key==='Enter'&&event.repeat&&lastTerminator!==null){consume(event);return;}
+      if(key==='Enter'&&!active&&lastTerminator!==null&&now>=lastTerminator&&now-lastTerminator<250){consume(event);return;}
       const ctx=getContext(),paused=!ctx.enabled||isModalOpen();
       if(!active){
         if(editing&&!dedicated){

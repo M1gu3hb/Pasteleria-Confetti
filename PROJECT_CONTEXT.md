@@ -49,3 +49,7 @@ Escaneo conserva precios por snapshot: un precio nuevo crea otra línea; context
 ## Tramas completas y etiquetas vigentes
 
 El lector conserva su parser al cambiar de modo/sucursal/cajero/corte. Una trama parcial mantiene su contexto original y su final se descarta si éste cambió; Escape cancela y F9 abre una trama nueva. Cobro/orden móvil/venta libre esperan también la trama en curso, además de RPC pendientes. F9 limpia el campo de asignación para impedir concatenar otra etiqueta con texto anterior. PDF verifica códigos y nombres vigentes antes de descargar; una modificación exige regenerar, sin reasignar desde exportación. Respuestas RPC rechazan precios vacíos/booleanos y alcances de tipo incorrecto. Evidencia y reproducción: docs/SEGUNDA_REAUDITORIA_BARRAS_2026-11-01.md.
+
+## Orden y cobro durante escaneo
+
+Carrito ligado a sucursal/cajero; cambiar contexto conserva la orden pero bloquea operarla hasta regresar o limpiar. Con intención de venta pendiente no se limpia ni edita: Recuperar cobro pendiente reenvía el intento exacto y muestra el ticket del servidor, incluso tras recarga o cierre de caja. Un borrador ajeno se conserva. Normalizar códigos sólo recorta relleno exterior en servicio/SQL; lector y asignación visual exigen código canónico. Nombres Unicode del PDF se renderizan con la fuente del navegador cuando Helvetica no los codifica. Ver docs/AUDITORIA_PROFUNDA_BARRAS_2026-11-02.md.

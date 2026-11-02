@@ -28,6 +28,7 @@ try {
  create policy pos_write_productos on productos for all to authenticated using(public.pos_is_manager()) with check(public.pos_is_manager());`);
  await db.exec('BEGIN;'+fs.readFileSync('supabase/migrations/'+migration[0],'utf8')+'COMMIT;');
  if(!process.argv.includes('--baseline')) for(const p of fs.readdirSync('supabase/migrations').filter(p=>p.endsWith('_endurecer_codigos_barras.sql'))) await db.exec('BEGIN;'+fs.readFileSync('supabase/migrations/'+p,'utf8')+'COMMIT;');
+ if(!process.argv.includes('--baseline')) for(const p of fs.readdirSync('supabase/migrations').filter(p=>p.endsWith('_codigo_canonico.sql'))) await db.exec('BEGIN;'+fs.readFileSync('supabase/migrations/'+p,'utf8')+'COMMIT;');
  const a=(await db.query("insert into productos(nombre) values('A') returning id")).rows[0].id;
  const b=(await db.query("insert into productos(nombre) values('B') returning id")).rows[0].id;
  const assign=async(id,code=null,gen=false)=>(await db.query('select (asignar_codigo_producto_pos($1,$2,$3)).*',[id,code,gen])).rows[0];
@@ -39,6 +40,8 @@ try {
  await assert.rejects(()=>assign(b,first.codigo_barras),/CODIGO_YA_RESERVADO/);
  await assert.rejects(()=>assign(b,'CF99999999'),/PREFIJO_INTERNO_RESERVADO/);
  await assert.rejects(()=>assign(b,'bad<code'),/CODIGO_INVALIDO/);
+ await assert.rejects(()=>assign(b,'00 12345'),/CODIGO_INVALIDO/);
+ assert.equal((await db.query("select * from buscar_producto_codigo_pos('00123 45678905','00000000-0000-4000-8000-000000000001')")).rows.length,0,'raw internal whitespace must not alias another product');
  await db.query('delete from productos where id=$1',[a]);
  await assert.rejects(()=>assign(b,'0012345678905'),/CODIGO_YA_RESERVADO/);
  // Manager can assign its branch/global products, but never a foreign product.

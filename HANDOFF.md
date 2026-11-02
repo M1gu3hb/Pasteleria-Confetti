@@ -49,3 +49,7 @@ Escaneo conserva precios por snapshot: un precio nuevo crea otra línea; context
 ## Tramas completas y etiquetas vigentes
 
 El lector conserva su parser al cambiar de modo/sucursal/cajero/corte. Una trama parcial mantiene su contexto original y su final se descarta si éste cambió; Escape cancela y F9 abre una trama nueva. Cobro/orden móvil/venta libre esperan también la trama en curso, además de RPC pendientes. F9 limpia el campo de asignación para impedir concatenar otra etiqueta con texto anterior. PDF verifica códigos y nombres vigentes antes de descargar; una modificación exige regenerar, sin reasignar desde exportación. Respuestas RPC rechazan precios vacíos/booleanos y alcances de tipo incorrecto. Evidencia y reproducción: docs/SEGUNDA_REAUDITORIA_BARRAS_2026-11-01.md.
+
+## Recuperación y auditoría profunda de barras
+
+Antes de otro cobro, resolver la intención local pendiente mediante Recuperar cobro pendiente. Nunca descartar la clave/pago/detalle originales ni reemplazarlos por el carrito actual. La orden conserva su sucursal/cajero. BarcodeProductPanel relee tras asignación y conserva borrador ante cambio sólo de nombre. Lector usa performance.now(), cuarentena de controles F9 y caracteres canónicos. Tres migraciones de códigos, incluida codigo_canonico, son parte de la suite SQL. Ver docs/AUDITORIA_PROFUNDA_BARRAS_2026-11-02.md; comprobar versión/migraciones/canales en vivo. La prueba física y firma del APK de guardado siguen requiriendo dispositivo.

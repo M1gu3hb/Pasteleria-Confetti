@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import BarcodeImage from './BarcodeImage';
 import { base44 } from '@/api/base44Client';
+import { validBarcode } from '@/lib/barcodeCore';
 import { assignBarcode } from '@/lib/barcodes';
 import { createLabelPNG } from '@/lib/barcodeLabels';
 import { exportBarcodeFile, printBarcodeLabel } from '@/lib/barcodeExport';
@@ -14,14 +15,18 @@ export default function BarcodeProductPanel({product,onPDF}) {
   const liveId=useRef(product?.id),running=useRef(false),epoch=useRef(0);
   liveId.current=product?.id;
   const queryClient = useQueryClient();
-  useEffect(()=>{setSaved(product);setCode('');setError('');setAssigning(false);setConfirming(false);},[product?.id,product?.codigo_barras,product?.nombre]);
+  useEffect(()=>{setSaved(product);},[product]);
+  useEffect(()=>{setCode('');setError('');setAssigning(false);setConfirming(false);},[product?.id,product?.codigo_barras]);
   useEffect(()=>{epoch.current++;running.current=false;setBusy(false);},[product?.id]);
   const run = async action => {if(running.current)return;running.current=true;const id=product.id,operation=++epoch.current;setBusy(true);setError('');try {await action();}catch(e){if(liveId.current===id&&epoch.current===operation)setError(e.message || 'No se pudo completar.');}finally{if(epoch.current===operation){running.current=false;if(liveId.current===id)setBusy(false);}}};
   const save = generate => run(async()=>{
+    if(!generate&&!validBarcode(code))throw new Error('Código inválido: usa entre 2 y 64 letras, números o . _ / - sin espacios.');
     const updated=await assignBarcode(product.id,code,generate);
-    if(liveId.current!==updated.id)return;
-    setSaved(updated);setAssigning(false);setConfirming(false);setCode('');
     await Promise.all([queryClient.invalidateQueries({queryKey:['productos_all']}),queryClient.invalidateQueries({queryKey:['productos_pos']})]);
+    const current=await base44.entities.ProductoTerminado.get(updated.id);
+    if(liveId.current!==updated.id)return;
+    if(!current||current.id!==updated.id)throw new Error('Actualiza el catálogo para comprobar el código guardado.');
+    setSaved(current);setAssigning(false);setConfirming(false);setCode('');
   });
   const exportCurrent = async action => {
     const updated=await base44.entities.ProductoTerminado.get(product.id);

@@ -13,7 +13,7 @@ key('F9');text('CF00');ctx={...ctx,enabled:false};f.invalidate();for(const c of 
 scan();assert.equal(scans.length,4,'paused prefix never adds');ctx={...ctx,enabled:true};f.invalidate();scan();assert.equal(scans.length,5);
 key('F9');text('CF');modal=true;text('000');modal=false;text('00001');key('Enter');assert.equal(scans.length,5,'a frame crossing a modal remains discarded after it closes');
 text('CF00');f.invalidate();text('000001');key('Enter');assert.equal(scans.length,5,'clear/blur quarantines an unprefixed tail');scan();assert.equal(scans.length,6);
-key('F9');key('Tab');assert(!f.active&&!reading);scan();assert.equal(scans.length,7);
+key('F9');key('Tab');assert(f.active&&reading,'unexpected Tab quarantines a prefixed frame');scan();assert.equal(scans.length,7);
 key('F9');text('CF');key('Escape');assert(!f.active&&!reading&&!draft);
 key('F9');key('Enter');assert(!f.active);assert(status.includes('Lectura incompleta'),'empty prefixed scan has visible feedback');
 text('123',{editing:true});assert.equal(draft,'','ordinary search input is ignored');

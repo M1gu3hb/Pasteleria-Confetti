@@ -41,3 +41,7 @@ Escaneo conserva precios por snapshot: un precio nuevo crea otra línea; context
 ## Tramas completas y etiquetas vigentes
 
 El lector conserva su parser al cambiar de modo/sucursal/cajero/corte. Una trama parcial mantiene su contexto original y su final se descarta si éste cambió; Escape cancela y F9 abre una trama nueva. Cobro/orden móvil/venta libre esperan también la trama en curso, además de RPC pendientes. F9 limpia el campo de asignación para impedir concatenar otra etiqueta con texto anterior. PDF verifica códigos y nombres vigentes antes de descargar; una modificación exige regenerar, sin reasignar desde exportación. Respuestas RPC rechazan precios vacíos/booleanos y alcances de tipo incorrecto. Evidencia y reproducción: docs/SEGUNDA_REAUDITORIA_BARRAS_2026-11-01.md.
+
+## Recuperar antes de continuar la venta
+
+No usar otro carrito para provocar recuperación implícita de un intento anterior. Se expone recuperación explícita con la misma intención durable, bloqueando nuevo cobro/edición. El carrito queda ligado a sucursal/cajero; no se vacía por cambiar contexto. Fuentes PDF: rasterizar sólo nombres no codificables por Helvetica y conservar barras vectoriales. No agregar dependencias de fuentes. Ver AUDITORIA_PROFUNDA_BARRAS_2026-11-02.md.

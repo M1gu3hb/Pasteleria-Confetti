@@ -5,7 +5,7 @@ import { formatCurrency } from '@/utils/financialUtils';
 import { Plus, Minus, Trash2, ShoppingCart, Scale, Beaker } from 'lucide-react';
 import { useConfig } from '@/lib/ConfigContext';
 
-export default function CartPanel({ items, onUpdateQty, onRemove, total, onCheckout, onClear, checkoutDisabled = false }) {
+export default function CartPanel({ items, onUpdateQty, onRemove, total, onCheckout, onClear, checkoutDisabled = false, editingDisabled = false, clearDisabled = false }) {
   const { config } = useConfig();
   const totalClass = config?.colorear_importes_monetarios !== false ? 'text-primary' : 'text-foreground';
   if (items.length === 0) {
@@ -21,7 +21,7 @@ export default function CartPanel({ items, onUpdateQty, onRemove, total, onCheck
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <h3 className="font-heading font-semibold text-sm">Orden</h3>
-        <Button variant="ghost" size="sm" onClick={onClear} className="text-xs text-muted-foreground hover:text-destructive">
+        <Button variant="ghost" size="sm" onClick={onClear} disabled={clearDisabled} className="text-xs text-muted-foreground hover:text-destructive">
           Limpiar
         </Button>
       </div>
@@ -69,19 +69,19 @@ export default function CartPanel({ items, onUpdateQty, onRemove, total, onCheck
                 {!esVariable && !esVentaLibre && (
                   <div className="flex items-center gap-1">
                     <Button variant="outline" size="icon" className="h-7 w-7"
-                      onClick={() => onUpdateQty(idx, item.cantidad - 1)}>
+                      disabled={editingDisabled} onClick={() => onUpdateQty(idx, item.cantidad - 1)}>
                       <Minus className="w-3 h-3" />
                     </Button>
                     <span className="w-8 text-center text-sm font-semibold">{item.cantidad}</span>
                     <Button variant="outline" size="icon" className="h-7 w-7"
-                      onClick={() => onUpdateQty(idx, item.cantidad + 1)}>
+                      disabled={editingDisabled} onClick={() => onUpdateQty(idx, item.cantidad + 1)}>
                       <Plus className="w-3 h-3" />
                     </Button>
                   </div>
                 )}
                 <p className="text-sm font-bold w-16 text-right">{formatCurrency(subtotalLinea)}</p>
                 <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                  onClick={() => onRemove(idx)}>
+                  disabled={editingDisabled} onClick={() => onRemove(idx)}>
                   <Trash2 className="w-3 h-3" />
                 </Button>
               </div>

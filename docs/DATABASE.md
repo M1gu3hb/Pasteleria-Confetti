@@ -37,3 +37,7 @@ Implementación: productos.codigo_barras/codigo_origen, índice único parcial y
 ## Endurecimiento de asignación de códigos
 
 La migración adicional endurecer_codigos_barras reemplaza trigger/RPC conservando grants: verifica sucursal anterior y nueva, y trata NULL en sucursal_ids como ausencia de autorización. No reescribe códigos ni registros financieros. No editar la migración original ya aplicada. Ver REAUDITORIA_CODIGOS_BARRAS_2026-11-01.md.
+
+## Identidad canónica del código
+
+Migración codigo_canonico reemplaza sólo normalizar_codigo_producto: recorta relleno exterior y conserva espacios/controles internos, que las validaciones existentes rechazan. No actualiza productos ni tablas financieras ni elimina reservas. Las migraciones aplicadas se comprueban en supabase_migrations.schema_migrations y por MD5 de statements frente al archivo. Ver AUDITORIA_PROFUNDA_BARRAS_2026-11-02.md.

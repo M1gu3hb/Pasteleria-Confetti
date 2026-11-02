@@ -48,8 +48,20 @@ export function createLabelsPDF(entries) {
     const slot = i % 12, x = 12 + (slot % 2) * 98, y = 10 + Math.floor(slot / 2) * 43;
     pdf.setDrawColor(220); pdf.rect(x, y, 92, 40);
     pdf.setFontSize(10);pdf.setTextColor(0);
-    const name = pdf.splitTextToSize(product.nombre, 84).slice(0, 2);
-    pdf.text(name, x + 46, y + 6, { align: 'center' });
+    if (/[^\u0020-\u007e\u00a0-\u00ff]/u.test(product.nombre)) {
+      // Built-in PDF Helvetica cannot encode Unicode. Use the browser's actual
+      // font rendering for names; bars and identifiers remain vector/text.
+      const canvas=document.createElement('canvas');canvas.width=1008;canvas.height=120;
+      const ctx=canvas.getContext('2d');
+      if(!ctx)throw new Error('No se pudo preparar el nombre de la etiqueta.');
+      ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle='#000';ctx.font='42px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(product.nombre,504,60,984);
+      pdf.addImage(canvas.toDataURL('image/png'),'PNG',x+4,y+1,84,10);
+    } else {
+      const name = pdf.splitTextToSize(product.nombre, 84).slice(0, 2);
+      pdf.text(name, x + 46, y + 6, { align: 'center' });
+    }
     const module = Math.min(0.38, 84 / (bars.width + 20));
     const start = x + (92 - bars.width * module) / 2;
     pdf.setFillColor('#000000');

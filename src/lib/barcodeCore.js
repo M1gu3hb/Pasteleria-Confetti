@@ -1,10 +1,10 @@
 /** @param {unknown} value */
 export function normalizeBarcode(value) {
-  return typeof value === 'string' ? value.replace(/[\s\u0000-\u001f\u007f]/g, '') : '';
+  return typeof value === 'string' ? value.replace(/^[\s\u0000-\u001f\u007f]+|[\s\u0000-\u001f\u007f]+$/g, '') : '';
 }
 /** @param {unknown} value */
 export function validBarcode(value) {
-  return /^[A-Za-z0-9][A-Za-z0-9._/-]{1,63}$/.test(normalizeBarcode(value));
+  return /^[A-Za-z0-9][A-Za-z0-9._/-]{1,63}$/.test(typeof value === 'string' ? value : '');
 }
 /** Immutable update: burst scans must always use the latest cart. */
 export function addBarcodeProduct(items, product) {
@@ -15,24 +15,24 @@ export function addBarcodeProduct(items, product) {
 }
 /** Each terminated frame is an intentional scan; never deduplicate by code/time. */
 export function createBarcodeReader(onScan, { maxGap = 250 } = {}) {
-  let buffer = '', last = 0, rejected = false;
-  const reset = () => { buffer = ''; last = 0; rejected = false; };
+  let buffer = '', last = null, rejected = false;
+  const reset = () => { buffer = ''; last = null; rejected = false; };
   return {
     reset,
-    discard() { buffer = ''; last = 0; rejected = true; },
+    discard() { buffer = ''; last = null; rejected = true; },
     get buffer() { return buffer; },
     feed(key, now, repeat = false) {
       if (repeat) return null;
       if (key === 'Enter') {
         const value = buffer;
-        const ok = !rejected && last > 0 && now - last <= maxGap && validBarcode(value);
+        const ok = !rejected && last !== null && now >= last && now - last <= maxGap && validBarcode(value);
         reset();
         if (ok) { onScan(value); return value; }
         return null;
       }
       if (key === 'Escape' || key === 'Tab') { reset(); return null; }
       if (key.length !== 1) return null;
-      if (last && now - last > maxGap) rejected = true; // discard whole frame, never its suffix
+      if (last !== null && (now < last || now - last > maxGap)) rejected = true; // discard whole frame, never its suffix
       last = now;
       if (buffer.length < 65) buffer += key;
       if (buffer.length > 64) rejected = true;

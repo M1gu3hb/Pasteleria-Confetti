@@ -334,3 +334,7 @@ Y termina tu respuesta con este bloque:
 
 Si algo falla, dilo con la salida. Si te saltaste un paso, dilo. Si rompiste algo, **dilo primero y sin adornos**. Si no puedes comprobar algo, no afirmes que funciona: di qué falta para comprobarlo. En este proyecto una afirmación optimista sin evidencia cuesta dinero de verdad.
 
+
+## Auditoría profunda de barras y recuperación
+
+La orden POS queda ligada a sucursal/cajero. No borrar borradores al cambiar contexto ni permitir cobrarlos en otro. Cobro incierto exige recuperar intención original antes de otra venta; no generar otra clave ni usar el carrito nuevo para efectos del intento anterior. Tramas usan tiempo monótono; controles inesperados dentro de F9 se descartan hasta terminador. Normalización nunca elimina espacios internos del identificador. Evidencia: docs/AUDITORIA_PROFUNDA_BARRAS_2026-11-02.md.
