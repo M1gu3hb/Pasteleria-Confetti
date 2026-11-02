@@ -13,7 +13,10 @@ export function addBarcodeProduct(items, product) {
   return [...items, { producto_id: product.id, nombre: product.nombre, precio_venta: product.precio_venta,
     costo: product.costo_calculado_actual || 0, area_preparacion: product.area_preparacion, cantidad: 1, notas: '' }];
 }
-/** Each terminated frame is an intentional scan; never deduplicate by code/time. */
+/** Each terminated frame is an intentional scan; never deduplicate by code/time.
+ * @param {(code:string)=>void} onScan
+ * @param {{maxGap?:number|(()=>number)}} options
+ */
 export function createBarcodeReader(onScan, { maxGap = 250 } = {}) {
   let buffer = '', last = null, rejected = false;
   const reset = () => { buffer = ''; last = null; rejected = false; };
@@ -25,14 +28,16 @@ export function createBarcodeReader(onScan, { maxGap = 250 } = {}) {
       if (repeat) return null;
       if (key === 'Enter') {
         const value = buffer;
-        const ok = !rejected && last !== null && now >= last && now - last <= maxGap && validBarcode(value);
+        const gap = typeof maxGap === 'function' ? maxGap() : maxGap;
+        const ok = !rejected && last !== null && now >= last && now - last <= gap && validBarcode(value);
         reset();
         if (ok) { onScan(value); return value; }
         return null;
       }
       if (key === 'Escape' || key === 'Tab') { reset(); return null; }
       if (key.length !== 1) return null;
-      if (last !== null && (now < last || now - last > maxGap)) rejected = true; // discard whole frame, never its suffix
+      const gap = typeof maxGap === 'function' ? maxGap() : maxGap;
+      if (last !== null && (now < last || now - last > gap)) rejected = true; // discard whole frame, never its suffix
       last = now;
       if (buffer.length < 65) buffer += key;
       if (buffer.length > 64) rejected = true;

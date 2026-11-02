@@ -1,4 +1,6 @@
 import { Toaster } from "@/components/ui/toaster"
+import { useEffect } from 'react';
+import { getScannerCapture } from '@/lib/scannerCapture';
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
@@ -59,6 +61,8 @@ const AuthenticatedApp = () => {
 };
 
 function App() {
+  // Keep F9 quarantine alive even before visiting POS, and across route changes.
+  useEffect(()=>{getScannerCapture();},[]);
   return (
     <ThemeProvider>
       <AuthProvider>

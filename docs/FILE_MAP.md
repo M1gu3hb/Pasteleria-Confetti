@@ -60,3 +60,13 @@ El lector conserva su parser al cambiar de modo/sucursal/cajero/corte. Una trama
 - scripts/barcodes_profunda_matriz_verify.mjs: modelo independiente con semilla configurable SEED.
 - supabase/migrations/*_codigo_canonico.sql: normalización sin alterar identidad interna.
 - docs/AUDITORIA_PROFUNDA_BARRAS_2026-11-02.md: ocho hallazgos, reparaciones, rondas, pruebas y límites.
+
+## Configuración y diagnóstico del escáner
+
+- src/lib/scannerConfig.js: ajustes versionados locales, validación, eventos y persistencia.
+- src/lib/scannerCapture.js: único listener/parser, arbitraje, timeout y cuarentena entre rutas.
+- src/components/barcodes/useBarcodeCapture.js y useScannerSettings.js: suscripción React compartida.
+- src/components/configuracion/EscanerCodigosSection.jsx: ajustes, prueba sin datos y ayuda en Operación.
+- scripts/scanner_config_verify.mjs: persistencia/motor/cambios/negativa con versión anterior; integrado en test:barcodes.
+- scripts/scanner_config_browser.mjs: pantallas y teclado Chromium reales, servicios sintéticos; comparación S01–S03 anterior.
+- docs/AUDITORIA_CONFIG_ESCANER_2026-11-02.md: hallazgos, evidencia, matriz y límites.

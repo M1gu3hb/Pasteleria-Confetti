@@ -33,3 +33,7 @@ Reauditoría de códigos: interbloqueo de impresión por cola anidada, formato t
 Segunda reauditoría: corregidos C01–C05 (lectura parcial durante cobro/cambio de contexto, PDF antiguo, asignación concatenada y respuesta RPC incoherente). Ver SEGUNDA_REAUDITORIA_BARRAS_2026-11-01.md. La prueba física con F9+Enter y el binario nativo de guardado siguen siendo pendientes, no una promesa de “cero errores”.
 
 Tras las correcciones R01–R08, validar en la tablet de Topilejo F9+Enter con varias piezas y una etiqueta en la misma impresora de tickets. Recargar cada dispositivo para tomar el cliente. Comprobar ambos canales y la migración codigo_canonico en vivo; no crear ventas ficticias para comprobar producción. Evidencia: AUDITORIA_PROFUNDA_BARRAS_2026-11-02.md.
+
+## Validación y entrega de configuración del escáner
+
+Comprobar el registro de AUDITORIA_CONFIG_ESCANER_2026-11-02.md, habilitar acceso del entorno a los servicios pendientes y verificar esquema/canales en vivo antes de publicar la entrega. Después verificar READY, mismo commit y bundles de producción/APK sin force ni repuntar server.url. En cada tablet: recargar, configurar F9 + Enter según manual del lector, guardar recomendada y hacer tres lecturas de prueba sin ventas; comprobar reconexión y etiqueta/ticket en papel. No declarar escáner conectado por una lectura anterior.

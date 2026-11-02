@@ -33,3 +33,7 @@ Reauditoría de códigos: interbloqueo de impresión por cola anidada, formato t
 Segunda reauditoría: corregidos C01–C05 (lectura parcial durante cobro/cambio de contexto, PDF antiguo, asignación concatenada y respuesta RPC incoherente). Ver SEGUNDA_REAUDITORIA_BARRAS_2026-11-01.md. La prueba física con F9+Enter y el binario nativo de guardado siguen siendo pendientes, no una promesa de “cero errores”.
 
 Auditoría profunda: R01–R08 reparados (identidad con espacios, borrador perdido, respuesta antigua, carrito fuera de contexto, recuperación, controles F9, reloj y Unicode PDF); reproducción y cierre en AUDITORIA_PROFUNDA_BARRAS_2026-11-02.md. No quedan fallos reproducibles de esa lista pendientes en software. Continúan prueba física, recarga en tablets y APK firmado para guardado nativo. Un intento local malformado requiere revisión conservando el dispositivo; no borrarlo para desbloquear cobros.
+
+## Alcance de configuración del escáner
+
+S01–S03 (F9 sostenido, sufijo tras navegar y asignación interrumpida) tienen corrección y regresiones negativas/positivas; S04 agrega ajustes/diagnóstico antes ausentes. No se presenta como certificación de hardware: siguen pendientes lector/modelo, OTG/Bluetooth, tablet instalada y papel/impresora. El entorno de esta auditoría no tenía acceso autorizado a APIs de Supabase/Vercel; no inferir publicación ni esquema vivo de los informes anteriores. Consultar registro fechado AUDITORIA_CONFIG_ESCANER_2026-11-02.md y comprobar servicios/canales antes de desplegar.

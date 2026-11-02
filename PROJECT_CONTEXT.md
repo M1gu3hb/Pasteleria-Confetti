@@ -53,3 +53,7 @@ El lector conserva su parser al cambiar de modo/sucursal/cajero/corte. Una trama
 ## Orden y cobro durante escaneo
 
 Carrito ligado a sucursal/cajero; cambiar contexto conserva la orden pero bloquea operarla hasta regresar o limpiar. Con intención de venta pendiente no se limpia ni edita: Recuperar cobro pendiente reenvía el intento exacto y muestra el ticket del servidor, incluso tras recarga o cierre de caja. Un borrador ajeno se conserva. Normalizar códigos sólo recorta relleno exterior en servicio/SQL; lector y asignación visual exigen código canónico. Nombres Unicode del PDF se renderizan con la fuente del navegador cuando Helvetica no los codifica. Ver docs/AUDITORIA_PROFUNDA_BARRAS_2026-11-02.md.
+
+## Escáner por dispositivo
+
+Configuración → Operación ofrece ajustes locales, F9 + Enter recomendado, guardado/restauración, tutorial y diagnóstico sin ventas/asignaciones. Se preserva explícitamente el modo existente al no haber configuración guardada. scannerCapture mantiene un parser por documento entre pantallas y descarta colas anteriores al cambiar contexto/ajustes. Lectura correcta no significa dispositivo conectado; prueba física sólo declarada por persona y no persistida. No hay plugin nuevo de detección. Evidencia/límites: docs/AUDITORIA_CONFIG_ESCANER_2026-11-02.md.

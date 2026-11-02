@@ -43,3 +43,7 @@ La migración adicional endurecer_codigos_barras reemplaza trigger/RPC conservan
 Migración codigo_canonico reemplaza sólo normalizar_codigo_producto: recorta relleno exterior y conserva espacios/controles internos, que las validaciones existentes rechazan. No actualiza productos ni tablas financieras ni elimina reservas. Las migraciones aplicadas se comprueban en supabase_migrations.schema_migrations y por MD5 de statements frente al archivo. Ver AUDITORIA_PROFUNDA_BARRAS_2026-11-02.md.
 
 Registro histórico de esta entrega: migración 20261102062408_codigo_canonico, SQL de 584 bytes y MD5 dccd674e7530fe7677519bf54a34bf32 contrastados con statements de Supabase.
+
+## Configuración de escáner
+
+La sección de escáner usa localStorage por dispositivo/origen; no introduce tablas, RPC, migraciones ni escrituras de diagnóstico. Unicidad, reservas y operaciones de dinero conservan las migraciones anteriores. Validar SQL en PGlite no acredita que esté aplicado en el proyecto vivo.

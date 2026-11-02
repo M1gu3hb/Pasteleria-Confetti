@@ -1,3 +1,9 @@
+# 2026-11-02 — Configuración y diagnóstico local del escáner
+
+Auditoría independiente sobre la rama operativa: S01 F9 sostenido aceptaba un sufijo; S02 navegar sustituía el parser y perdía la cuarentena; S03 asignación guardaba una lectura interrumpida. Reproducidos en motores/formularios anteriores antes de reparar. Se comparte un motor único por documento para venta, asignación y diagnóstico. Ajustes locales por instalación, recomendación explícita F9 + Enter sin cambiar silenciosamente lectores existentes, guardado/restauración, tutorial y prueba aislada sin catálogo ni dinero. Detección física honestamente no disponible, sin reclamos USB ni plugin nuevo.
+
+Nuevas regresiones comparadas contra versión defectuosa y suites de interfaz/impresión/recuperación conservadas. No se alteran SQL financiero, candados de Caja ni efectivoEsperado. Estado de acceso/publicación y matriz física en AUDITORIA_CONFIG_ESCANER_2026-11-02.md.
+
 # 2026-11-02 — Auditoría profunda de escáner y etiquetas
 
 Corregidos R01–R08: identidad sin eliminar espacios internos, borrador de asignación, respuesta antigua, carrito ligado a sucursal/cajero, recuperación explícita de cobro durable, controles de trama, reloj monótono y nombre Unicode en PDF. Diagnóstico acumulativo antes de reparar, comparación negativa contra versión anterior y reauditoría de reparación. Ver [informe completo](AUDITORIA_PROFUNDA_BARRAS_2026-11-02.md). Se conserva impresión compartida con tickets; pendientes físicos/APK firmado explícitos.

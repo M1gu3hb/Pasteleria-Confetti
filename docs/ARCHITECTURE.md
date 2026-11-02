@@ -47,3 +47,7 @@ El lector conserva su parser al cambiar de modo/sucursal/cajero/corte. Una trama
 ## Alcance de orden e intención durable
 
 POS guarda items y scope de sucursal/cajero juntos. Un scope distinto bloquea editar/agregar/cobrar sin descartar la orden. Recuperación explícita valida RPC/contexto y reutiliza intencionOperacion/intencionPersistente: pago/detalle/clave originales, ticket canónico y conservación de borradores ajenos. No ejecuta efectos del legado restaurante usando el carrito nuevo. BarcodeProductPanel relee después de invalidar consultas; sincronizar nombre no reinicia asignación. Tramas tienen reloj monótono y cuarentena de controles conocidos. Detalle: AUDITORIA_PROFUNDA_BARRAS_2026-11-02.md.
+
+## Motor de escáner local compartido
+
+scannerCapture mantiene el parser por documento desde App y arbitra consumidores de venta, asignación y diagnóstico. Cambiar propietario, foco/modal, visibilidad o ajustes invalida tramas sin convertir su cola en otra lectura. useBarcodeScanner conserva la cola de consultas de venta y la limpia al invalidar. scannerConfig versiona ajustes por localStorage/origen, sin base compartida; fallo de lectura desactiva, fallo de escritura se informa. Diagnóstico importa sólo render/impresión y motor, sin servicios financieros/catálogo. No se reclaman interfaces de teclado ni se añaden plugins Android.

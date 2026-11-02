@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ImpresoraTermicaSection from '@/components/configuracion/ImpresoraTermicaSection';
 import ImpresoraCajonAppSection from '@/components/configuracion/ImpresoraCajonAppSection';
+import EscanerCodigosSection from '@/components/configuracion/EscanerCodigosSection';
 import { toast } from 'sonner';
 import { Settings, Users, Plus, Trash2, Palette, Sparkles, ShieldAlert, Database, Cake } from 'lucide-react';
 import PastelesConfigSection from '@/components/configuracion/PastelesConfigSection';
@@ -430,6 +431,7 @@ export default function Configuracion() {
           </Card>
 
           {/* Categorías de productos — fuente única para Recetas, Productos, Mesero y Portal QR */}
+          {esAdminODueno&&<EscanerCodigosSection />}
           <div className="mt-4">
             <CategoriasProductoSection />
           </div>

@@ -53,3 +53,7 @@ El lector conserva su parser al cambiar de modo/sucursal/cajero/corte. Una trama
 ## Recuperación y auditoría profunda de barras
 
 Antes de otro cobro, resolver la intención local pendiente mediante Recuperar cobro pendiente. Nunca descartar la clave/pago/detalle originales ni reemplazarlos por el carrito actual. La orden conserva su sucursal/cajero. BarcodeProductPanel relee tras asignación y conserva borrador ante cambio sólo de nombre. Lector usa performance.now(), cuarentena de controles F9 y caracteres canónicos. Tres migraciones de códigos, incluida codigo_canonico, son parte de la suite SQL. Ver docs/AUDITORIA_PROFUNDA_BARRAS_2026-11-02.md; comprobar versión/migraciones/canales en vivo. La prueba física y firma del APK de guardado siguen requiriendo dispositivo.
+
+## Configuración local del escáner
+
+Usar scannerConfig/scannerCapture y useBarcodeCapture, no listeners nuevos por pantalla. El motor vive desde App, conserva cuarentena al navegar y tiene un único propietario entre venta, asignación y diagnóstico. No cambiar ajustes de otras tablets: clave local versionada y origen independiente para Chrome/APK. Perfil recomendado F9 + Enter; modo compatible anterior explícitamente conservado. Los cambios de ajustes invalidan también consultas pendientes. Diagnóstico nunca escribe catálogo ni dinero, no detecta hardware y no certifica una prueba física por eventos isTrusted. Ver docs/AUDITORIA_CONFIG_ESCANER_2026-11-02.md para regresiones y cómo comprobar publicación pendiente/viva.

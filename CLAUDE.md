@@ -338,3 +338,7 @@ Si algo falla, dilo con la salida. Si te saltaste un paso, dilo. Si rompiste alg
 ## Auditoría profunda de barras y recuperación
 
 La orden POS queda ligada a sucursal/cajero. No borrar borradores al cambiar contexto ni permitir cobrarlos en otro. Cobro incierto exige recuperar intención original antes de otra venta; no generar otra clave ni usar el carrito nuevo para efectos del intento anterior. Tramas usan tiempo monótono; controles inesperados dentro de F9 se descartan hasta terminador. Normalización nunca elimina espacios internos del identificador. Evidencia: docs/AUDITORIA_PROFUNDA_BARRAS_2026-11-02.md.
+
+## Configuración y diagnóstico local del escáner
+
+Motor único por documento (scannerCapture + barcodeFrame) compartido por venta, asignación F9 y diagnóstico. No sustituirlo al navegar: conservar cuarentena del sufijo. Ajustes versionados locales, no Supabase; conservar modo existente sin cambiarlo silenciosamente y recomendar F9 + Enter explícitamente. Configuración inválida falla cerrada; cambio de ajustes cancela lecturas y consultas anteriores. Diagnóstico sin catálogo/cobros y sin afirmar conexión física a partir de eventos. Ver docs/AUDITORIA_CONFIG_ESCANER_2026-11-02.md; scanner_config_verify entra en test:barcodes.
