@@ -41,4 +41,9 @@ Comprobar el registro de AUDITORIA_CONFIG_ESCANER_2026-11-02.md, habilitar acces
 
 ## Integración de configuración del lector
 
-Tras recargar el canal de la tablet, abrir Configuración → Operación → Escáner de códigos de barras y realizar la prueba guiada con el lector real. Los bloqueos de publicación del informe original son históricos; comprobar entrega por refs y aliases Vercel actuales. Ver AUDITORIA_CONFIG_ESCANER_2026-11-02.md.
+Tras recargar el canal de la tablet, abrir Configuración → Escáner y realizar la prueba guiada con el lector real. Los bloqueos de publicación del informe original son históricos; comprobar entrega por refs y aliases Vercel actuales. Ver AUDITORIA_CONFIG_ESCANER_2026-11-02.md.
+
+
+## Acceso a la configuración del escáner
+
+El panel tiene pestaña Escáner junto a Operación; /configuracion?seccion=escaner permite abrirlo directamente tras acceso de dueño. No duplicarlo al final de Operación ni ampliar permisos de la ruta. Ver ACCESO_ESCANER_2026-11-03.md para prueba de la pantalla completa y límites de comprobación de dispositivos.

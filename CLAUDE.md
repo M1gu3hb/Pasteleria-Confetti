@@ -121,7 +121,7 @@ Dos bugs graves se colaron porque **las pruebas probaban el arnés, no el códig
   > BASE LIMPIA" que Abel pedía y nunca salía en el papel. Nadie lo leyó porque "39 es la línea base".
   > **Cuando la cifra BAJE, bájala aquí también**: si se queda en 39, el hueco que acabas de liberar se rellena con
   > un error nuevo sin que nadie se entere. Y de vez en cuando **lee la lista**, no sólo el número.
-- `npm run typecheck` sigue fallando: **597 diagnósticos POS** (2026-10-17). `calidad_types_verify.mjs` compara mensaje, código, ancla y multiplicidad contra deuda contrastada con producción; no acepta errores nuevos aunque baje el total. Build ejecuta esa puerta y las regresiones. No confundirla con types completamente limpios.
+- `npm run typecheck` sigue fallando: **557 diagnósticos POS** (2026-11-03). `calidad_types_verify.mjs` compara mensaje, código, ancla y multiplicidad contra deuda contrastada con producción; no acepta errores nuevos aunque baje el total. Build ejecuta esa puerta y las regresiones. No confundirla con types completamente limpios.
 - Corre las suites de `scripts/*.mjs`. **Corrección 2026-08-09:** este documento afirmaba que **todas** funcionan sin
   credenciales, y es **falso**. Tres exigen un `.env` que no está en el repo y mueren con `ENOENT ... .env`:
   `fase4_rls_adversarial.mjs`, `fase5_corte_fidelity.mjs` y `web1_gaps_verify.mjs`. Las demás sí corren en seco. Si
@@ -347,3 +347,8 @@ Motor único por documento (scannerCapture + barcodeFrame) compartido por venta,
 ## Integración de configuración del lector
 
 Con varias asignaciones abiertas, el consumidor del lector debe seguir al campo enfocado, nunca al orden de montaje de las tarjetas. Cambiar foco durante una trama la invalida sin asignar su cola. Ver docs/AUDITORIA_CONFIG_ESCANER_2026-11-02.md.
+
+
+## Acceso a la configuración del escáner
+
+El panel tiene pestaña Escáner junto a Operación; /configuracion?seccion=escaner permite abrirlo directamente tras acceso de dueño. No duplicarlo al final de Operación ni ampliar permisos de la ruta. Ver docs/ACCESO_ESCANER_2026-11-03.md para prueba de la pantalla completa y límites de comprobación de dispositivos.

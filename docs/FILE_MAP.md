@@ -75,3 +75,7 @@ El lector conserva su parser al cambiar de modo/sucursal/cajero/corte. Una trama
 ## Integración de configuración del lector
 
 scripts/scanner_config_browser.mjs incluye assignment_focus y assignment_focus_tail para selección de producto y cancelación de tramas entre campos. Ver AUDITORIA_CONFIG_ESCANER_2026-11-02.md.
+
+
+- scripts/scanner_config_visibility_browser.mjs: Configuración/ruta/Tabs/escáner reales; pestaña, enlace directo, roles y diagnóstico. BASELINE=1 comprueba la ausencia de pestaña en dade1cc.
+- docs/ACCESO_ESCANER_2026-11-03.md: revisión por sección no encontrada, publicación y límites del diagnóstico sin pantalla del dispositivo.

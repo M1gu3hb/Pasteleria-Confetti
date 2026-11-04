@@ -2,11 +2,11 @@
 
 ## Historial auditado
 
-Retirada entrega manual de personalizados y truncación de Caja a 100; clasificación sin borrar datos, búsqueda histórica y carga incremental. No equivale a garantía de retención eterna: respaldo, ensayo de restauración, capacidad/plan y validación física de tablets continúan pendientes. La lista de pedidos es viva (ediciones concurrentes pueden cambiar orden entre páginas); un refresco la recorre de nuevo. Ventas carga datos completos del alcance, por lo que consultar años puede requerir una optimización posterior. TypeScript POS conserva 597 diagnósticos históricos, sin nuevos; web 23.
+Retirada entrega manual de personalizados y truncación de Caja a 100; clasificación sin borrar datos, búsqueda histórica y carga incremental. No equivale a garantía de retención eterna: respaldo, ensayo de restauración, capacidad/plan y validación física de tablets continúan pendientes. La lista de pedidos es viva (ediciones concurrentes pueden cambiar orden entre páginas); un refresco la recorre de nuevo. Ventas carga datos completos del alcance, por lo que consultar años puede requerir una optimización posterior. TypeScript POS conserva 557 diagnósticos históricos, sin nuevos; web 23.
 
 Revisado el 2026-10-17.
 
-Pendientes vigentes: conciliación del libro de cuatro pedidos cuyos pagos y cancelaciones sí están documentados en el POS ($1,700), con motivos que distinguen devolución de posible duplicado; lectores firmados/privacidad F18; validación física y configuración/firma APK F19; deuda TypeScript POS 597/web 23 y protección administrativa F23; dos avisos moderados del router F24; respaldo/restauración/alertas externas F26. F05–F14 y autoridad F01–F04/F16 tienen reparación y evidencia en informes, sin certificar papel, efectivo físico o todos los dispositivos.
+Pendientes vigentes: conciliación del libro de cuatro pedidos cuyos pagos y cancelaciones sí están documentados en el POS ($1,700), con motivos que distinguen devolución de posible duplicado; lectores firmados/privacidad F18; validación física y configuración/firma APK F19; deuda TypeScript POS 557/web 23 y protección administrativa F23; dos avisos moderados del router F24; respaldo/restauración/alertas externas F26. F05–F14 y autoridad F01–F04/F16 tienen reparación y evidencia en informes, sin certificar papel, efectivo físico o todos los dispositivos.
 
 ## Evidencia financiera y cancelaciones
 
@@ -42,3 +42,8 @@ S01–S03 (F9 sostenido, sufijo tras navegar y asignación interrumpida) tienen 
 ## Integración de configuración del lector
 
 S05 corregido: varias asignaciones abiertas podían enviar el código al producto de otra tarjeta. Pruebas de foco y fragmento cruzado en scanner_config_browser; prueba física sigue pendiente. Ver AUDITORIA_CONFIG_ESCANER_2026-11-02.md.
+
+
+## Acceso a la configuración del escáner
+
+El panel tiene pestaña Escáner junto a Operación; /configuracion?seccion=escaner permite abrirlo directamente tras acceso de dueño. No duplicarlo al final de Operación ni ampliar permisos de la ruta. Ver ACCESO_ESCANER_2026-11-03.md para prueba de la pantalla completa y límites de comprobación de dispositivos.

@@ -54,3 +54,8 @@ Conservar el comportamiento de lectores existentes hasta cambio explícito; reco
 ## Integración de configuración del lector
 
 La asignación de códigos utiliza el campo enfocado como propietario explícito; el orden de montaje no representa intención del operador. Sin foco nuevo conservar el propietario activo para evitar cambios espurios. Ver AUDITORIA_CONFIG_ESCANER_2026-11-02.md.
+
+
+## Acceso a la configuración del escáner
+
+El panel tiene pestaña Escáner junto a Operación; /configuracion?seccion=escaner permite abrirlo directamente tras acceso de dueño. No duplicarlo al final de Operación ni ampliar permisos de la ruta. Ver ACCESO_ESCANER_2026-11-03.md para prueba de la pantalla completa y límites de comprobación de dispositivos.

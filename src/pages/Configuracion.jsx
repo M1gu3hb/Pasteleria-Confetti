@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { supabase } from '@/api/supabaseClient';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -13,7 +14,7 @@ import ImpresoraTermicaSection from '@/components/configuracion/ImpresoraTermica
 import ImpresoraCajonAppSection from '@/components/configuracion/ImpresoraCajonAppSection';
 import EscanerCodigosSection from '@/components/configuracion/EscanerCodigosSection';
 import { toast } from 'sonner';
-import { Settings, Users, Plus, Trash2, Palette, Sparkles, ShieldAlert, Database, Cake } from 'lucide-react';
+import { Settings, Users, Plus, Trash2, Palette, Sparkles, ShieldAlert, Database, Cake, ScanBarcode } from 'lucide-react';
 import PastelesConfigSection from '@/components/configuracion/PastelesConfigSection';
 import DatosSection from '@/components/datos/DatosSection';
 import ModoPresentacion from '@/components/configuracion/ModoPresentacion';
@@ -33,6 +34,10 @@ export default function Configuracion() {
   // Dueño y administrador ven las pestañas avanzadas. Acepta 'dueño' (legacy
   // con tilde) y 'dueno' (valor de código) además de 'administrador'.
   const esAdminODueno = ['dueño', 'dueno', 'administrador'].includes(posUser?.rol);
+  const [searchParams,setSearchParams]=useSearchParams();
+  const secciones=['identidad','negocio','usuarios','pasteles',...(esAdminODueno?['escaner','mantenimiento']:[])];
+  const seccion=secciones.includes(searchParams.get('seccion'))?searchParams.get('seccion'):'identidad';
+  const seleccionarSeccion=value=>setSearchParams(previous=>{const next=new URLSearchParams(previous);next.set('seccion',value);return next;},{replace:true});
   const [showUserForm, setShowUserForm] = useState(false);
   const [editingUser, setEditingUser] = useState(null); // usuario en edición (null = crear nuevo)
 
@@ -245,10 +250,11 @@ export default function Configuracion() {
     <div className="space-y-6">
       <PageHeader title="Configuración" description="Ajustes del sistema MH Astral Systems" />
 
-      <Tabs defaultValue="identidad">
+      <Tabs value={seccion} onValueChange={seleccionarSeccion}>
         <TabsList className="mb-4 flex-wrap h-auto">
           <TabsTrigger value="identidad"><Palette className="w-3 h-3 mr-1" />Identidad</TabsTrigger>
           <TabsTrigger value="negocio"><Settings className="w-3 h-3 mr-1" />Operación</TabsTrigger>
+          {esAdminODueno&&<TabsTrigger value="escaner"><ScanBarcode className="w-3 h-3 mr-1" />Escáner</TabsTrigger>}
           <TabsTrigger value="usuarios"><Users className="w-3 h-3 mr-1" />Usuarios POS</TabsTrigger>
           <TabsTrigger value="pasteles"><Cake className="w-3 h-3 mr-1" />Pasteles</TabsTrigger>
           {/* Fase 6 — pestañas ocultas para Confetti (código conservado) */}
@@ -266,6 +272,8 @@ export default function Configuracion() {
         <TabsContent value="identidad">
           <IdentidadNegocio cfg={cfg} />
         </TabsContent>
+
+        {esAdminODueno&&<TabsContent value="escaner"><EscanerCodigosSection /></TabsContent>}
 
         <TabsContent value="negocio">
           <Card>
@@ -431,7 +439,6 @@ export default function Configuracion() {
           </Card>
 
           {/* Categorías de productos — fuente única para Recetas, Productos, Mesero y Portal QR */}
-          {esAdminODueno&&<EscanerCodigosSection />}
           <div className="mt-4">
             <CategoriasProductoSection />
           </div>

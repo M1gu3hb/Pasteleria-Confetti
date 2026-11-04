@@ -62,3 +62,8 @@ Usar scannerConfig/scannerCapture y useBarcodeCapture, no listeners nuevos por p
 ## Integración de configuración del lector
 
 Revisión de integración: conservar selección de propietario por input enfocado en scannerCapture y cuarentena al cambiar foco. Regresiones assignment_focus y assignment_focus_tail en scanner_config_browser. Consultar los refs y Vercel en vivo para el estado de entrega, no el bloqueo histórico del entorno anterior. Ver docs/AUDITORIA_CONFIG_ESCANER_2026-11-02.md.
+
+
+## Acceso a la configuración del escáner
+
+El panel tiene pestaña Escáner junto a Operación; /configuracion?seccion=escaner permite abrirlo directamente tras acceso de dueño. No duplicarlo al final de Operación ni ampliar permisos de la ruta. Ver docs/ACCESO_ESCANER_2026-11-03.md para prueba de la pantalla completa y límites de comprobación de dispositivos.

@@ -56,3 +56,8 @@ scannerCapture mantiene el parser por documento desde App y arbitra consumidores
 ## Integración de configuración del lector
 
 scannerCapture resuelve el propietario entre consumidores activos por inputRef === document.activeElement; sin un campo enfocado conserva el propietario activo. El cambio de foco sincroniza propietario e invalida tramas, sin convertir su cola en otra asignación. Ver AUDITORIA_CONFIG_ESCANER_2026-11-02.md.
+
+
+## Acceso a la configuración del escáner
+
+El panel tiene pestaña Escáner junto a Operación; /configuracion?seccion=escaner permite abrirlo directamente tras acceso de dueño. No duplicarlo al final de Operación ni ampliar permisos de la ruta. Ver ACCESO_ESCANER_2026-11-03.md para prueba de la pantalla completa y límites de comprobación de dispositivos.

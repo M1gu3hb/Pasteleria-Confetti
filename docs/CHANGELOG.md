@@ -1,3 +1,7 @@
+# 2026-11-03 — Pestaña visible para escáner
+
+La sección se encontraba al final de Operación y no tenía pestaña propia. Se agrega Escáner junto a Operación y enlace /configuracion?seccion=escaner, sin ampliar acceso de dueño. Regresión de pantalla completa falla en dade1cc y pasa con el cambio; verifica panel único, tres lecturas sin escrituras, móvil y guardia de ruta. Ver [evidencia](ACCESO_ESCANER_2026-11-03.md). No se atribuye a caché la pantalla de un dispositivo no observado. Se anotan props/ref reales de Radix en TabsTrigger/TabsContent; la deuda de tipos baja de 597 a 557 sin diagnósticos nuevos ni cambios de línea base.
+
 # 2026-11-02 — Integración de configuración del lector
 
 Revisada la entrega a223cc0 antes de mover canales operativos. Se reprodujo y corrigió S05: dos tarjetas de asignación abiertas enviaban el código al último consumidor por montaje, aunque otro campo estuviera enfocado. Selección por foco y cuarentena al cambiar de campo; once regresiones de configuración en navegador. Sin cambios SQL, dinero ni transporte de impresora. Ver [informe](AUDITORIA_CONFIG_ESCANER_2026-11-02.md).

@@ -62,3 +62,8 @@ Configuración → Operación ofrece ajustes locales, F9 + Enter recomendado, gu
 ## Integración de configuración del lector
 
 La captura compartida elige el producto de asignación por el campo enfocado. Abrir más de una tarjeta no debe enviar el código a otra; un cambio de foco descarta la trama parcial. Ver docs/AUDITORIA_CONFIG_ESCANER_2026-11-02.md.
+
+
+## Acceso a la configuración del escáner
+
+El panel tiene pestaña Escáner junto a Operación; /configuracion?seccion=escaner permite abrirlo directamente tras acceso de dueño. No duplicarlo al final de Operación ni ampliar permisos de la ruta. Ver docs/ACCESO_ESCANER_2026-11-03.md para prueba de la pantalla completa y límites de comprobación de dispositivos.
