@@ -61,3 +61,5 @@ scannerCapture resuelve el propietario entre consumidores activos por inputRef =
 ## Acceso a la configuración del escáner
 
 El panel tiene pestaña Escáner junto a Operación; /configuracion?seccion=escaner permite abrirlo directamente tras acceso de dueño. No duplicarlo al final de Operación ni ampliar permisos de la ruta. Ver ACCESO_ESCANER_2026-11-03.md para prueba de la pantalla completa y límites de comprobación de dispositivos.
+
+El despliegue Vite requiere la reescritura SPA de vercel.json hacia /index.html para enlaces directos/recargas de las rutas internas. Verificar /configuracion?seccion=escaner y assets/SW en vivo, además del HTML raíz. Las guardias React y RLS de Supabase siguen aplicándose.

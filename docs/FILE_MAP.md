@@ -79,3 +79,5 @@ scripts/scanner_config_browser.mjs incluye assignment_focus y assignment_focus_t
 
 - scripts/scanner_config_visibility_browser.mjs: Configuración/ruta/Tabs/escáner reales; pestaña, enlace directo, roles y diagnóstico. BASELINE=1 comprueba la ausencia de pestaña en dade1cc.
 - docs/ACCESO_ESCANER_2026-11-03.md: revisión por sección no encontrada, publicación y límites del diagnóstico sin pantalla del dispositivo.
+
+- vercel.json: build y fallback SPA a index.html para navegación directa y recarga de BrowserRouter.

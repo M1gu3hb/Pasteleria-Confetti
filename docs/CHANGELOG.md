@@ -1,6 +1,6 @@
 # 2026-11-03 — Pestaña visible para escáner
 
-La sección se encontraba al final de Operación y no tenía pestaña propia. Se agrega Escáner junto a Operación y enlace /configuracion?seccion=escaner, sin ampliar acceso de dueño. Regresión de pantalla completa falla en dade1cc y pasa con el cambio; verifica panel único, tres lecturas sin escrituras, móvil y guardia de ruta. Ver [evidencia](ACCESO_ESCANER_2026-11-03.md). No se atribuye a caché la pantalla de un dispositivo no observado. Se anotan props/ref reales de Radix en TabsTrigger/TabsContent; la deuda de tipos baja de 597 a 557 sin diagnósticos nuevos ni cambios de línea base.
+La sección se encontraba al final de Operación y no tenía pestaña propia. Se agrega Escáner junto a Operación y enlace /configuracion?seccion=escaner, sin ampliar acceso de dueño. Regresión de pantalla completa falla en dade1cc y pasa con el cambio; verifica panel único, tres lecturas sin escrituras, móvil y guardia de ruta. Ver [evidencia](ACCESO_ESCANER_2026-11-03.md). Verificación HTTP detectó también 404 en enlaces directos: se incorpora el fallback SPA oficial de Vercel. No se atribuye a caché la pantalla de un dispositivo no observado. Se anotan props/ref reales de Radix en TabsTrigger/TabsContent; la deuda de tipos baja de 597 a 557 sin diagnósticos nuevos ni cambios de línea base.
 
 # 2026-11-02 — Integración de configuración del lector
 
