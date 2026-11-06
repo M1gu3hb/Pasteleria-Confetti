@@ -74,3 +74,8 @@ El despliegue Vite requiere la reescritura SPA de vercel.json hacia /index.html 
 ## Lector nativo del APK 1.3.0
 
 APK 1.3.0 añade `ConfettiScanner`: el lector USB-HID vinculado en Configuración → Escáner (tres lecturas del mismo código impreso) se captura por `InputDevice` antes del IME/WebView y llega al mismo parser JS; sin F9. APK anteriores y navegador siguen en la ruta web (`disponible:false`). Selector de impresora excluye lectores/teclados HID. El APK se compila sin firmar en este repo: firmar con la llave de Miguel e instalar como actualización (nunca desinstalar). Estado vivo: versión instalada en la terminal (Ajustes → Apps), canal `apk/capacitor` en Vercel y catálogo con `select count(*) filter (where activo and codigo_barras is null) from productos`. Arquitectura, compatibilidad, pruebas y lista física en docs/LECTOR_NATIVO_ESCANER_2026-11-06.md; guía para Abel en docs/GUIA_ABEL_ESCANER.md.
+
+
+## Aviso de actualización del APK
+
+Las terminales con APK muestran «Actualización pendiente» cuando `public/apk/actualizacion.json` anuncia una versión publicada más nueva que la instalada (APK sin `ConfettiApp` = 1.1.1). APK viejo descarga por Chrome desde `raw.githubusercontent.com`; 1.3.0+ instala desde la app tras verificar firma, versión y huella. Publicar exige APK firmado por Miguel y `scripts/publicar_apk.mjs`. Estado vivo: `git show origin/apk/capacitor:public/apk/actualizacion.json`. Procedimiento y límites: docs/ACTUALIZACION_APK.md.

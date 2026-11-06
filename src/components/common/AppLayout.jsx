@@ -6,6 +6,7 @@ import BrandedBackground from './BrandedBackground';
 import BrandColorsApplier from './BrandColorsApplier';
 import NotificationsWatcher from './NotificationsWatcher';
 import MobileAdminRadialMenu from './MobileAdminRadialMenu';
+import ActualizacionApkBanner from './ActualizacionApkBanner';
 import { useRouteCleanup } from '@/lib/useRouteCleanup';
 
 export default function AppLayout() {
@@ -40,6 +41,8 @@ export default function AppLayout() {
         style={{ minHeight: '100dvh' }}
       >
         <div className="p-4 md:p-6 lg:p-8 pt-14 lg:pt-6 min-w-0 max-w-full" style={{ minHeight: '100dvh' }}>
+          {/* Sólo dentro del APK y sólo si hay una versión publicada más nueva; nunca en navegador. */}
+          <ActualizacionApkBanner />
           <Outlet />
         </div>
       </main>

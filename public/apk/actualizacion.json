@@ -1,0 +1,18 @@
+{
+  "esquema": 1,
+  "publicada": false,
+  "versionCode": 5,
+  "versionName": "1.3.0",
+  "fecha": "2026-11-06",
+  "apk": "https://raw.githubusercontent.com/M1gu3hb/Pasteleria-Confetti/descargas-apk/ConfettiPOS-1.3.0.apk",
+  "pagina": "https://confetti-inst-ead772fe6540.vercel.app/",
+  "sha256": "",
+  "certificadoSha256": "5074a110f20482e83c28d294af78b420415181250a4e8177be3f1096f9ebf610",
+  "cambios": [
+    "Lector de códigos de barras USB: se vincula una sola vez y agrega productos a la venta sin escribir en los campos.",
+    "La terminal avisa si el lector se desconecta y lo vuelve a usar al reconectarlo.",
+    "El lector ya no puede elegirse por error como impresora.",
+    "Descarga de etiquetas en PNG y PDF.",
+    "Las siguientes actualizaciones se instalan desde este mismo aviso."
+  ]
+}

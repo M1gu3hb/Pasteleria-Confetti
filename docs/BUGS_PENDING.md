@@ -54,3 +54,8 @@ El despliegue Vite requiere la reescritura SPA de vercel.json hacia /index.html 
 ## Lector nativo (2026-11-06)
 
 Resueltos en código (pendientes de validación física): lector sin F9 escribiendo en campos, falta de detección de desconexión, lector elegible como impresora, ConfettiFiles sin distribuir. Pendientes: firma e instalación del APK 1.3.0 en la terminal; prueba física de lector + impresora; catálogo sin códigos; transporte `UsbBulkConnection` para térmicas 0xFF sin probar con hardware; identidad VID/PID/nombre compartida por otro teclado sería tratada como el lector (documentado).
+
+
+## Actualización del APK (2026-11-06)
+
+Pendiente: firma del APK 1.3.0. Sin probar en hardware: descarga en Chrome del dispositivo, instalador del sistema y permiso «Permitir de esta fuente». Las terminales que no recarguen la web desde antes del cambio no ven el aviso hasta recargar una vez.

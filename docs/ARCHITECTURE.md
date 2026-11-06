@@ -68,3 +68,8 @@ El despliegue Vite requiere la reescritura SPA de vercel.json hacia /index.html 
 ## Lector nativo (APK 1.3.0)
 
 Teclas del lector vinculado: `ConfettiWebView.dispatchKeyEventPreIme` / `MainActivity.dispatchKeyEvent` → `ConfettiScannerPlugin` (identidad por `InputDevice`, `ScannerCore` agrupa hasta Enter o corte) → evento `lectura` con `gen` → `scannerCapture` → `barcodeFrame` en modo nativo → cola de `useBarcodeScanner`. Parser web pasivo mientras `capturando`. Vinculación en SharedPreferences del APK; ajustes de perfil/tiempo siguen en localStorage. Impresora: `UsbClasificacion` decide qué es seleccionable; clase 7 por DantSu, 0xFF por `UsbBulkConnection`. Ver docs/LECTOR_NATIVO_ESCANER_2026-11-06.md.
+
+
+## Aviso y actualizador del APK
+
+`AppLayout` → `ActualizacionApkBanner` (sólo `Capacitor.isNativePlatform()`) → `apkUpdate.js` (manifiesto mismo origen, versión instalada por `ConfettiApp.info()`, réplica de `HostMask` para saber si un enlace abre Chrome) → APK < 1.3.0: enlace externo; 1.3.0+: `ConfettiAppPlugin.descargarEInstalar` (cache/actualizaciones, `VerificadorActualizacion`, FileProvider, instalador del sistema; permiso `REQUEST_INSTALL_PACKAGES`). Ver docs/ACTUALIZACION_APK.md.

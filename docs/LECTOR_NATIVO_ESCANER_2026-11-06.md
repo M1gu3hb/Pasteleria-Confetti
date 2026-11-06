@@ -82,10 +82,10 @@ Lector USB-HID ──► Android InputReader ──► KeyEvent(deviceId)
 
 ## APK 1.3.0
 - `versionCode 5`, `versionName 1.3.0`, mismo `applicationId com.mhastral.confettipos`, mismo `server.url` (alias de `apk/capacitor`).
-- Compilado en este entorno: `app-release` **sin firmar**, alineado (`zipalign -c` OK), SHA-256 `e347e050b2d9050f8fa52414fefc5ed35cfad17d5b0cd3392b41d9ed3ab6c29d` (compilado desde el árbol de este commit; el registro del commit está en CHANGELOG).
+- Compilado en este entorno: `app-release` **sin firmar**, alineado (`zipalign -c` OK). Primera compilación SHA-256 `e347e050…6c29d`; la vigente, que añade `ConfettiApp` (aviso y actualizador, ver docs/ACTUALIZACION_APK.md), SHA-256 `3e049c85843ec1e66685b614934caffdecf195aa40e4be07ccafdc4037f12e4a`.
 - No se generó ni se usó ninguna llave. **Debe firmarse con la llave del APK instalado**; con otra llave Android exige desinstalar y se perderían sesión, ajustes locales e intenciones de cobro.
 - Firmar (Miguel): `apksigner sign --ks <su-keystore> --ks-key-alias <su-alias> --out ConfettiPOS-1.3.0.apk ConfettiPOS-1.3.0-vc5-release-SIN-FIRMAR.apk` y `apksigner verify --print-certs ConfettiPOS-1.3.0.apk`; comparar el certificado con el del APK 1.1.x guardado. Alternativa: Android Studio → Build → Generate Signed APK sobre esta rama.
-- Instalar como actualización (abrir el APK en la terminal o `adb install -r`). **Si Android dice que hay conflicto de firma, detenerse: no desinstalar.**
+- Instalar como actualización: publicar con `scripts/publicar_apk.mjs` para que cada terminal muestre «Actualización pendiente» (docs/ACTUALIZACION_APK.md), o abrir el APK en la terminal / `adb install -r`. **Si Android dice que hay conflicto de firma, detenerse: no desinstalar.**
 - Recompilar: `npx vite build && npx cap sync android`, luego `./gradlew assembleRelease` (requiere Android SDK 36).
 
 ## Pruebas y evidencia

@@ -54,3 +54,8 @@ El despliegue Vite requiere la reescritura SPA de vercel.json hacia /index.html 
 ## Lector de códigos en la terminal de Abel
 
 Firmar el APK 1.3.0 con la llave de Miguel, instalarlo como actualización y ejecutar la lista mínima de docs/LECTOR_NATIVO_ESCANER_2026-11-06.md (lector + impresora, vinculación, tres piezas, cobro abierto, desconexión, reinicio, tickets). Después, registrar códigos del catálogo (asignar los comerciales, generar e imprimir los propios). Decidir con Miguel cuándo avanzar `migracion/supabase` (producción web) a este código.
+
+
+## Publicar el APK 1.3.0
+
+Miguel firma el APK 1.3.0 con su llave; después `scripts/publicar_apk.mjs`, rama `descargas-apk`, página de Vercel y push del JSON (docs/ACTUALIZACION_APK.md). Sólo entonces enviar el mensaje a Abel.

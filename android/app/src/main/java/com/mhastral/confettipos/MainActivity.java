@@ -19,6 +19,8 @@ public class MainActivity extends BridgeActivity {
         // Lector de códigos USB-HID vinculado (APK 1.3.0). No abre interfaces USB:
         // sólo observa los eventos de teclado que Android ya entrega a la app.
         registerPlugin(ConfettiScannerPlugin.class);
+        // Versión instalada y actualización verificada desde el POS (APK 1.3.0).
+        registerPlugin(ConfettiAppPlugin.class);
         super.onCreate(savedInstanceState);
         // POS: mantener la pantalla SIEMPRE encendida mientras la app está en
         // primer plano (la tablet del mostrador no debe apagarse sola).

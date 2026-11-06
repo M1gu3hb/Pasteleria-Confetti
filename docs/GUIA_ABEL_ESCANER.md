@@ -1,6 +1,9 @@
 # Guía corta: lector de códigos de barras (Confetti POS 1.3.0)
 
-Esta guía es para usar el lector en la terminal de la pastelería. Miguel instala la app 1.3.0 y hace la primera prueba con usted.
+Esta guía es para usar el lector en la terminal de la pastelería.
+
+## 0. Actualizar la app (una vez en cada terminal)
+Cuando esté lista, arriba de la pantalla aparecerá **⬆️ Actualización pendiente**. Termine la venta en curso y toque **Actualizar ahora**. Se abrirá Chrome: si pregunta, toque **Descargar** o **Conservar**, luego **Abrir** y **Actualizar**. Si Android pide permiso, toque **Configuración**, active **Permitir de esta fuente** y regrese. Sus ventas, su sesión y sus ajustes se conservan. **No desinstale la app.** Las siguientes actualizaciones se instalan desde ese mismo aviso.
 
 ## 1. Conectar
 Conecte el lector a un puerto USB de la terminal. No hace falta configurar nada en el lector.

@@ -359,3 +359,8 @@ El despliegue Vite requiere la reescritura SPA de vercel.json hacia /index.html 
 ## Lector nativo del APK (1.3.0)
 
 `ConfettiScanner` sólo identifica y agrupa teclas del lector VINCULADO; la validez del código sigue en `barcodeFrame` (no duplicar reglas en Java). Mientras `capturando=true` el parser web queda pasivo: nunca procesar una lectura por las dos rutas. Toda transición de contexto en `scannerCapture.sync` debe avanzar `gen` y avisar al nativo. No consumir teclas de sistema ni de dispositivos no vinculados; no abrir interfaces USB para el lector. Éxito de vinculación sólo tras persistencia confirmada por el nativo. Plugins: nada en `load()` puede lanzar, y los `WebViewListener` se registran después de `Bridge.Builder.create()`. El layout `capacitor_bridge_layout_main.xml` de la app sustituye al de Capacitor: compararlo al actualizar Capacitor. Selector de impresora: un lector/teclado HID nunca es seleccionable. APK nuevo = firma de Miguel; Vercel no instala Java. Ver docs/LECTOR_NATIVO_ESCANER_2026-11-06.md.
+
+
+## Actualización del APK desde el POS
+
+`public/apk/actualizacion.json` controla el aviso «Actualización pendiente» de TODAS las terminales. Sólo se pone `publicada:true` mediante `scripts/publicar_apk.mjs` con un APK firmado por Miguel (certificado del 1.1.1 publicado); nunca a mano ni con un APK sin firmar o con otra llave: Android no lo instalaría y alguien podría desinstalar la app y perder datos. El APK para terminales < 1.3.0 debe estar en un host fuera de `allowNavigation` (hoy `raw.githubusercontent.com`, rama `descargas-apk`); un enlace `*.vercel.app` no descarga nada dentro de la app. El aviso nunca es un diálogo ni bloquea cobros. Ver docs/ACTUALIZACION_APK.md.

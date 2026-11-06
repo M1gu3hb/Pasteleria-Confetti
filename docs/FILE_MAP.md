@@ -86,3 +86,8 @@ scripts/scanner_config_browser.mjs incluye assignment_focus y assignment_focus_t
 ## Lector nativo (APK 1.3.0)
 
 Android: ConfettiScannerPlugin.java, scanner/ScannerCore.java, scanner/UsbClasificacion.java, ConfettiWebView.java, res/layout/capacitor_bridge_layout_main.xml (sustituye al de Capacitor), UsbBulkConnection.java; pruebas JVM/Robolectric en android/app/src/test. Web: src/native/confettiScanner.js (puente), confettiScannerPlugin.js (frontera mockeable), printerSelection.js; src/lib/scannerPairing.js; src/components/barcodes/useNativeScanner.js. Pruebas: scripts/scanner_native_verify.mjs (en test:barcodes) y scripts/scanner_native_browser.mjs (CONFETTI_QA_NATIVE_SCANNER en barcodes_browser_fixture).
+
+
+## Actualización del APK
+
+public/apk/actualizacion.json (anuncio), src/native/apkUpdate.js, src/native/confettiAppPlugin.js (frontera mockeable), src/components/common/ActualizacionApkBanner.jsx (montado en AppLayout), android: ConfettiAppPlugin.java y actualizacion/VerificadorActualizacion.java; scripts/publicar_apk.mjs, scripts/apk_update_verify.mjs (test:apk, en quality) y scripts/apk_update_browser.mjs.

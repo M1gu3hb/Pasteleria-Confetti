@@ -66,3 +66,8 @@ El despliegue Vite requiere la reescritura SPA de vercel.json hacia /index.html 
 ## Lector nativo en vez de exigir F9 (2026-11-06)
 
 Se elige captura por `InputDevice` en el APK porque es lo único que distingue el lector de un teclado en Android 12 y permite usar lectores de fábrica (HID + Enter) sin programarlos. El nativo no valida códigos: un solo parser JS, corregible por Vercel. Vincular exige un paso explícito con tres lecturas; nunca por velocidad. Identidades duplicadas no se capturan. Se mantiene la ruta web sin cambios para APK anteriores y lectores no vinculados. Se acepta F7 como prefijo sólo desde el lector vinculado (Steren COM-595). Se compila el APK sin firmar: firmar es exclusivo de Miguel.
+
+
+## Aviso de actualización en vez de enlace suelto (2026-11-06)
+
+Abel tiene varias sucursales: el aviso aparece solo en todas las terminales con APK al publicar el JSON. Se publica únicamente un APK verificado con el certificado de la llave de Miguel. Para APK 1.1.1 el binario va en `raw.githubusercontent.com` (repositorio público) porque Capacitor abre `*.vercel.app` dentro del WebView y no descarga; la página de Vercel sigue como respaldo con versión y cambios. El instalador dentro de la app se agrega en 1.3.0 para que las siguientes versiones no dependan de Chrome.
