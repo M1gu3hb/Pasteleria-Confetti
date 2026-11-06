@@ -3,7 +3,7 @@ import { getScannerCapture } from '@/lib/scannerCapture';
 
 /** @param {any} options */
 export function useBarcodeCapture(options) {
-  const [state,setState]=useState({draft:'',reading:false,status:'Esperando una lectura.'});
+  const [state,setState]=useState({draft:'',reading:false,status:'Esperando una lectura.',nativo:/** @type {any} */(null)});
   const registration=useRef(null),latest=useRef(options);latest.current=options;
   useLayoutEffect(()=>{
     registration.current=getScannerCapture().register(latest.current,setState);

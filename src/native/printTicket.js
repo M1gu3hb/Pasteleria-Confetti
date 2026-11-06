@@ -119,7 +119,8 @@ export async function asegurarConexionImpresora(cfg) {
     // Hallazgo medio (Codex): si se eligió una impresora y YA NO está, el nativo usa la conectada
     // pero DEVUELVE fallback=true → aquí se avisa VISIBLEMENTE (no silencioso) para que se re-elija.
     if (r && r.fallback) {
-      toast.warning('Impresora: la elegida no está conectada; se usó la conectada. Revisa la selección en Configuración → Impresora.');
+      // 1.3.0 también cae aquí si la elección guardada no es una impresora: el nativo explica cuál caso fue.
+      toast.warning(typeof r.mensaje === 'string' && r.mensaje ? `Impresora: ${r.mensaje}` : 'Impresora: la elegida no está conectada; se usó la conectada. Revisa la selección en Configuración → Impresora.');
     }
   }
 }

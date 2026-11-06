@@ -354,3 +354,8 @@ Con varias asignaciones abiertas, el consumidor del lector debe seguir al campo 
 El panel tiene pestaña Escáner junto a Operación; /configuracion?seccion=escaner permite abrirlo directamente tras acceso de dueño. No duplicarlo al final de Operación ni ampliar permisos de la ruta. Ver docs/ACCESO_ESCANER_2026-11-03.md para prueba de la pantalla completa y límites de comprobación de dispositivos.
 
 El despliegue Vite requiere la reescritura SPA de vercel.json hacia /index.html para enlaces directos/recargas de las rutas internas. Verificar /configuracion?seccion=escaner y assets/SW en vivo, además del HTML raíz. Las guardias React y RLS de Supabase siguen aplicándose.
+
+
+## Lector nativo del APK (1.3.0)
+
+`ConfettiScanner` sólo identifica y agrupa teclas del lector VINCULADO; la validez del código sigue en `barcodeFrame` (no duplicar reglas en Java). Mientras `capturando=true` el parser web queda pasivo: nunca procesar una lectura por las dos rutas. Toda transición de contexto en `scannerCapture.sync` debe avanzar `gen` y avisar al nativo. No consumir teclas de sistema ni de dispositivos no vinculados; no abrir interfaces USB para el lector. Éxito de vinculación sólo tras persistencia confirmada por el nativo. Plugins: nada en `load()` puede lanzar, y los `WebViewListener` se registran después de `Bridge.Builder.create()`. El layout `capacitor_bridge_layout_main.xml` de la app sustituye al de Capacitor: compararlo al actualizar Capacitor. Selector de impresora: un lector/teclado HID nunca es seleccionable. APK nuevo = firma de Miguel; Vercel no instala Java. Ver docs/LECTOR_NATIVO_ESCANER_2026-11-06.md.

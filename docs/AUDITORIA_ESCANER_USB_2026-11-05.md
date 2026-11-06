@@ -122,3 +122,7 @@ Antes de que lo compre, quiero confirmar el modelo de su tablet para revisar la 
 - Android USB host: https://developer.android.com/develop/connectivity/usb/host
 - Shopify DS2208, sección conexión directa HID: https://help.shopify.com/es/manual/sell-in-person/hardware/barcode-scanners/zebra-ds2208-usb-barcode-scanner
 - Zebra DS2200 ficha técnica: https://www.zebra.com/content/dam/zebra_dam/en/spec-sheets/ds2200-series-spec-sheet-en-us.pdf
+
+
+## Seguimiento (2026-11-06)
+Los pendientes de captura, desconexión, selector de impresora y ConfettiFiles se atendieron en el APK 1.3.0: ver docs/LECTOR_NATIVO_ESCANER_2026-11-06.md. Este informe se conserva como registro de la auditoría.

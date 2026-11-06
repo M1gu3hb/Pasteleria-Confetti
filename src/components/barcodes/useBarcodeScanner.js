@@ -29,7 +29,7 @@ export function useBarcodeScanner({ branch, enabled, onProduct, contextKey = '' 
     onInvalidate:()=>{queueRef.current.clear();setResult('');},
   });
   useLayoutEffect(()=>()=>queueRef.current.clear(),[]);
-  return {pending,reading:capture.reading,busy:pending>0||capture.reading,draft:capture.draft,status:result||capture.status,inputRef,
+  return {pending,nativo:capture.nativo,reading:capture.reading,busy:pending>0||capture.reading,draft:capture.draft,status:result||capture.status,inputRef,
     clear:()=>{queueRef.current.clear();capture.invalidate();},
     canCheckout:()=>queueRef.current.pending===0&&!capture.isReading()};
 }

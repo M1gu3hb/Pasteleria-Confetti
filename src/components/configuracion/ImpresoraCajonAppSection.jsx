@@ -7,6 +7,7 @@ import { Capacitor } from '@capacitor/core';
 import { getPrinterConfig, setPrinterConfig } from '@/native/printerConfig';
 import { imprimirTicketNativo, imprimirCorteTermico } from '@/native/printTicket';
 import { listarDispositivosUSB } from '@/native/confettiPrinter';
+import { clasificarDispositivosUSB, eleccionInvalida, ETIQUETA_TIPO_USB } from '@/native/printerSelection';
 import { abrirCajon } from '@/native/cajon';
 import PreCuentaTicket from '@/components/tickets/PreCuentaTicket';
 import CorteTicketTermico from '@/components/tickets/CorteTicketTermico';
@@ -67,7 +68,7 @@ export default function ImpresoraCajonAppSection({ config, previewNativo }) {
     setUsbErr(null);
     try {
       const r = await listarDispositivosUSB();
-      const lista = Array.isArray(r?.dispositivos) ? r.dispositivos : [];
+      const lista = clasificarDispositivosUSB(r);
       setDispositivosUSB(lista);
       if (lista.length === 0) setUsbErr('No se detectaron dispositivos USB. Conecta la impresora y reintenta.');
     } catch (e) {
@@ -148,30 +149,35 @@ export default function ImpresoraCajonAppSection({ config, previewNativo }) {
           </div>
           {dispositivosUSB.length > 0 && (
             <div className="flex flex-wrap gap-2">
-              {/* Las que exponen interfaz de impresora se muestran primero y con 🖨️ (las demás
-                  siguen elegibles: algunas ESC/POS no se enumeran como printer-class). */}
-              {[...dispositivosUSB]
-                .sort((a, b) => (b.esImpresora ? 1 : 0) - (a.esImpresora ? 1 : 0))
-                .map((d) => {
+              {/* 1.3.0: un lector/teclado HID u otro dispositivo que no imprime aparece, pero
+                  DESHABILITADO y rotulado: no puede guardarse como impresora. Ver printerSelection.js. */}
+              {dispositivosUSB.map((d) => {
                   const elegido = cfg.usbVendorId === d.vendorId && cfg.usbProductId === d.productId;
                   return (
                     <button
                       key={`${d.vendorId}:${d.productId}:${d.deviceName}`}
                       type="button"
-                      disabled={!nativo}
-                      onClick={() => actualizar({ usbVendorId: d.vendorId, usbProductId: d.productId, usbNombre: d.nombre })}
-                      className={`min-w-[140px] h-11 px-3 rounded-xl border font-semibold text-sm transition ${
+                      disabled={!nativo || !d.seleccionable}
+                      aria-label={`${d.nombre} — ${ETIQUETA_TIPO_USB[d.tipo] || ETIQUETA_TIPO_USB.otro}`}
+                      onClick={() => { if (d.seleccionable) actualizar({ usbVendorId: d.vendorId, usbProductId: d.productId, usbNombre: d.nombre }); }}
+                      className={`min-w-[140px] min-h-11 px-3 py-1 rounded-xl border font-semibold text-sm transition text-left disabled:opacity-60 ${
                         elegido
                           ? 'border-primary bg-primary/10 text-primary'
                           : 'border-muted text-muted-foreground hover:border-primary/40'
                       }`}
                     >
                       {d.nombre}
-                      {d.esImpresora && <span className="ml-1 text-[11px] opacity-70" title="Interfaz de impresora">🖨️</span>}
+                      {d.tipo === 'impresora' && <span className="ml-1 text-[11px] opacity-70" title="Interfaz de impresora">🖨️</span>}
+                      <span className="block text-[11px] font-normal">{ETIQUETA_TIPO_USB[d.tipo] || ETIQUETA_TIPO_USB.otro}</span>
                     </button>
                   );
                 })}
             </div>
+          )}
+          {eleccionInvalida(cfg, dispositivosUSB) && (
+            <p role="alert" className="text-xs text-red-600">
+              La elección guardada ({cfg.usbNombre || 'dispositivo USB'}) no es una impresora. Toca «Quitar elección» o elige la impresora.
+            </p>
           )}
           {usbErr && <p className="text-xs text-red-600">{usbErr}</p>}
         </div>

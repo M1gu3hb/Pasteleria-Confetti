@@ -63,3 +63,8 @@ scannerCapture resuelve el propietario entre consumidores activos por inputRef =
 El panel tiene pestaña Escáner junto a Operación; /configuracion?seccion=escaner permite abrirlo directamente tras acceso de dueño. No duplicarlo al final de Operación ni ampliar permisos de la ruta. Ver ACCESO_ESCANER_2026-11-03.md para prueba de la pantalla completa y límites de comprobación de dispositivos.
 
 El despliegue Vite requiere la reescritura SPA de vercel.json hacia /index.html para enlaces directos/recargas de las rutas internas. Verificar /configuracion?seccion=escaner y assets/SW en vivo, además del HTML raíz. Las guardias React y RLS de Supabase siguen aplicándose.
+
+
+## Lector nativo (APK 1.3.0)
+
+Teclas del lector vinculado: `ConfettiWebView.dispatchKeyEventPreIme` / `MainActivity.dispatchKeyEvent` → `ConfettiScannerPlugin` (identidad por `InputDevice`, `ScannerCore` agrupa hasta Enter o corte) → evento `lectura` con `gen` → `scannerCapture` → `barcodeFrame` en modo nativo → cola de `useBarcodeScanner`. Parser web pasivo mientras `capturando`. Vinculación en SharedPreferences del APK; ajustes de perfil/tiempo siguen en localStorage. Impresora: `UsbClasificacion` decide qué es seleccionable; clase 7 por DantSu, 0xFF por `UsbBulkConnection`. Ver docs/LECTOR_NATIVO_ESCANER_2026-11-06.md.

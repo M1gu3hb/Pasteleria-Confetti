@@ -30,27 +30,43 @@ export function createBarcodeFrame({getContext,isModalOpen,onScan,onDraft,onRead
   const consume=event=>{event.preventDefault();event.stopPropagation();};
   return {
     get active(){return active;},
+    // A discarding frame can never add a product; native capture uses this to avoid blocking checkout.
+    get discarding(){return discarding;},
     invalidate,
     reset,
+    /** Discard everything until the next terminator, even if no frame was active (stale native tail). */
+    quarantine(why='Cambió el contexto durante la lectura.'){
+      reset();active=true;discarding=true;reader.discard();reason=why;
+      onStatus('Lectura interrumpida. Vuelve a escanear el código completo.');emit('interrupted');paint();
+    },
     expire(now=globalThis.performance.now()) {
       if(active&&!discarding&&lastKeyAt!==null&&(now<lastKeyAt||now-lastKeyAt>getSettings().maxGap))invalidate('Se interrumpió el ritmo de lectura. Revisa el tiempo y escanea de nuevo.');
     },
-    handle(event,{editing=false,dedicated=false}={},now=globalThis.performance.now()) {
+    // native=true: keys of the reader identified by ConfettiScanner (APK). They never reached a
+    // field, so focus/profile gates do not apply; F7 is an accepted prefix ONLY there (Steren
+    // COM-595 documents it). Human function keys on the web path stay untouched.
+    handle(event,{editing=false,dedicated=false,native=false}={},now=globalThis.performance.now()) {
       const key=event.key;
-      if(key==='F9'){
+      if(key==='F9'||(native&&key==='F7')){
         consume(event);
-        if(event.repeat){emit('duplicate',{reason:'F9 sostenido ignorado.'});return;}
-        if(active)emit('interrupted',{reason:'Una nueva F9 reemplazó la lectura anterior.'});
+        if(event.repeat){emit('duplicate',{reason:`${key} sostenido ignorado.`});return;}
+        if(active)emit('interrupted',{reason:`Una nueva ${key} reemplazó la lectura anterior.`});
         start(true,now);trusted=event.isTrusted===true;return;
       }
+      const ignorable=key==='Shift'||(native&&(key==='CapsLock'||key==='NumLock'));
       if(key==='Escape'){if(active){consume(event);emit('cancelled',{reason:'Lectura cancelada con Esc.'});}reset();return;}
-      if(key==='Tab'){if(active&&prefixed){consume(event);invalidate('Terminador inesperado: configura Enter en el lector.');}else reset();return;}
+      if(key==='Tab'){if(active&&(prefixed||native)){consume(event);invalidate('Terminador inesperado: configura Enter en el lector.');}else reset();return;}
       if(event.ctrlKey||event.altKey||event.metaKey||event.isComposing){if(active){if(prefixed)consume(event);invalidate('Atajo o composición inesperados en la lectura.');}return;}
-      if(active&&prefixed&&key.length!==1&&key!=='Enter'&&key!=='Shift'){consume(event);invalidate('Tecla inesperada. Configura el lector como teclado.');return;}
+      if(active&&(prefixed||native)&&key.length!==1&&key!=='Enter'&&!ignorable){consume(event);invalidate('Tecla inesperada. Configura el lector como teclado.');return;}
       if(event.repeat&&active&&(key.length===1||key==='Enter')){consume(event);emit('duplicate',{reason:'Tecla sostenida ignorada.'});return;}
       if(key==='Enter'&&event.repeat&&lastTerminator!==null){consume(event);return;}
       if(key==='Enter'&&!active&&lastTerminator!==null&&now>=lastTerminator&&now-lastTerminator<250){consume(event);emit('duplicate',{reason:'Terminador doble ignorado.'});return;}
       const ctx=getContext(),settings=getSettings(),paused=!ctx.enabled||isModalOpen();
+      if(!active&&native){
+        if(!settings.enabled||key==='Enter'||ignorable||event.repeat)return;
+        start(false,now);
+        if(key.length!==1){invalidate(`Tecla inesperada (${key}). Revisa la configuración del lector.`);paint();return;}
+      }
       if(!active){
         if(!settings.enabled)return;
         if(editing&&!dedicated){

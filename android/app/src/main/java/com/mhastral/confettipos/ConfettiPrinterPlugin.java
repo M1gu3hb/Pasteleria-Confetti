@@ -10,6 +10,8 @@ import android.graphics.BitmapFactory;
 import android.hardware.usb.UsbConstants;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbDeviceConnection;
+import android.hardware.usb.UsbEndpoint;
+import android.hardware.usb.UsbInterface;
 import android.hardware.usb.UsbManager;
 import android.os.Build;
 import android.util.Base64;
@@ -31,6 +33,9 @@ import com.hoho.android.usbserial.driver.UsbSerialDriver;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
 import com.hoho.android.usbserial.driver.UsbSerialProber;
 
+import com.mhastral.confettipos.scanner.UsbClasificacion;
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -70,6 +75,9 @@ public class ConfettiPrinterPlugin extends Plugin {
     // FIX B (selección): conectarUSB honra la impresora ELEGIDA (vendorId/productId de la config
     // local). Si se eligió una específica y YA NO está conectada, cae a la conectada pero DEVUELVE
     // un aviso (fallback=true) — NUNCA en silencio (hallazgo medio de Codex). Sin elección → primera.
+    // 1.3.0: si la elección guardada NO es una impresora (lector/teclado HID u otro dispositivo),
+    // tampoco se abre: mismo fallback con aviso explícito. Una impresora de clase propietaria (0xFF)
+    // usa UsbBulkConnection; la de clase Printer (7) sigue por UsbConnection de DantSu, sin cambios.
     @PluginMethod
     public void conectarUSB(final PluginCall call) {
         final Integer vendorId  = call.getInt("vendorId");
@@ -80,18 +88,13 @@ public class ConfettiPrinterPlugin extends Plugin {
                 UsbManager usbManager = (UsbManager) ctx.getSystemService(Context.USB_SERVICE);
                 if (usbManager == null) { call.reject("No se encontró ninguna impresora USB conectada."); return; }
 
-                UsbConnection elegida = dispositivoElegido(usbManager, vendorId, productId);
-                boolean pidioEspecifica = (vendorId != null && productId != null);
-                // fallback = se pidió una específica pero NO está conectada → se usa la conectada (con aviso).
-                boolean fallback = pidioEspecifica && (elegida == null);
-                UsbConnection usb = (elegida != null) ? elegida : UsbPrintersConnections.selectFirstConnected(ctx);
-                if (usb == null) { call.reject("No se encontró ninguna impresora USB conectada."); return; }
+                Seleccion sel = seleccionar(ctx, usbManager, vendorId, productId);
+                if (sel == null) { call.reject("No se encontró ninguna impresora USB conectada."); return; }
 
-                UsbDevice device = usb.getDevice();
-                if (usbManager.hasPermission(device)) {
-                    abrirUsb(call, usb, fallback);
+                if (usbManager.hasPermission(sel.device)) {
+                    abrirUsb(call, sel);
                 } else {
-                    solicitarPermisoUsb(call, usbManager, device, vendorId, productId);
+                    solicitarPermisoUsb(call, usbManager, sel.device, vendorId, productId);
                 }
             } catch (Exception e) {
                 call.reject("Error al conectar por USB: " + mensaje(e));
@@ -99,7 +102,45 @@ public class ConfettiPrinterPlugin extends Plugin {
         });
     }
 
+    /** Resultado de elegir qué abrir: conexión, dispositivo y aviso (si se usó otra que la elegida). */
+    private static final class Seleccion {
+        final DeviceConnection conexion;
+        final UsbDevice device;
+        final boolean fallback;
+        final String aviso;
+        Seleccion(DeviceConnection conexion, UsbDevice device, boolean fallback, String aviso) {
+            this.conexion = conexion; this.device = device; this.fallback = fallback; this.aviso = aviso;
+        }
+    }
+
+    private Seleccion seleccionar(Context ctx, UsbManager usbManager, Integer vendorId, Integer productId) {
+        boolean pidioEspecifica = (vendorId != null && productId != null);
+        String aviso = null;
+        if (pidioEspecifica) {
+            UsbDevice d = buscarDispositivo(usbManager, vendorId, productId);
+            if (d != null) {
+                String tipo = tipoDispositivo(d);
+                if (UsbClasificacion.IMPRESORA.equals(tipo)) {
+                    return new Seleccion(new UsbConnection(usbManager, d), d, false, null);
+                }
+                if (UsbClasificacion.PROPIETARIA.equals(tipo)) {
+                    return new Seleccion(new UsbBulkConnection(usbManager, d), d, false, null);
+                }
+                aviso = "La elección guardada (" + nombreDispositivo(d) + ") no es una impresora; parece un lector o teclado. "
+                    + "Se usó la impresora conectada. Elige la impresora en Configuración.";
+            } else {
+                aviso = "La impresora elegida no está conectada; se usó la impresora conectada. Revisa la selección en Configuración.";
+            }
+        }
+        // Sin elección (o elección inválida): primera impresora de clase Printer, como siempre.
+        UsbConnection primera = UsbPrintersConnections.selectFirstConnected(ctx);
+        if (primera == null) return null;
+        return new Seleccion(primera, primera.getDevice(), pidioEspecifica, aviso);
+    }
+
     // FIX B: enumera los dispositivos USB conectados para que el usuario ELIJA la impresora en Config.
+    // 1.3.0: cada dispositivo trae `tipo` y `seleccionable`. Un lector/teclado HID (o algo que Android
+    // ya usa como teclado) NO es seleccionable; una térmica de clase propietaria con salida bulk sí.
     @PluginMethod
     public void listarDispositivosUSB(final PluginCall call) {
         io.execute(() -> {
@@ -114,14 +155,20 @@ public class ConfettiPrinterPlugin extends Plugin {
                         o.put("vendorId", d.getVendorId());
                         o.put("productId", d.getProductId());
                         o.put("deviceName", d.getDeviceName());
-                        // esImpresora = tiene una interfaz clase PRINTER. No se filtra (algunas ESC/POS
-                        // no se enumeran como printer-class): se marca para que la UI las ordene/etiquete.
+                        // esImpresora = tiene una interfaz clase PRINTER (campo histórico, se conserva).
                         o.put("esImpresora", esImpresora(d));
+                        String tipo = tipoDispositivo(d);
+                        o.put("tipo", tipo);
+                        o.put("seleccionable", UsbClasificacion.seleccionable(tipo));
+                        JSArray clases = new JSArray();
+                        for (int i = 0; i < d.getInterfaceCount(); i++) clases.put(d.getInterface(i).getInterfaceClass());
+                        o.put("clases", clases);
                         dispositivos.put(o);
                     }
                 }
                 JSObject res = new JSObject();
                 res.put("dispositivos", dispositivos);
+                res.put("clasificado", true);
                 call.resolve(res);
             } catch (Exception e) {
                 call.reject("No se pudieron listar los dispositivos USB: " + mensaje(e));
@@ -129,17 +176,29 @@ public class ConfettiPrinterPlugin extends Plugin {
         });
     }
 
-    // SOLO la impresora EXACTA elegida (vendorId/productId). Devuelve null si no se eligió ninguna,
-    // o si la elegida NO está conectada — NO cae a otra aquí (el llamador decide el fallback con aviso).
-    private UsbConnection dispositivoElegido(UsbManager usbManager, Integer vendorId, Integer productId) {
+    private UsbDevice buscarDispositivo(UsbManager usbManager, Integer vendorId, Integer productId) {
         if (usbManager != null && vendorId != null && productId != null) {
             for (UsbDevice d : usbManager.getDeviceList().values()) {
-                if (d.getVendorId() == vendorId && d.getProductId() == productId) {
-                    return new UsbConnection(usbManager, d);
-                }
+                if (d.getVendorId() == vendorId && d.getProductId() == productId) return d;
             }
         }
         return null;
+    }
+
+    /** Clasificación pura (UsbClasificacion) + cruce con los teclados que Android ya reconoce. */
+    private String tipoDispositivo(UsbDevice d) {
+        List<UsbClasificacion.Interfaz> interfaces = new ArrayList<>();
+        for (int i = 0; i < d.getInterfaceCount(); i++) {
+            UsbInterface intf = d.getInterface(i);
+            boolean bulkOut = false;
+            for (int e = 0; e < intf.getEndpointCount(); e++) {
+                UsbEndpoint ep = intf.getEndpoint(e);
+                if (ep.getType() == UsbConstants.USB_ENDPOINT_XFER_BULK && ep.getDirection() == UsbConstants.USB_DIR_OUT) bulkOut = true;
+            }
+            interfaces.add(new UsbClasificacion.Interfaz(intf.getInterfaceClass(), bulkOut));
+        }
+        boolean entrada = ConfettiScannerPlugin.esDispositivoDeEntrada(d.getVendorId(), d.getProductId());
+        return UsbClasificacion.tipo(interfaces, entrada);
     }
 
     private String nombreDispositivo(UsbDevice d) {
@@ -171,11 +230,9 @@ public class ConfettiPrinterPlugin extends Plugin {
                 try { c.unregisterReceiver(this); } catch (Exception ignored) {}
                 boolean granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false);
                 if (!granted) { call.reject("Permiso de USB denegado por el usuario."); return; }
-                UsbConnection elegida = dispositivoElegido(usbManager, vendorId, productId);
-                boolean fallback = (vendorId != null && productId != null) && (elegida == null);
-                UsbConnection usb = (elegida != null) ? elegida : UsbPrintersConnections.selectFirstConnected(c);
-                if (usb == null) { call.reject("La impresora USB se desconectó."); return; }
-                abrirUsb(call, usb, fallback);
+                Seleccion sel = seleccionar(c, usbManager, vendorId, productId);
+                if (sel == null) { call.reject("La impresora USB se desconectó."); return; }
+                abrirUsb(call, sel);
             }
         };
         int flags = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ? PendingIntent.FLAG_MUTABLE : 0;
@@ -190,17 +247,17 @@ public class ConfettiPrinterPlugin extends Plugin {
         usbManager.requestPermission(device, pi);
     }
 
-    // fallback=true → la impresora ELEGIDA no estaba conectada y se usó la conectada: se DEVUELVE
-    // un aviso claro (no silencioso). El JS lo muestra con un toast para que el usuario re-elija.
-    private void abrirUsb(final PluginCall call, final UsbConnection usb, final boolean fallback) {
+    // fallback=true → la impresora ELEGIDA no estaba conectada (o no era una impresora) y se usó la
+    // conectada: se DEVUELVE un aviso claro (no silencioso). El JS lo muestra para que se re-elija.
+    private void abrirUsb(final PluginCall call, final Seleccion sel) {
         try {
             cerrarConexionActual(); // FIX A: cierra cualquier conexión previa antes de abrir otra (evita fuga)
-            usb.connect();
-            this.connection = usb;
-            JSObject r = ok(fallback
-                ? "La impresora elegida no está conectada; se usó la impresora conectada. Revisa la selección en Configuración."
+            sel.conexion.connect();
+            this.connection = sel.conexion;
+            JSObject r = ok(sel.fallback
+                ? (sel.aviso != null ? sel.aviso : "La impresora elegida no está conectada; se usó la impresora conectada. Revisa la selección en Configuración.")
                 : "Impresora USB conectada.");
-            r.put("fallback", fallback);
+            r.put("fallback", sel.fallback);
             call.resolve(r);
         } catch (Exception e) {
             call.reject("No se pudo abrir la impresora USB: " + mensaje(e));

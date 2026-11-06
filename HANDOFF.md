@@ -69,3 +69,8 @@ Revisión de integración: conservar selección de propietario por input enfocad
 El panel tiene pestaña Escáner junto a Operación; /configuracion?seccion=escaner permite abrirlo directamente tras acceso de dueño. No duplicarlo al final de Operación ni ampliar permisos de la ruta. Ver docs/ACCESO_ESCANER_2026-11-03.md para prueba de la pantalla completa y límites de comprobación de dispositivos.
 
 El despliegue Vite requiere la reescritura SPA de vercel.json hacia /index.html para enlaces directos/recargas de las rutas internas. Verificar /configuracion?seccion=escaner y assets/SW en vivo, además del HTML raíz. Las guardias React y RLS de Supabase siguen aplicándose.
+
+
+## Lector nativo del APK 1.3.0
+
+APK 1.3.0 añade `ConfettiScanner`: el lector USB-HID vinculado en Configuración → Escáner (tres lecturas del mismo código impreso) se captura por `InputDevice` antes del IME/WebView y llega al mismo parser JS; sin F9. APK anteriores y navegador siguen en la ruta web (`disponible:false`). Selector de impresora excluye lectores/teclados HID. El APK se compila sin firmar en este repo: firmar con la llave de Miguel e instalar como actualización (nunca desinstalar). Estado vivo: versión instalada en la terminal (Ajustes → Apps), canal `apk/capacitor` en Vercel y catálogo con `select count(*) filter (where activo and codigo_barras is null) from productos`. Arquitectura, compatibilidad, pruebas y lista física en docs/LECTOR_NATIVO_ESCANER_2026-11-06.md; guía para Abel en docs/GUIA_ABEL_ESCANER.md.

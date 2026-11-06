@@ -741,6 +741,15 @@ export default function POS() {
             <label htmlFor="pos-barcode" className="text-xs font-medium">Lector de códigos de barras</label>
             <input id="pos-barcode" ref={scanner.inputRef} readOnly inputMode="none" value={scanner.draft} placeholder="Escanea el producto y se agrega a la orden" className="skeu-input w-full h-10 px-3" />
             <p role="status" aria-live="polite" className="text-xs text-muted-foreground">{scanner.pending ? `Agregando ${scanner.pending} lectura(s)…` : scanner.status}</p>
+            {/* Estado físico del lector vinculado (APK 1.3.0): sólo con evidencia de Android, nunca deducido de teclas. */}
+            {scanner.nativo?.disponible && scanner.nativo.vinculo && (
+              <p className={`text-xs ${scanner.nativo.capturando ? 'text-muted-foreground' : 'text-amber-700 dark:text-amber-300'}`}>
+                {scanner.nativo.vinculando ? 'Lector en vinculación (Configuración → Escáner).'
+                  : scanner.nativo.estado === 'conectado' ? 'Lector vinculado conectado.'
+                  : scanner.nativo.estado === 'ambiguo' ? 'Lector en pausa: hay dos dispositivos idénticos conectados (Configuración → Escáner).'
+                  : 'Lector vinculado desconectado: revise el cable USB.'}
+              </p>
+            )}
           </div>
           {/* FASE 3 — Venta libre: monto sin producto de catálogo (se agrega al carrito). */}
           <Button

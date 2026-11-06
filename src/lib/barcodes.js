@@ -46,3 +46,28 @@ export async function lookupBarcode(code, branch) {
     return await Promise.race([lookupCurrentBarcode(code,branch),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('El lector no pudo consultar el catálogo a tiempo. Revisa la conexión y vuelve a escanear.')),15000);})]);
   } finally {clearTimeout(timer);}
 }
+
+/** Read-only diagnostic (Configuración → Escáner): which product owns a code. Never writes or sells. */
+export async function inspectBarcode(code) {
+  const normalized = normalizeBarcode(code);
+  if (!validBarcode(normalized)) return { estado: 'invalido' };
+  await ensureSession();
+  const { data, error } = await supabase.from('productos').select('id,nombre,activo,visible_en_pos,sucursal_ids,codigo_barras').eq('codigo_barras', normalized).limit(2);
+  if (error) throw new Error('No se pudo consultar el catálogo. Revisa la conexión.');
+  const rows = Array.isArray(data) ? data.filter(r => r?.codigo_barras === normalized && typeof r?.nombre === 'string') : [];
+  if (!rows.length) return { estado: 'no_registrado' };
+  if (rows.length > 1) return { estado: 'ambiguo' };
+  const producto = rows[0];
+  if (producto.activo !== true) return { estado: 'inactivo', producto };
+  if (producto.visible_en_pos !== true) return { estado: 'oculto', producto };
+  return { estado: 'ok', producto };
+}
+
+/** Active products with/without a barcode. Counts must be real integers (never Number(null)). */
+export async function barcodeCoverage() {
+  await ensureSession();
+  const base = () => supabase.from('productos').select('id', { count: 'exact', head: true }).eq('activo', true);
+  const [all, missing] = await Promise.all([base(), base().is('codigo_barras', null)]);
+  if (all?.error || missing?.error || !Number.isInteger(all?.count) || !Number.isInteger(missing?.count)) throw new Error('No se pudo consultar el catálogo.');
+  return { activos: all.count, sinCodigo: missing.count };
+}

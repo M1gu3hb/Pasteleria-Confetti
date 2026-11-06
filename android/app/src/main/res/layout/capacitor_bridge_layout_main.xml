@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Sustituye al layout homónimo de @capacitor/android 8.4.1 (mismo contenido y mismo id
+     @id/webview). Único cambio: ConfettiWebView (subclase de CapacitorWebView) para que el lector
+     nativo vea las teclas antes del IME. Si se actualiza Capacitor, comparar con
+     node_modules/@capacitor/android/capacitor/src/main/res/layout/capacitor_bridge_layout_main.xml -->
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="com.getcapacitor.BridgeActivity"
+    >
+
+    <com.mhastral.confettipos.ConfettiWebView
+        android:id="@+id/webview"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent" />
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

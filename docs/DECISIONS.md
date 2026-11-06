@@ -61,3 +61,8 @@ La asignación de códigos utiliza el campo enfocado como propietario explícito
 El panel tiene pestaña Escáner junto a Operación; /configuracion?seccion=escaner permite abrirlo directamente tras acceso de dueño. No duplicarlo al final de Operación ni ampliar permisos de la ruta. Ver ACCESO_ESCANER_2026-11-03.md para prueba de la pantalla completa y límites de comprobación de dispositivos.
 
 El despliegue Vite requiere la reescritura SPA de vercel.json hacia /index.html para enlaces directos/recargas de las rutas internas. Verificar /configuracion?seccion=escaner y assets/SW en vivo, además del HTML raíz. Las guardias React y RLS de Supabase siguen aplicándose.
+
+
+## Lector nativo en vez de exigir F9 (2026-11-06)
+
+Se elige captura por `InputDevice` en el APK porque es lo único que distingue el lector de un teclado en Android 12 y permite usar lectores de fábrica (HID + Enter) sin programarlos. El nativo no valida códigos: un solo parser JS, corregible por Vercel. Vincular exige un paso explícito con tres lecturas; nunca por velocidad. Identidades duplicadas no se capturan. Se mantiene la ruta web sin cambios para APK anteriores y lectores no vinculados. Se acepta F7 como prefijo sólo desde el lector vinculado (Steren COM-595). Se compila el APK sin firmar: firmar es exclusivo de Miguel.

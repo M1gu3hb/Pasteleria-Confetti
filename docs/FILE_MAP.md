@@ -81,3 +81,8 @@ scripts/scanner_config_browser.mjs incluye assignment_focus y assignment_focus_t
 - docs/ACCESO_ESCANER_2026-11-03.md: revisión por sección no encontrada, publicación y límites del diagnóstico sin pantalla del dispositivo.
 
 - vercel.json: build y fallback SPA a index.html para navegación directa y recarga de BrowserRouter.
+
+
+## Lector nativo (APK 1.3.0)
+
+Android: ConfettiScannerPlugin.java, scanner/ScannerCore.java, scanner/UsbClasificacion.java, ConfettiWebView.java, res/layout/capacitor_bridge_layout_main.xml (sustituye al de Capacitor), UsbBulkConnection.java; pruebas JVM/Robolectric en android/app/src/test. Web: src/native/confettiScanner.js (puente), confettiScannerPlugin.js (frontera mockeable), printerSelection.js; src/lib/scannerPairing.js; src/components/barcodes/useNativeScanner.js. Pruebas: scripts/scanner_native_verify.mjs (en test:barcodes) y scripts/scanner_native_browser.mjs (CONFETTI_QA_NATIVE_SCANNER en barcodes_browser_fixture).
