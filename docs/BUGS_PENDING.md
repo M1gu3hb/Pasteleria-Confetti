@@ -58,4 +58,4 @@ Resueltos en código (pendientes de validación física): lector sin F9 escribie
 
 ## Actualización del APK (2026-11-06)
 
-Pendiente: firma del APK 1.3.0. Sin probar en hardware: descarga en Chrome del dispositivo, instalador del sistema y permiso «Permitir de esta fuente». Las terminales que no recarguen la web desde antes del cambio no ven el aviso hasta recargar una vez.
+Firma y publicación del 1.3.0 hechas el 2026-11-06 (ver CHANGELOG). Sin probar en hardware: descarga en Chrome del dispositivo, instalador del sistema y permiso «Permitir de esta fuente». Las terminales que no recarguen la web desde antes del cambio no ven el aviso hasta recargar una vez.

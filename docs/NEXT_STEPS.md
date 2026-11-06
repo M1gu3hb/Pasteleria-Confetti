@@ -58,4 +58,4 @@ Firmar el APK 1.3.0 con la llave de Miguel, instalarlo como actualización y eje
 
 ## Publicar el APK 1.3.0
 
-Miguel firma el APK 1.3.0 con su llave; después `scripts/publicar_apk.mjs`, rama `descargas-apk`, página de Vercel y push del JSON (docs/ACTUALIZACION_APK.md). Sólo entonces enviar el mensaje a Abel.
+Comprobar en el alias que `public/apk/actualizacion.json` está publicado y enviar el mensaje a Abel. En cada terminal: aviso visible, actualización instalada encima (Ajustes → Apps → Confetti POS muestra 1.3.0), sesión y ajustes de impresora conservados, aviso desaparecido; después la lista física del lector (docs/LECTOR_NATIVO_ESCANER_2026-11-06.md).
