@@ -20,6 +20,13 @@ Estado vivo: `git show origin/apk/capacitor:public/apk/actualizacion.json` y la 
 5. Commit + push del JSON a `apk/capacitor`; verificar en Vercel el JSON servido. Las terminales lo ven en su siguiente revisión (máximo 30 min o al volver a la app); una terminal que no ha recargado la web desde antes de este cambio necesita recargar una vez.
 6. Para retirar un anuncio: volver `publicada:false` y push.
 
+## Comprobar desde el servidor (qué se puede saber y qué no)
+- **La versión del APK no se ve en el servidor.** 1.1.1 y 1.3.0 tienen el mismo `capacitor.config` (sin `appendUserAgent`): mismo user-agent (`Android 12; XW9901 … wv`) y mismo referer (alias `…-git-apk-capacitor-…`). Las descargas desde `raw.githubusercontent.com` y la página de Vercel no tienen registros consultables. La confirmación es en sitio: Ajustes → Apps → Confetti POS, o que el aviso haya desaparecido de esa terminal.
+- **Qué terminal está activa y desde qué:** `edge_logs` de Supabase agrupado por `request.sb.auth_user` (cuenta técnica de cada sucursal, en `usuarios_pos.auth_user_id`), `request.headers.user_agent` y dominio de `request.headers.referer`. Referer `…-git-apk-capacitor-…` con `XW9901` = tableta con APK; `pasteleria-confetti.vercel.app` = navegador (sin aviso, sin lector nativo, sin impresión del APK).
+- **Recarga posterior a un despliegue** (la terminal ya tiene el código del aviso): una carga completa empieza con `configuracion_negocio?select=*&order=id.asc` y el resto de consultas iniciales en el mismo segundo; la hora del despliegue está en Vercel.
+- **Uso del escáner:** cualquier lectura reconocida en venta o en «Probar escáner» llama `rpc/buscar_producto_codigo_pos`; asignar llama `rpc/asignar_codigo_producto_pos`; abrir Configuración → Escáner hace HEAD `productos?…codigo_barras=is.null`. En la base: `count(*) filter (where codigo_barras is not null)` en `productos` y la tabla `codigos_producto_reservados`. La vinculación del lector sólo se guarda en la tableta (no deja rastro en el servidor).
+- `query_logs` admite ventanas de 24 h como máximo; consulta día por día.
+
 ## Pruebas
 - `scripts/apk_update_verify.mjs` (en la puerta de build): manifiesto con valores crudos inválidos, coherencia con `build.gradle`/certificado/`capacitor.config.ts`, réplica de `HostMask`, versión instalada, lectura sin caché.
 - `scripts/apk_update_browser.mjs`: aviso real en Chromium para navegador, APK viejo, APK al día, APK 1.3.0 (instalación, permiso, firma incorrecta → navegador), «Más tarde» persistente y teléfono sin desbordar.
